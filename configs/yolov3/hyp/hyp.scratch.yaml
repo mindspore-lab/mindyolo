@@ -1,0 +1,21 @@
+lr0: 0.01  # initial learning rate (SGD=1E-2, Adam=1E-3)
+lrf: 0.1  # final OneCycleLR learning rate (lr0 * lrf)
+momentum: 0.937  # SGD momentum/Adam beta1
+weight_decay: 0.001  # optimizer weight decay 5e-4
+warmup_epochs: 3.0  # warmup epochs (fractions ok)
+warmup_momentum: 0.8  # warmup initial momentum
+warmup_bias_lr: 0.1  # warmup initial bias lr
+box: 0.05  # box loss gain
+cls: 0.3  # cls loss gain
+cls_pw: 1.0  # cls BCELoss positive_weight
+obj: 0.7  # obj loss gain (scale with pixels)
+obj_pw: 1.0  # obj BCELoss positive_weight
+iou_t: 0.20  # IoU training threshold
+anchor_t: 4.0  # anchor-multiple threshold
+# anchors: 3  # anchors per output layer (0 to ignore)
+
+## transforms
+muliti_imgs_transforms:
+  - mosaic: {probability: 1.0}
+single_imgs_transforms:
+  - fliplr: {probability: 1.0}
