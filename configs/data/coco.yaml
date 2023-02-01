@@ -2,13 +2,10 @@
 
 dataset_name: coco
 
-# download command/URL (optional)
-# download: bash ./scripts/get_coco.sh
-
-# train and val data as 1) directory: path/images/, 2) file: path/images.txt, or 3) list: [path1/images/, path2/images/]
-train: ./coco/train2017.txt  # 118287 images
-val: D:/yolov3-ultralytics/data/scripts/coco/val2017.txt    #./coco/val2017.txt  # 5000 images
-test: ./coco/test-dev2017.txt   #./coco/test-dev2017.txt  # 20288 of 40670 images, submit to https://competitions.codalab.org/competitions/20794
+# directories
+dataset: ./coco2017
+image: ./train2017  # 118287 images
+anno: ./annotations/instances_train2017.json
 
 # number of classes
 nc: 80
