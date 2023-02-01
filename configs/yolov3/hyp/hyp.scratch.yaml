@@ -1,5 +1,0 @@
-## transforms
-muliti_imgs_transforms:
-  - Mosaic: {mosaic_prob: 1.0, copy_paste_prob: 0.0, degrees: 0.0, translate: 0.1, scale: 0.9, shear: 0.0, perspective: 0.0, target_size: 640}
-single_imgs_transforms:
-  - Fliplr: {prob: 1.0}

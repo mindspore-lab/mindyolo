@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="0323024d-7e1d-49ea-9388-413e0385c0b1" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/configs/yolov7/net/yolov7-d6.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mindyolo/utils/args.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/data/coco.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/data/coco.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov3/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov3/hyp/hyp.scratch.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/yolov3/hyp/hyp.scratch.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov3/net/yolov3.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov5/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov5/hyp/hyp.scratch.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov5/net/yolov5.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov7/hyp/hyp.scratch.p5.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/yolov7/hyp/hyp.scratch.p5.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov7/hyp/hyp.scratch.p6.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/yolov7/hyp/hyp.scratch.p6.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov7/hyp/hyp.scratch.tiny.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/yolov7/hyp/hyp.scratch.tiny.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov7/net/yolov7-e6.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/yolov7/net/yolov7-e6.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov7/net/yolov7-e6e.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/yolov7/net/yolov7-e6e.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov7/net/yolov7-tiny.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/yolov7/net/yolov7-tiny.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov7/net/yolov7-w6.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/yolov7/net/yolov7-w6.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov7/net/yolov7-x.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/yolov7/net/yolov7-x.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov7/net/yolov7.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/yolov7/net/yolov7.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolov7/net/yolov7d6.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolox/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolox/hyp/hyp.scratch.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/yolox/net/yolox.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mindyolo/data/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/mindyolo/data/dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mindyolo/data/general.py" beforeDir="false" afterPath="$PROJECT_DIR$/mindyolo/data/general.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mindyolo/data/loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/mindyolo/data/loader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mindyolo/data/transforms/common.py" beforeDir="false" afterPath="$PROJECT_DIR$/mindyolo/data/transforms/common.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mindyolo/data/transforms/mosaic.py" beforeDir="false" afterPath="$PROJECT_DIR$/mindyolo/data/transforms/mosaic.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mindyolo/data/transforms/perspective.py" beforeDir="false" afterPath="$PROJECT_DIR$/mindyolo/data/transforms/perspective.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mindyolo/data/transforms_factory.py" beforeDir="false" afterPath="$PROJECT_DIR$/mindyolo/data/transforms_factory.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mindyolo/utils/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/mindyolo/utils/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/tools/train.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2KS28JvOhatN2kEHuT8m63oHyqz" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/mindyolo&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
+  }
+}</component>
+  <component name="RunManager" selected="Python.loader">
+    <configuration name="dataset" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="mindyolo" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/mindyolo/data" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/mindyolo/data/dataset.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="loader" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="mindyolo" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/mindyolo/data" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/mindyolo/data/loader.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="read_json" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="mindyolo" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../datasets/coco2017/annotations" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../datasets/coco2017/annotations/read_json.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="mindyolo" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$USER_HOME$/Desktop" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$USER_HOME$/Desktop/test.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="train" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="mindyolo" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../yolov3_mindspore" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../yolov3_mindspore/train.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.loader" />
+        <item itemvalue="Python.dataset" />
+        <item itemvalue="Python.test" />
+        <item itemvalue="Python.read_json" />
+        <item itemvalue="Python.train" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="0323024d-7e1d-49ea-9388-413e0385c0b1" name="Changes" comment="" />
+      <created>1673953502509</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1673953502509</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/../datasets/coco2017/annotations/read_json.py</url>
+          <line>4</line>
+          <option name="timeStamp" value="13" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/../yolov3_mindspore/utils/augumentations.py</url>
+          <line>170</line>
+          <option name="timeStamp" value="14" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/mindyolo/data/loader.py</url>
+          <line>40</line>
+          <option name="timeStamp" value="42" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>
