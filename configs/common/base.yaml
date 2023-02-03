@@ -1,0 +1,128 @@
+# Train
+ms_strategy: StaticShape
+ms_mode: 0
+ms_amp_level: O0
+ms_loss_scaler: 'static'
+ms_loss_scaler_value: 1024.0
+ms_optim_loss_scale: 1.0
+ms_grad_sens: 1024.0
+num_parallel_workers: 4
+overflow_still_update: True
+clip_grad: False
+ema: True
+is_distributed: False
+device_target: Ascend
+recompute: False
+recompute_layers: 0
+weight: ''
+ema_weight: ''
+epochs: 300
+per_batch_size: 32 # infer 1
+accumulate: 1
+img_size: 640
+run_eval: False
+log_interval: 1
+rect: False
+nms_time_limit: 10.0
+multi_scale: False
+single_cls: False
+optimizer: 'momentum'
+sync_bn: False
+project: 'runs/train' # 'runs/eval'
+name: 'exp'
+exist_ok: False
+linear_lr: False
+label_smoothing: 0.0
+freeze: []
+v5_metric: False
+
+# Test
+conf_thres: 0.001
+iou_thres: 0.65
+task: 'val'
+augment: False
+verbose: False
+save_txt: False
+save_hybrid: False
+save_conf: False
+save_json: False
+no_trace: False
+
+# Infer
+file_format: 'MINDIR' # export
+output_path: './' # preprocess
+result_path: './result_Files' # postprocess
+
+# ModelArts
+enable_modelarts: False
+data_url: ''
+train_url: ''
+data_dir: '/cache/data/'
+
+---
+
+# Help Train
+ms_strategy: 'train strategy, StaticCell/StaticShape/MultiShape/DynamicShape'
+ms_mode: 'Running in GRAPH_MODE(0) or PYNATIVE_MODE(1) (default=0)'
+ms_amp_level: 'amp level, O0/O1/O2'
+ms_loss_scaler: 'train loss scaler, static/dynamic/none'
+ms_loss_scaler_value: 'static loss scale value'
+ms_optim_loss_scale: 'optimizer loss scale'
+num_parallel_workers: 'num parallel worker for dataloader'
+overflow_still_update: 'overflow still update'
+is_distributed: 'Distribute train or not'
+device_target: 'device target, Ascend/GPU/CPU'
+recompute: 'Recompute'
+weight: 'initial weight path'
+ema_weight: 'initial ema weight path'
+epochs: 'total train epochs'
+per_batch_size: 'batch size for per device'
+accumulate: 'grad accumulate step, recommended when batch-size is less than 64'
+img_size: '[train, test] image sizes'
+run_eval: 'Whether to run eval during training'
+rect: 'rectangular training'
+nms_time_limit: 'time limit for NMS'
+multi_scale: 'vary img-size +/- 50%'
+single_cls: 'train multi-class data as single-class'
+optimizer: 'select optimizer'
+sync_bn: 'use SyncBatchNorm, only available in DDP mode'
+project: 'save to project/name'
+name: 'save to project/name'
+exist_ok: 'existing project/name ok, do not increment'
+label_smoothing: 'Label smoothing epsilon'
+freeze: 'Freeze layers'
+v5_metric: 'assume maximum recall as 1.0 in AP calculation'
+
+# Help Test
+conf_thres: 'object confidence threshold'
+iou_thres: 'IOU threshold for NMS'
+task: 'train, val, test, speed or study'
+augment: 'augmented inference'
+verbose: 'report mAP by class'
+save_txt: 'save results to *.txt'
+save_hybrid: 'save label+prediction hybrid results to *.txt'
+save_conf: 'save confidences in --save-txt labels'
+save_json: 'save a cocoapi-compatible JSON results file'
+no_trace: 'don`t trace model'
+
+# Help Infer
+file_format: 'Infer-export: treat as single-class dataset'
+output_path: 'Infer-preprocess: output preprocess data path'
+result_path: 'Infer-postprocess: path to 310 infer result floder'
+
+# Help ModelArts
+enable_modelarts: 'ModelArts: enable modelarts'
+data_url: 'ModelArts: obs path to dataset folder'
+train_url: 'ModelArts: obs path to dataset folder'
+data_dir: 'ModelArts: obs path to dataset folder'
+
+---
+
+# Choices Train
+ms_strategy: ['StaticShape', 'DynamicShape']
+ms_amp_level: ['O0', 'O1', 'O2', 'O3']
+ms_loss_scaler: ['static', 'dynamic']
+device_target: ['Ascend', 'GPU', 'CPU']
+
+# Choices Infer
+file_format: ['MINDIR', 'AIR']
