@@ -1,3 +1,11 @@
+# Env
+device_target: Ascend
+project: 'runs/train' # 'runs/eval'
+name: 'exp'
+exist_ok: False
+device_per_servers: 8
+log_level: "INFO"
+
 # Train
 ms_strategy: StaticShape
 ms_mode: 0
@@ -11,7 +19,6 @@ overflow_still_update: True
 clip_grad: False
 ema: True
 is_distributed: False
-device_target: Ascend
 recompute: False
 recompute_layers: 0
 weight: ''
@@ -28,9 +35,6 @@ multi_scale: False
 single_cls: False
 optimizer: 'momentum'
 sync_bn: False
-project: 'runs/train' # 'runs/eval'
-name: 'exp'
-exist_ok: False
 linear_lr: False
 label_smoothing: 0.0
 freeze: []
@@ -51,7 +55,7 @@ no_trace: False
 # Infer
 file_format: 'MINDIR' # export
 output_path: './' # preprocess
-result_path: './result_Files' # postprocess
+result_path: './result_files' # postprocess
 
 # ModelArts
 enable_modelarts: False
@@ -60,6 +64,14 @@ train_url: ''
 data_dir: '/cache/data/'
 
 ---
+
+# Help Env
+device_target: 'device target, Ascend/GPU/CPU'
+project: 'save to project/name'
+name: 'save to project/name'
+exist_ok: 'existing project/name ok, do not increment'
+device_per_servers: 'device number on a server'
+log_level: 'log level, CRITICAL/ERROR/WARNING/INFO/DEBUG'
 
 # Help Train
 ms_strategy: 'train strategy, StaticCell/StaticShape/MultiShape/DynamicShape'
@@ -71,7 +83,6 @@ ms_optim_loss_scale: 'optimizer loss scale'
 num_parallel_workers: 'num parallel worker for dataloader'
 overflow_still_update: 'overflow still update'
 is_distributed: 'Distribute train or not'
-device_target: 'device target, Ascend/GPU/CPU'
 recompute: 'Recompute'
 weight: 'initial weight path'
 ema_weight: 'initial ema weight path'
@@ -86,9 +97,6 @@ multi_scale: 'vary img-size +/- 50%'
 single_cls: 'train multi-class data as single-class'
 optimizer: 'select optimizer'
 sync_bn: 'use SyncBatchNorm, only available in DDP mode'
-project: 'save to project/name'
-name: 'save to project/name'
-exist_ok: 'existing project/name ok, do not increment'
 label_smoothing: 'Label smoothing epsilon'
 freeze: 'Freeze layers'
 v5_metric: 'assume maximum recall as 1.0 in AP calculation'
@@ -118,11 +126,14 @@ data_dir: 'ModelArts: obs path to dataset folder'
 
 ---
 
+# Choices Env
+device_target: ['Ascend', 'GPU', 'CPU']
+log_level: ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']
+
 # Choices Train
 ms_strategy: ['StaticShape', 'DynamicShape']
 ms_amp_level: ['O0', 'O1', 'O2', 'O3']
 ms_loss_scaler: ['static', 'dynamic']
-device_target: ['Ascend', 'GPU', 'CPU']
 
 # Choices Infer
 file_format: ['MINDIR', 'AIR']

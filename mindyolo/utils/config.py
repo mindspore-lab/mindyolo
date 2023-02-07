@@ -11,6 +11,9 @@ try:
 except AttributeError:
     collectionsAbc = collections
 
+
+__all__ = ['parse_config']
+
 class Config(dict):
     """
     Configuration namespace. Convert dictionary to members.
@@ -35,11 +38,14 @@ class Config(dict):
     def __repr__(self):
         return self.__str__()
 
+
 def parse_config():
     # The first arg parser parses out only the --config argument, this argument is used to
     # load a yaml file containing key-values that override the defaults for the main parser below
     parser_config = argparse.ArgumentParser(description='Config', add_help=False)
-    parser_config.add_argument('--config', type=str, default='./configs/yolov7/net/yolov7.yaml',
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parser_config.add_argument('--config', type=str,
+                               default=os.path.join(current_dir, '../../configs/yolov7/net/yolov7.yaml'),
                                help='YAML config file specifying default arguments.')
     args_config, args_main = parser_config.parse_known_args()
     default, helper, choices = load_config(args_config.config)
@@ -51,6 +57,7 @@ def parse_config():
     pprint(final_config)
     print("Please check the above information for the configurations", flush=True)
     return Config(final_config)
+
 
 def load_config(file_path):
     BASE = "__BASE__"
@@ -81,6 +88,7 @@ def load_config(file_path):
 
     return cfg_default, cfg_helper, cfg_choices
 
+
 def parse_yaml(yaml_path):
     """
     Parse the yaml config file.
@@ -103,10 +111,10 @@ def parse_yaml(yaml_path):
                 cfg, cfg_helper, cfg_choices = cfgs
             else:
                 raise ValueError("At most 3 docs (config, description for help, choices) are supported in config yaml")
-            print(cfg_helper)
         except:
             raise ValueError("Failed to parse yaml")
     return cfg, cfg_helper, cfg_choices
+
 
 def merge_config(config, base):
     """Merge config"""
@@ -118,6 +126,7 @@ def merge_config(config, base):
         else:
             new[k] = config[k]
     return new
+
 
 def parse_cli_to_yaml(parents, args_main, cfg, helper=None, choices=None, cfg_path="default_config.yaml"):
     """
@@ -146,6 +155,7 @@ def parse_cli_to_yaml(parents, args_main, cfg, helper=None, choices=None, cfg_pa
     args = parser.parse_args(args_main)
     return args
 
+
 def merge(args, cfg):
     """
     Merge the base config from yaml file and command line arguments.
@@ -159,6 +169,3 @@ def merge(args, cfg):
         cfg[item] = args_var[item]
     return cfg
 
-
-if __name__ == '__main__':
-    config = parse_config()
