@@ -6,10 +6,10 @@ import numpy as np
 
 import transforms
 
-sys.path.append("..")
-from utils.logger import setup_logger
-
-logger = setup_logger(__name__)
+sys.path.append('../')
+from utils import logger
+logger.setup_logging(logger_name="MindYOLO", log_level="INFO", rank_id=0, device_per_servers=8)
+logger.setup_logging_file(log_dir="./logs")
 
 
 class COCODataset:
@@ -89,6 +89,9 @@ class COCODataset:
                     # get the other images
                     if k == 'Mosaic':
                         records_outs = [record_out,] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(3)] # 3 additional image
+                    elif k == 'PasteIn':
+                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in
+                                                         range(30)]  # 30 additional images
 
                     # apply the multi_images data enhancements in turn
                     for record_out in records_outs:
@@ -254,20 +257,3 @@ class COCODataset:
             empty_records = self._sample_empty(empty_records, len(records))
             records += empty_records
         self.imgs_records = records
-
-if __name__ == '__main__':
-    hyp_path = 'E:\mindyolo\configs\yolov3\hyp\hyp.scratch.yaml'
-    coco_yaml = 'E:\mindyolo\configs\data\coco.yaml'
-    with open(coco_yaml) as f:
-        hyp = yaml.load(f, Loader=yaml.SafeLoader)  # load hyps
-    CLASSES = hyp['names']
-
-    ds = create_dataloader(img_size=640, batch_size=8, hyp_path=hyp_path)
-    data_loader = ds.create_dict_iterator(output_numpy=True, num_epochs=1)
-    print('done')
-    for i, data in enumerate(data_loader):
-        img = show_img_with_bbox(data, CLASSES)
-        cv2.namedWindow('img', cv2.WINDOW_FREERATIO)
-        cv2.imshow('img', img)
-        cv2.waitKey(0)
-        print('donedone')
