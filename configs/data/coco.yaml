@@ -5,7 +5,9 @@ Data:
 
   dataset_dir: ./coco2017
   train_img_dir: ./train2017
-  anno_path: ./annotations/instances_train2017.json
+  train_anno_path: ./annotations/instances_train2017.json
+  val_img_dir: ./val2017
+  val_anno_path: ./annotations/instances_val2017.json
 
   nc: 80
 
@@ -23,6 +25,5 @@ Data:
   # transforms
   multi_imgs_transforms:
     - Mosaic: { mosaic_prob: 1.0, copy_paste_prob: 0.0, degrees: 0.0, translate: 0.1, scale: 0.9, shear: 0.0, perspective: 0.0, target_size: 640 }
-  single_imgs_transforms:
+  single_img_transforms:
     - RandomFlip: { prob: 1.0 }
-    - RandomResize: { target_size: [ [ 601, 701 ], [ 672, 772 ] ], keep_ratio: True, random_range: True, random_size: False, random_interp: False }
