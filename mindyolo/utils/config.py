@@ -11,8 +11,8 @@ try:
 except AttributeError:
     collectionsAbc = collections
 
-
 __all__ = ['parse_config']
+
 
 class Config(dict):
     """
@@ -168,4 +168,3 @@ def merge(args, cfg):
     for item in args_var:
         cfg[item] = args_var[item]
     return cfg
-
