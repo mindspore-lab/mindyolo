@@ -2,12 +2,15 @@ import os
 import math
 from copy import deepcopy
 from mindspore import nn, ops, load_checkpoint, load_param_into_net
-from .layers import Conv, RepConv, DownC, SPPCSPC, ReOrg, Concat, Shortcut, YOLOv7Head, YOLOv7AuxHead
+from .registry import is_model, model_entrypoint
+from .layers import *
+from .heads import *
 
 __all__ = [
     'create_model',
     'build_model_from_cfg'
 ]
+
 
 def create_model(
         model_name: str,
@@ -32,10 +35,10 @@ def create_model(
     return model
 
 
-
 # Tools: build model from yaml cfg
 def build_model_from_cfg(**kwargs):
     return Model(**kwargs)
+
 
 class Model(nn.Cell):
     def __init__(self, model_cfg, in_channels=3, num_classes=80, sync_bn=False):
@@ -44,6 +47,12 @@ class Model(nn.Cell):
                                                                ch=[in_channels],
                                                                nc=num_classes,
                                                                sync_bn=sync_bn)
+        # Recompute
+        if hasattr(model_cfg, 'recompute') and model_cfg.recompute and model_cfg.recompute_layers > 0:
+            for i in range(model_cfg.recompute_layers):
+                self.model[i].recompute()
+            print(f"Turn on recompute, and the results of the first {model_cfg.recompute_layers} layers "
+                  f"will be recomputed.")
 
     def construct(self, x):
         y, dt = (), ()  # outputs
@@ -92,12 +101,13 @@ class Model(nn.Cell):
     def _get_h_w_list(ratio, gs, hw):
         return tuple([math.ceil(x * ratio / gs) * gs for x in hw])
 
+
 def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
     _SYNC_BN = sync_bn
     if _SYNC_BN:
         print('Parse model with Sync BN.')
     print('\n%3s%18s%3s%10s  %-40s%-30s' % ('', 'from', 'n', 'params', 'module', 'arguments'))
-    anchors, gd, gw = d.anchors, d.depth_multiple, d.width_multiple
+    anchors, stride, gd, gw = d.anchors, d.stride, d.depth_multiple, d.width_multiple
     na = (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors  # number of anchors
     no = na * (nc + 5)  # number of outputs = anchors * (classes + 5)
 
@@ -113,13 +123,13 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
                 pass
 
         n = max(round(n * gd), 1) if n > 1 else n  # depth gain
-        if m in (nn.Conv2d, Conv, RepConv, DownC, SPPCSPC):
+        if m in (nn.Conv2d, ConvNormAct, RepConv, DownC, SPPCSPC):
             c1, c2 = ch[f], args[0]
             if c2 != no:  # if not output
                 c2 = math.ceil(c2 * gw / 8) * 8
 
             args = [c1, c2, *args[1:]]
-            if m in (Conv, RepConv):
+            if m in (ConvNormAct, RepConv):
                 kwargs["sync_bn"] = sync_bn
             if m in (DownC, SPPCSPC,):
                 args.insert(2, n)  # number of repeats
@@ -152,20 +162,3 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
             ch = []
         ch.append(c2)
     return nn.CellList(layers), sorted(save), layers_param
-
-
-# TODO: Move to Register
-from .yolov7 import YOLOv7
-_model_entrypoints = {"yolov7": YOLOv7}
-
-def is_model(model_name):
-    """
-    Check if a model name exists
-    """
-    return model_name in model_entrypoint
-
-def model_entrypoint(model_name):
-    """
-    Fetch a model entrypoint for specified model name
-    """
-    return _model_entrypoints[model_name]

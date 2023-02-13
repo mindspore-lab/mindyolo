@@ -5,11 +5,13 @@ __BASE__: [
 ]
 
 run_eval: False
-recompute: True
-recompute_layers: 5
-total_batch_size: 128
+per_batch_size: 16 # 16 * 8 = 128
 
-YOLOv7:
+net:
+  model_name: yolov7
+  recompute: True
+  recompute_layers: 5
+
   depth_multiple: 1.0  # model depth multiple
   width_multiple: 1.0  # layer channel multiple
 
@@ -26,194 +28,194 @@ YOLOv7:
   backbone:
     # [from, number, module, args],
     [[-1, 1, ReOrg, []],  # 0
-     [-1, 1, Conv, [96, 3, 1]],  # 1-P1/2
+     [-1, 1, ConvNormAct, [96, 3, 1]],  # 1-P1/2
 
      [-1, 1, DownC, [192]],  # 2-P2/4
-     [-1, 1, Conv, [64, 1, 1]],
-     [-2, 1, Conv, [64, 1, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 1, 1]],
+     [-2, 1, ConvNormAct, [64, 1, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
      [[-1, -3, -5, -7, -9, -10], 1, Concat, [1]],
-     [-1, 1, Conv, [192, 1, 1]],  # 14
+     [-1, 1, ConvNormAct, [192, 1, 1]],  # 14
 
      [-1, 1, DownC, [384]],  # 15-P3/8
-     [-1, 1, Conv, [128, 1, 1]],
-     [-2, 1, Conv, [128, 1, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 1, 1]],
+     [-2, 1, ConvNormAct, [128, 1, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
      [[-1, -3, -5, -7, -9, -10], 1, Concat, [1]],
-     [-1, 1, Conv, [384, 1, 1]],  # 27
+     [-1, 1, ConvNormAct, [384, 1, 1]],  # 27
 
      [-1, 1, DownC, [768]],  # 28-P4/16
-     [-1, 1, Conv, [256, 1, 1]],
-     [-2, 1, Conv, [256, 1, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 1, 1]],
+     [-2, 1, ConvNormAct, [256, 1, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
      [[-1, -3, -5, -7, -9, -10], 1, Concat, [1]],
-     [-1, 1, Conv, [768, 1, 1]],  # 40
+     [-1, 1, ConvNormAct, [768, 1, 1]],  # 40
 
      [-1, 1, DownC, [1152]],  # 41-P5/32
-     [-1, 1, Conv, [384, 1, 1]],
-     [-2, 1, Conv, [384, 1, 1]],
-     [-1, 1, Conv, [384, 3, 1]],
-     [-1, 1, Conv, [384, 3, 1]],
-     [-1, 1, Conv, [384, 3, 1]],
-     [-1, 1, Conv, [384, 3, 1]],
-     [-1, 1, Conv, [384, 3, 1]],
-     [-1, 1, Conv, [384, 3, 1]],
-     [-1, 1, Conv, [384, 3, 1]],
-     [-1, 1, Conv, [384, 3, 1]],
+     [-1, 1, ConvNormAct, [384, 1, 1]],
+     [-2, 1, ConvNormAct, [384, 1, 1]],
+     [-1, 1, ConvNormAct, [384, 3, 1]],
+     [-1, 1, ConvNormAct, [384, 3, 1]],
+     [-1, 1, ConvNormAct, [384, 3, 1]],
+     [-1, 1, ConvNormAct, [384, 3, 1]],
+     [-1, 1, ConvNormAct, [384, 3, 1]],
+     [-1, 1, ConvNormAct, [384, 3, 1]],
+     [-1, 1, ConvNormAct, [384, 3, 1]],
+     [-1, 1, ConvNormAct, [384, 3, 1]],
      [[-1, -3, -5, -7, -9, -10], 1, Concat, [1]],
-     [-1, 1, Conv, [1152, 1, 1]],  # 53
+     [-1, 1, ConvNormAct, [1152, 1, 1]],  # 53
 
      [-1, 1, DownC, [1536]],  # 54-P6/64
-     [-1, 1, Conv, [512, 1, 1]],
-     [-2, 1, Conv, [512, 1, 1]],
-     [-1, 1, Conv, [512, 3, 1]],
-     [-1, 1, Conv, [512, 3, 1]],
-     [-1, 1, Conv, [512, 3, 1]],
-     [-1, 1, Conv, [512, 3, 1]],
-     [-1, 1, Conv, [512, 3, 1]],
-     [-1, 1, Conv, [512, 3, 1]],
-     [-1, 1, Conv, [512, 3, 1]],
-     [-1, 1, Conv, [512, 3, 1]],
+     [-1, 1, ConvNormAct, [512, 1, 1]],
+     [-2, 1, ConvNormAct, [512, 1, 1]],
+     [-1, 1, ConvNormAct, [512, 3, 1]],
+     [-1, 1, ConvNormAct, [512, 3, 1]],
+     [-1, 1, ConvNormAct, [512, 3, 1]],
+     [-1, 1, ConvNormAct, [512, 3, 1]],
+     [-1, 1, ConvNormAct, [512, 3, 1]],
+     [-1, 1, ConvNormAct, [512, 3, 1]],
+     [-1, 1, ConvNormAct, [512, 3, 1]],
+     [-1, 1, ConvNormAct, [512, 3, 1]],
      [[-1, -3, -5, -7, -9, -10], 1, Concat, [1]],
-     [-1, 1, Conv, [1536, 1, 1]],  # 66
+     [-1, 1, ConvNormAct, [1536, 1, 1]],  # 66
     ]
 
   # yolov7 head
   head:
     [[-1, 1, SPPCSPC, [768]], # 67
 
-     [-1, 1, Conv, [576, 1, 1]],
-     [-1, 1, ResizeNearestNeighbor, [2]],
-     [53, 1, Conv, [576, 1, 1]], # route backbone P5
+     [-1, 1, ConvNormAct, [576, 1, 1]],
+     [-1, 1, Upsample, [None, 2, 'nearest']],
+     [53, 1, ConvNormAct, [576, 1, 1]], # route backbone P5
      [[-1, -2], 1, Concat, [1]],
 
-     [-1, 1, Conv, [384, 1, 1]],
-     [-2, 1, Conv, [384, 1, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [384, 1, 1]],
+     [-2, 1, ConvNormAct, [384, 1, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
      [[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10], 1, Concat, [1]],
-     [-1, 1, Conv, [576, 1, 1]], # 83
+     [-1, 1, ConvNormAct, [576, 1, 1]], # 83
 
-     [-1, 1, Conv, [384, 1, 1]],
-     [-1, 1, ResizeNearestNeighbor, [2]],
-     [40, 1, Conv, [384, 1, 1]], # route backbone P4
+     [-1, 1, ConvNormAct, [384, 1, 1]],
+     [-1, 1, Upsample, [None, 2, 'nearest']],
+     [40, 1, ConvNormAct, [384, 1, 1]], # route backbone P4
      [[-1, -2], 1, Concat, [1]],
 
-     [-1, 1, Conv, [256, 1, 1]],
-     [-2, 1, Conv, [256, 1, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 1, 1]],
+     [-2, 1, ConvNormAct, [256, 1, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
      [[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10], 1, Concat, [1]],
-     [-1, 1, Conv, [384, 1, 1]], # 99
+     [-1, 1, ConvNormAct, [384, 1, 1]], # 99
 
-     [-1, 1, Conv, [192, 1, 1]],
-     [-1, 1, ResizeNearestNeighbor, [2]],
-     [27, 1, Conv, [192, 1, 1]], # route backbone P3
+     [-1, 1, ConvNormAct, [192, 1, 1]],
+     [-1, 1, Upsample, [None, 2, 'nearest']],
+     [27, 1, ConvNormAct, [192, 1, 1]], # route backbone P3
      [[-1, -2], 1, Concat, [1]],
 
-     [-1, 1, Conv, [128, 1, 1]],
-     [-2, 1, Conv, [128, 1, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
-     [-1, 1, Conv, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 1, 1]],
+     [-2, 1, ConvNormAct, [128, 1, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
+     [-1, 1, ConvNormAct, [64, 3, 1]],
      [[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10], 1, Concat, [1]],
-     [-1, 1, Conv, [192, 1, 1]], # 115
+     [-1, 1, ConvNormAct, [192, 1, 1]], # 115
 
      [-1, 1, DownC, [384]],
      [[-1, 99], 1, Concat, [1]],
 
-     [-1, 1, Conv, [256, 1, 1]],
-     [-2, 1, Conv, [256, 1, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
-     [-1, 1, Conv, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 1, 1]],
+     [-2, 1, ConvNormAct, [256, 1, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
+     [-1, 1, ConvNormAct, [128, 3, 1]],
      [[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10], 1, Concat, [1]],
-     [-1, 1, Conv, [384, 1, 1]], # 129
+     [-1, 1, ConvNormAct, [384, 1, 1]], # 129
 
      [-1, 1, DownC, [576]],
      [[-1, 83], 1, Concat, [1]],
 
-     [-1, 1, Conv, [384, 1, 1]],
-     [-2, 1, Conv, [384, 1, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
-     [-1, 1, Conv, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [384, 1, 1]],
+     [-2, 1, ConvNormAct, [384, 1, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
+     [-1, 1, ConvNormAct, [192, 3, 1]],
      [[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10], 1, Concat, [1]],
-     [-1, 1, Conv, [576, 1, 1]], # 143
+     [-1, 1, ConvNormAct, [576, 1, 1]], # 143
 
      [-1, 1, DownC, [768]],
      [[-1, 67], 1, Concat, [1]],
 
-     [-1, 1, Conv, [512, 1, 1]],
-     [-2, 1, Conv, [512, 1, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
-     [-1, 1, Conv, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [512, 1, 1]],
+     [-2, 1, ConvNormAct, [512, 1, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
+     [-1, 1, ConvNormAct, [256, 3, 1]],
      [[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10], 1, Concat, [1]],
-     [-1, 1, Conv, [768, 1, 1]], # 157
+     [-1, 1, ConvNormAct, [768, 1, 1]], # 157
 
-     [115, 1, Conv, [384, 3, 1]],
-     [129, 1, Conv, [768, 3, 1]],
-     [143, 1, Conv, [1152, 3, 1]],
-     [157, 1, Conv, [1536, 3, 1]],
+     [115, 1, ConvNormAct, [384, 3, 1]],
+     [129, 1, ConvNormAct, [768, 3, 1]],
+     [143, 1, ConvNormAct, [1152, 3, 1]],
+     [157, 1, ConvNormAct, [1536, 3, 1]],
 
-     [115, 1, Conv, [384, 3, 1]],
-     [99, 1, Conv, [768, 3, 1]],
-     [83, 1, Conv, [1152, 3, 1]],
-     [67, 1, Conv, [1536, 3, 1]],
+     [115, 1, ConvNormAct, [384, 3, 1]],
+     [99, 1, ConvNormAct, [768, 3, 1]],
+     [83, 1, ConvNormAct, [1152, 3, 1]],
+     [67, 1, ConvNormAct, [1536, 3, 1]],
 
      [[158,159,160,161,162,163,164,165], 1, YOLOv7AuxHead, [nc, anchors]],   # Detect(P3, P4, P5, P6)
     ]

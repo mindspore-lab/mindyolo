@@ -12,15 +12,12 @@ ms_mode: 0
 ms_amp_level: O0
 ms_loss_scaler: 'static'
 ms_loss_scaler_value: 1024.0
-ms_optim_loss_scale: 1.0
 ms_grad_sens: 1024.0
 num_parallel_workers: 4
 overflow_still_update: True
 clip_grad: False
 ema: True
 is_distributed: False
-recompute: False
-recompute_layers: 0
 weight: ''
 ema_weight: ''
 epochs: 300

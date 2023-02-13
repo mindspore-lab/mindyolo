@@ -1,12 +1,19 @@
+optimizer:
+  optimizer: momentum
+  lr_init: 0.01  # initial learning rate (SGD=1E-2, Adam=1E-3)
+  weight_decay: 0.0005  # optimizer weight decay 5e-4
+  momentum: 0.937  # SGD momentum/Adam beta1
+  nesterov: True # update gradients with NAG(Nesterov Accelerated Gradient) algorithm
+  loss_scale: 1.0 # loss scale for optimizer
+  warmup_epochs: 3  # warmup epochs (fractions ok)
+  warmup_momentum: 0.8  # warmup initial momentum
+  warmup_bias_lr: 0.1  # warmup initial bias lr
+  min_warmup_step: 1000 # minimum warmup step
+  group_param: yolov7 # group param strategy
+  start_factor: 1.0
+  end_factor: 0.01
+
 img_size: [640, 640] # [train, test] image sizes
-lr_init: 0.01  # initial learning rate (SGD=1E-2, Adam=1E-3)
-lrf: 0.01  # final OneCycleLR learning rate (lr0 * lrf)
-momentum: 0.937  # SGD momentum/Adam beta1
-weight_decay: 0.0005  # optimizer weight decay 5e-4
-epochs: 300 # total train epochs
-warmup_epochs: 3.0  # warmup epochs (fractions ok)
-warmup_momentum: 0.8  # warmup initial momentum
-warmup_bias_lr: 0.1  # warmup initial bias lr
 box: 0.05  # box loss gain
 cls: 0.5  # cls loss gain
 cls_pw: 1.0  # cls BCELoss positive_weight

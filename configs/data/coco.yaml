@@ -1,6 +1,6 @@
 # COCO 2017 dataset http://cocodataset.org
 
-Data:
+data:
   dataset_name: coco
 
   dataset_dir: ./coco2017
