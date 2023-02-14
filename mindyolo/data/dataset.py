@@ -5,6 +5,7 @@ import copy
 import numpy as np
 
 import transforms
+from general import resample_polys
 
 sys.path.append('../')
 from utils import logger
@@ -42,7 +43,9 @@ class COCODataset:
             records and use all the empty entries. 1. as default
         multi_imgs_transforms (list): A list of multi_images data enhancements
             that apply data enhancements on data set objects in order.
-        segmentaion_mask_required (bool): whether segmentaion mask is required.
+        is_segmentaion (bool): whether the task is segmentaion.
+            False as default
+        detection_require_poly (bool): whether the gt_poly is required for detection data enhancement.
             False as default
     """
 
@@ -55,7 +58,8 @@ class COCODataset:
                  allow_empty=False,
                  empty_ratio=1.,
                  multi_imgs_transforms=None,
-                 segmentaion_mask_required=False,
+                 is_segmentaion=False,
+                 detection_require_poly=False
                  ):
         self.dataset_dir = dataset_dir
         self.anno_path = anno_path
@@ -66,7 +70,8 @@ class COCODataset:
         self.allow_empty = allow_empty
         self.empty_ratio = empty_ratio
         self.muliti_imgs_transforms = multi_imgs_transforms
-        self.segmentaion_mask_required = segmentaion_mask_required
+        self.is_segmentaion = is_segmentaion
+        self.detection_require_poly = detection_require_poly
         self.parse_dataset()
 
     def __len__(self, ):
@@ -88,11 +93,13 @@ class COCODataset:
 
                     # get the other images
                     if k == 'Mosaic':
-                        records_outs = [record_out,] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(3)] # 3 additional image
+                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(3)] # 3 additional image
                     elif k == 'PasteIn':
-                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in
-                                                         range(30)]  # 30 additional images
-
+                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(120)]
+                    elif k == 'MixUp':
+                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(7)]
+                    elif k == 'SimpleCopyPaste':
+                        records_outs = [record_out, ]
                     # apply the multi_images data enhancements in turn
                     for record_out in records_outs:
                         if 'image' not in record_out:
@@ -104,7 +111,10 @@ class COCODataset:
             img_path = record_out['im_file']
             record_out['image'] = cv2.imread(img_path)  # BGR
 
-        return record_out['image'], record_out['w'], record_out['h'], record_out['gt_bbox'], record_out['gt_class']
+        if self.detection_require_poly:
+            return record_out['image'], record_out['w'], record_out['h'], record_out['gt_bbox'], record_out['gt_class'], record_out['gt_poly']
+        else:
+            return record_out['image'], record_out['w'], record_out['h'], record_out['gt_bbox'], record_out['gt_class']
 
     def _sample_empty(self, records, num):
         # if empty_ratio is out of [0. ,1.), do not sample the records
@@ -204,7 +214,6 @@ class COCODataset:
 
                 gt_bbox = np.zeros((num_bbox, 4), dtype=np.float32)
                 gt_class = np.zeros((num_bbox, 1), dtype=np.int32)
-                is_crowd = np.zeros((num_bbox, 1), dtype=np.int32)
                 gt_poly = [None] * num_bbox
 
                 has_segmentation = False
@@ -212,7 +221,6 @@ class COCODataset:
                     catid = box['category_id']
                     gt_class[i][0] = self.catid2clsid[catid]
                     gt_bbox[i, :] = box['clean_bbox']
-                    is_crowd[i][0] = box['iscrowd']
 
                     if 'segmentation' in box and box['iscrowd'] == 1:
                         gt_poly[i] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -220,11 +228,12 @@ class COCODataset:
                         if not np.array(box['segmentation']).size > 0 and not self.allow_empty:
                             bboxes.pop(i)
                             gt_poly.pop(i)
-                            np.delete(is_crowd, i)
                             np.delete(gt_class, i)
                             np.delete(gt_bbox, i)
                         else:
                             gt_poly[i] = box['segmentation'][0]
+                            if self.detection_require_poly:
+                                gt_poly[i] = resample_polys(gt_poly[i])
                         has_segmentation = True
 
                 if has_segmentation and not any(gt_poly) and not self.allow_empty:
@@ -233,7 +242,6 @@ class COCODataset:
                 gt_poly = [np.array(x, dtype=np.float32).reshape(-1, 2) for x in gt_poly]
 
                 gt_rec = {
-                    'is_crowd': is_crowd,
                     'gt_class': gt_class,
                     'gt_bbox': gt_bbox,
                     'gt_poly': gt_poly,
@@ -257,3 +265,28 @@ class COCODataset:
             empty_records = self._sample_empty(empty_records, len(records))
             records += empty_records
         self.imgs_records = records
+
+
+if __name__ == '__main__':
+    from general import show_img_with_bbox, show_img_with_poly
+    from mindspore import context
+    import sys
+    sys.path.append('../')
+    from utils.config import parse_config
+
+    context.set_context(mode=context.PYNATIVE_MODE, pynative_synchronize=True)
+    config = parse_config()
+    data_config = config.Data
+    image_dir = data_config.train_img_dir
+    anno_path = data_config.train_anno_path
+    multi_imgs_transforms = getattr(data_config, 'multi_imgs_transforms', None)
+
+    dataset = COCODataset(dataset_dir=data_config.dataset_dir, image_dir=image_dir, anno_path=anno_path,
+                          multi_imgs_transforms=multi_imgs_transforms)
+    print('done')
+    data = dataset[0]
+    img = show_img_with_bbox(data, config.Data.names)
+    # img = show_img_with_poly(data)
+    cv2.namedWindow('img', cv2.WINDOW_FREERATIO)
+    cv2.imshow('img', img)
+    cv2.waitKey(0)
