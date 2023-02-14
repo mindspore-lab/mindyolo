@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 
 from .perspective import RandomPerspective
+from .common import SimpleCopyPaste
 
 __all__ = ['Mosaic']
 
@@ -10,15 +11,23 @@ class Mosaic:
     """
     Mosaic Data Augmentation and Perspective
     1. get mosaic image, get mosaic_labels
-    2. copy_paste # TODO
+    2. copy_paste
     3. random_perspective augment
+    Args:
+        mosaic_prob (float): probability of using Mosaic, 1.0 as default
+        copy_paste_prob (float): probability of using SimpleCopyPaste, 0.0 as default
+        degrees (float): the rotate range to apply, transform range is [-10, 10]
+        translate (float): the translate range to apply, transform range is [-0.1, 0.1]
+        scale (float): the scale range to apply, transform range is [0.1, 2]
+        shear (float): the shear range to apply, transform range is [-2, 2]
+        perspective (float): the perspective range to apply, transform range is [0, 0.001]
     """
+    def __init__(self, mosaic_prob=1.0, copy_paste_prob=0.0, degrees=0.0, translate=0.2, scale=0.9, shear=0.0, perspective=0.0, target_size=640):
 
-    def __init__(self, mosaic_prob, copy_paste_prob, degrees, translate, scale, shear, perspective, target_size):
         self.mosaic_prob = mosaic_prob
-        self.copy_paste_prob = copy_paste_prob
         self.target_size = target_size
         self.mosaic_border = [-target_size // 2, -target_size // 2]
+        self.simple_copy_paste = SimpleCopyPaste(prob=copy_paste_prob)
         self.random_perspective = RandomPerspective(degrees=degrees,
                                                translate=translate,
                                                scale=scale,
@@ -36,11 +45,14 @@ class Mosaic:
                 # Load image
                 img = record_out['image']  # BGR
                 gt_bbox = record_out['gt_bbox']
+                gt_poly = record_out['gt_poly']
                 h0, w0 = img.shape[:2]  # orig hw
                 r = img_size / max(h0, w0)  # resize image to img_size
                 if r != 1:  # always resize down, only resize up if training with augmentation
                     img = cv2.resize(img, (int(w0 * r), int(h0 * r)), interpolation=cv2.INTER_LINEAR)
                     gt_bbox *= r
+                    for poly in gt_poly:
+                        poly *= r
 
                 h, w = img.shape[:2]  # hw_resized
 
@@ -83,12 +95,13 @@ class Mosaic:
                 np.clip(x, 0, 2 * img_size, out=x)  # clip when using random_perspective()
 
             # Augment
-            img4, img_size, _, gt_bboxes4, gt_classes4 = self.random_perspective(img4, img_size, img_size, gt_bboxes4, gt_classes4)
+            img4, w, h, gt_bboxes4, gt_classes4, gt_polys4 = self.simple_copy_paste(img4, img_size * 2, img_size * 2, gt_bboxes4, gt_classes4, gt_polys4)
+            img4, w, h, gt_bboxes4, gt_classes4, gt_polys4 = self.random_perspective(img4, w, h, gt_bboxes4, gt_classes4, gt_polys4)
 
             record_out = records_outs[0]
             record_out['image'] = img4
-            record_out['h'] = img_size
-            record_out['w'] = img_size
+            record_out['h'] = h
+            record_out['w'] = w
             record_out['gt_class'] = gt_classes4
             record_out['gt_bbox'] = gt_bboxes4
             record_out['gt_poly'] = gt_polys4

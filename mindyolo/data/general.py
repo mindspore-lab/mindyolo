@@ -1,10 +1,12 @@
+import copy
+
 import cv2
 import numpy as np
 
 
 def show_img_with_bbox(record, classes):
     """
-    Image and labels visualization. If input multiple images, apply on the first image only.
+    Image and bboxes visualization. If input multiple images, apply on the first image only.
     Args:
         record: related data of images
         classes: all categories of the whole dataset
@@ -24,7 +26,7 @@ def show_img_with_bbox(record, classes):
     for bbox, category in zip(bboxes, categories):
         bbox = bbox.astype(np.int32)
         categories_size = cv2.getTextSize(category + '0', cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)[0]
-        color = ((np.random.random((3, )) * 0.6 + 0.4)*255).astype(np.uint8)
+        color = ((np.random.random((3,)) * 0.6 + 0.4) * 255).astype(np.uint8)
         color = np.array(color).astype(np.int32).tolist()
 
         if bbox[1] - categories_size[1] - 3 < 0:
@@ -61,3 +63,161 @@ def show_img_with_bbox(record, classes):
                       color,
                       thickness=2)
     return img
+
+
+def show_img_with_poly(record):
+    """
+    Image and polygons visualization. If input multiple images, apply on the first image only.
+    Args:
+        record: related data of images
+
+    Returns: an image with polygons
+    """
+    if isinstance(record, tuple):
+        img = record[0]
+        category_ids = record[4]
+        polys = record[5]
+    else:
+        img = record['image'][0]
+        category_ids = record['gt_class'][0]
+        polys = record['gt_poly'][0]
+    i = category_ids[:, 0] >= 0
+    real_polys = []
+    for j, value in enumerate(i):
+        if value:
+            real_polys.append(polys[j])
+    for poly in real_polys:
+        poly = poly.astype(np.int32)
+        color = ((np.random.random((3,)) * 0.6 + 0.4) * 255).astype(np.uint8)
+        color = np.array(color).astype(np.int32).tolist()
+        img = cv2.drawContours(img, [poly], -1, color, 2)
+    return img
+
+
+def bbox_ioa(box1, box2):
+    """
+    Returns the intersection over box2 area given box1, box2. box1 is 4, box2 is nx4. boxes are x1y1x2y2
+    """
+    box2 = box2.transpose()
+
+    # Get the coordinates of bounding boxes
+    b1_x1, b1_y1, b1_x2, b1_y2 = box1[0], box1[1], box1[2], box1[3]
+    b2_x1, b2_y1, b2_x2, b2_y2 = box2[0], box2[1], box2[2], box2[3]
+
+    # Intersection area
+    inter_area = (np.minimum(b1_x2, b2_x2) - np.maximum(b1_x1, b2_x1)).clip(0) * \
+                 (np.minimum(b1_y2, b2_y2) - np.maximum(b1_y1, b2_y1)).clip(0)
+
+    # box2 area
+    box2_area = (b2_x2 - b2_x1) * (b2_y2 - b2_y1) + 1e-16
+
+    # Intersection over box2 area
+    return inter_area / box2_area
+
+
+def sample_polys(img, gt_class, gt_bbox, gt_poly, probability=0.5):
+    """
+    Implement Copy-Paste augmentation https://arxiv.org/abs/2012.07177
+    """
+    n = len(gt_poly)
+    sample_images = []
+    sample_masks = []
+    sample_classes = []
+    sample_polys = []
+    if probability and n:
+        h, w, c = img.shape  # height, width, channels
+        for j in np.random.choice(range(n), size=round(probability * n), replace=False):
+            b, c, g = gt_bbox[j], gt_class[j], gt_poly[j]
+            box = b[0].astype(int).clip(0, w - 1), b[1].astype(int).clip(0, h - 1), b[2].astype(int).clip(0, w - 1), b[
+                3].astype(int).clip(0, h - 1)
+
+            # print(box)
+            if (box[2] <= box[0]) or (box[3] <= box[1]):
+                continue
+
+            sample_classes.append(c)
+
+            mask = np.zeros(img.shape, np.uint8)
+
+            cv2.drawContours(mask, [gt_poly[j].astype(np.int32)], -1, (255, 255, 255), cv2.FILLED)
+            sample_masks.append(mask[box[1]:box[3], box[0]:box[2], :])
+
+            result = cv2.bitwise_and(src1=img, src2=mask)
+            i = result > 0  # pixels to replace
+            mask[i] = result[i]  # cv2.imwrite('debug.jpg', img)  # debug
+            sample_images.append(mask[box[1]:box[3], box[0]:box[2], :])
+
+            new_poly = np.copy(g)
+            new_poly[:, 0] -= box[0]
+            new_poly[:, 1] -= box[3]
+
+            sample_polys.append(new_poly)
+
+    return sample_images, sample_masks, sample_classes, sample_polys
+
+
+def resample_polys(polys, n=1000):
+    """
+    Up-sample an (n,2) segment
+    """
+    resample_result = copy.deepcopy(polys)
+    for i, s in enumerate(polys):
+        s = np.concatenate((s, s[0:1, :]), axis=0)
+        x = np.linspace(0, len(s) - 1, n)
+        xp = np.arange(len(s))
+        resample_result[i] = np.concatenate([np.interp(x, xp, s[:, i]) for i in range(2)]).reshape(2,
+                                                                                                   -1).T  # segment xy
+    return resample_result
+
+
+def poly2box(poly, width=640, height=640):
+    """
+    Convert 1 segment label to 1 box label, applying inside-image constraint, i.e. (xy1, xy2, ...) to (xyxy)
+    """
+    x, y = poly.T  # segment xy
+    inside = (x >= 0) & (y >= 0) & (x <= width) & (y <= height)
+    x, y, = x[inside], y[inside]
+    return np.array([x.min(), y.min(), x.max(), y.max()]) if any(x) else np.zeros((1, 4))  # xyxy
+
+
+def normalize_shape(images, ws, hs, gt_bboxes, gt_classes, batch_info):
+    """
+    Ensure labels have the same shape to avoid dynamics shapes
+    """
+    most_boxes_per_img = 0
+    for gt_class in gt_classes:
+        most_boxes_per_img = max(most_boxes_per_img, gt_class.shape[0])
+
+    for i, (gt_bbox, gt_class) in enumerate(zip(gt_bboxes, gt_classes)):
+        nL = gt_class.shape[0]
+        gt_bboxes[i] = np.full((most_boxes_per_img, 4), -1, dtype=np.float32)
+        gt_bboxes[i][:nL, :] = gt_bbox[:nL, :]
+        gt_classes[i] = np.full((most_boxes_per_img, 1), -1, dtype=np.int32)
+        gt_classes[i][:nL, :] = gt_class[:nL, :]
+
+    return images, ws, hs, gt_bboxes, gt_classes
+
+
+def normalize_shape_with_poly(images, ws, hs, gt_bboxes, gt_classes, gt_polys, batch_info):
+    """
+    Ensure labels have the same shape to avoid dynamics shapes
+    """
+    most_boxes_per_img = 0
+    for gt_class in gt_classes:
+        most_boxes_per_img = max(most_boxes_per_img, gt_class.shape[0])
+
+    for i, (gt_bbox, gt_class, gt_poly) in enumerate(zip(gt_bboxes, gt_classes, gt_polys)):
+        nL = gt_class.shape[0]
+        gt_bboxes[i] = np.full((most_boxes_per_img, 4), -1, dtype=np.float32)
+        gt_bboxes[i][:nL, :] = gt_bbox[:nL, :]
+        gt_classes[i] = np.full((most_boxes_per_img, 1), -1, dtype=np.int32)
+        gt_classes[i][:nL, :] = gt_class[:nL, :]
+        gt_poly = resample_polys(gt_poly, 1000)
+        gt_polys[i] = np.full((most_boxes_per_img, 1000, 2), -1, dtype=np.float32)
+        gt_polys[i][:nL, :] = gt_poly[:nL]
+
+    return images, ws, hs, gt_bboxes, gt_classes, gt_polys
+
+
+def in_range(n, start, end=0):
+    return start <= n <= end if end >= start else end <= n <= start
