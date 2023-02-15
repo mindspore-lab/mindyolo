@@ -113,7 +113,7 @@ class RandomPerspective:
                     if value:
                         filter_result.append(new_poly[j])
         if gt_poly:
-            return img, width, height, gt_bbox, gt_class, *gt_poly
+            return img, width, height, gt_bbox, gt_class, gt_poly
         else:
             return img, width, height, gt_bbox, gt_class
 

@@ -198,9 +198,9 @@ class LetterBox:
                 x[:, 0] = ratio[0] * x[:, 0] + dw
                 x[:, 1] = ratio[1] * x[:, 1] + dh
 
-            return img, new_shape[0], new_shape[1], gt_bbox, gt_class, gt_poly
+            return img, new_shape[1], new_shape[0], gt_bbox, gt_class, gt_poly
         else:
-            return img, new_shape[0], new_shape[1], gt_bbox, gt_class
+            return img, new_shape[1], new_shape[0], gt_bbox, gt_class
 
 
 class NormalizeBox:
