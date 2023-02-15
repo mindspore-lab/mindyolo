@@ -8,7 +8,7 @@ run_eval: False
 per_batch_size: 12 # 12 * 8 = 96
 
 
-net:
+network:
   model_name: yolov7
   recompute: True
   recompute_layers: 5

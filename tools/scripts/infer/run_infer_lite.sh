@@ -1,0 +1,1 @@
+# TODO: add run infer(lite) shell script

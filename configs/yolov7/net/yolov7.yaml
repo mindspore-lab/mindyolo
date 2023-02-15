@@ -4,10 +4,10 @@ __BASE__: [
   '../hyp/hyp.scratch.p5.yaml',
 ]
 
-run_eval: True
+run_eval: False
 per_batch_size: 16 # 16 * 8 = 128
 
-net:
+network:
   model_name: yolov7
   recompute: True
   recompute_layers: 5

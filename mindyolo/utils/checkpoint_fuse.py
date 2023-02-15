@@ -3,6 +3,7 @@ import mindspore as ms
 from mindspore.train.serialization import save_checkpoint
 from mindspore import Tensor
 
+
 def fuse_checkpoint(base_name, start, num):
     """
     Fusion of continuous weights obtained during training.

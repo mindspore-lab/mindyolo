@@ -1,12 +1,68 @@
 import math
 import numpy as np
 
-__all__ = ['create_lr_scheduler']
+__all__ = [
+    'create_lr_scheduler',
+    'create_warmup_momentum_scheduler'
+]
 
 
-def create_lr_scheduler():
-    # TODO: Add lr_scheduler
-    pass
+def create_lr_scheduler(lr_init, lr_scheduler=None, **kwargs):
+    """
+    Create lr scheduler for optimizer.
+
+    Args:
+        lr_init: Initial learning rate
+        lr_scheduler: LR scheduler name like 'linear', 'cos'.
+        **kwargs: Others
+    """
+
+    if lr_scheduler:
+        # TODO: Add common lr_scheduler
+        raise NotImplementedError(f"Not support lr_scheduler: {lr_scheduler}")
+    else:
+        return lr_init
+
+
+def create_warmup_momentum_scheduler(steps_per_epoch, momentum=None, warmup_momentum=None,
+                                     warmup_epochs=None, min_warmup_step=None, **kwargs):
+    """
+    Create warmup momentum scheduler.
+
+    Args:
+        steps_per_epoch: Number of steps in each epoch.
+        momentum (float, optional): Hyperparameter of type float, means momentum for the moving average.
+            It must be at least 0.0. Default: None.
+        warmup_momentum (float, optional): Hyperparameter of type float, means warmup momentum for the moving average.
+            It must be at least 0.0. Default: None.
+        warmup_epochs: Number of epochs for warmup.
+        min_warmup_step: Minimum number of steps for warmup.
+        **kwargs: Others
+    """
+
+    if warmup_momentum:
+        warmup_steps = max(round(warmup_epochs * steps_per_epoch), min_warmup_step)
+        return linear_momentum(warmup_momentum, momentum, warmup_steps)
+    else:
+        return None
+
+
+def linear_momentum(start, end, total_steps):
+    """
+    Args:
+        start: Starting value.
+        end: Ending value.
+        total_steps: Number of total step.
+
+    Returns:
+        momentum_list: A list with length total_steps.
+    """
+
+    momentum_list = []
+    for i in range(total_steps):
+        momentum_list.append(np.interp(i, [0, total_steps], [start, end]))
+
+    return momentum_list
 
 
 def linear_lr(start_factor, end_factor, lr_init, steps_per_epoch, epochs, t_max=None, **kwargs):
