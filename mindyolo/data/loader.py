@@ -8,7 +8,7 @@ from general import normalize_shape, normalize_shape_with_poly
 
 
 def create_dataloader(config):
-    data_config = config.Data
+    data_config = config.data
     if config.task == 'train':
         image_dir = data_config.train_img_dir
         anno_path = data_config.train_anno_path
@@ -19,8 +19,6 @@ def create_dataloader(config):
     multi_imgs_transforms = getattr(data_config, 'multi_imgs_transforms', None)
     dataset = COCODataset(dataset_dir=data_config.dataset_dir, image_dir=image_dir, anno_path=anno_path, multi_imgs_transforms=multi_imgs_transforms)
     dataset_column_names = ['image', 'w', 'h', 'gt_bbox', 'gt_class']
-    if data_config.detection_require_poly:
-        dataset_column_names.append('gt_poly')
     ds = de.GeneratorDataset(dataset, column_names=dataset_column_names)
 
     single_img_transforms = getattr(data_config, 'single_img_transforms', None)
@@ -32,10 +30,7 @@ def create_dataloader(config):
     if per_batch_map:
         per_batch_map = create_per_batch_map(per_batch_map)
     else:
-        if data_config.detection_require_poly:
-            per_batch_map = normalize_shape_with_poly
-        else:
-            per_batch_map = normalize_shape
+        per_batch_map = normalize_shape
 
     ds = ds.batch(config.per_batch_size, input_columns=dataset_column_names, per_batch_map=per_batch_map)
 
@@ -53,7 +48,7 @@ if __name__ == '__main__':
     data_loader = ds.create_dict_iterator(output_numpy=True, num_epochs=1)
     print('done')
     for i, data in enumerate(data_loader):
-        img = show_img_with_bbox(data, config.Data.names)
+        img = show_img_with_bbox(data, config.data.names)
         # img = show_img_with_poly(data)
         cv2.namedWindow('img', cv2.WINDOW_FREERATIO)
         cv2.imshow('img', img)

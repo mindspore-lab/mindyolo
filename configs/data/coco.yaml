@@ -23,7 +23,13 @@ data:
            'hair drier', 'toothbrush' ]
 
   # transforms
+  detection_require_poly: False
   multi_imgs_transforms:
+    # - PasteIn: {prob: 1.0, target_size: 640}
     - Mosaic: { mosaic_prob: 1.0, copy_paste_prob: 0.0, degrees: 0.0, translate: 0.1, scale: 0.9, shear: 0.0, perspective: 0.0, target_size: 640 }
   single_img_transforms:
-    - RandomFlip: { prob: 1.0 }
+    - Resize: {target_size: [720, 640]}
+    # - LetterBox: {new_shape: [640, 640]}
+    # - RandomFlip: { prob: 1.0 }
+  batch_imgs_transform:
+    BatchRandomResize: {target_size: [[601, 701], [672, 772]], keep_ratio: True, random_range: True, random_size: False, random_interp: False}
