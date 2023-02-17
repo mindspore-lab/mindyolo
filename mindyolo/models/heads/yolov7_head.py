@@ -4,11 +4,9 @@ import numpy as np
 import mindspore as ms
 import mindspore.numpy as mnp
 from mindspore import nn, ops, Tensor, Parameter
-from mindyolo.utils.logger import get_logger
+from mindyolo.utils import logger
 
 from ..layers.implicit import ImplicitA, ImplicitM
-
-logger = get_logger()
 
 
 class YOLOv7Head(nn.Cell):

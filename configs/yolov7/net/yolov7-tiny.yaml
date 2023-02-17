@@ -4,11 +4,11 @@ __BASE__: [
   '../hyp/hyp.scratch.tiny.yaml',
 ]
 
-run_eval: True
+run_eval: False
 per_batch_size: 16 # 16 * 8 = 128
 
 
-net:
+network:
   model_name: yolov7
   depth_multiple: 1.0  # model depth multiple
   width_multiple: 1.0  # layer channel multiple

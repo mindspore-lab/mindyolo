@@ -12,11 +12,13 @@ class EMA(nn.Cell):
     A smoothed version of the weight is necessary for some training schemes to perform well.
     """
 
-    def __init__(self, model, decay=0.9999, updates=0):
+    def __init__(self, model, ema_model, decay=0.9999, updates=0):
         super(EMA, self).__init__()
         # Create EMA
+        self.ema = ema_model
+        self.ema.set_train(False)
         self.weight = ms.ParameterTuple(list(model.get_parameters()))
-        self.ema_weight = self.weight.clone("ema", init='same')
+        self.ema_weight = ms.ParameterTuple(list(ema_model.get_parameters()))
         self.updates = Parameter(Tensor(updates, ms.float32), requires_grad=False)  # number of EMA updates
         self.decay_value = decay
         self.assign = ops.Assign()

@@ -41,6 +41,7 @@ class YOLOv7(nn.Cell):
         self.reset_parameter()
 
     def construct(self, x):
+        x /= 255.0 # normalize
         return self.model(x)
 
     def reset_parameter(self):
@@ -70,7 +71,7 @@ if __name__ == '__main__':
     from mindyolo.utils.config import parse_config
     from mindyolo.models.model_factory import create_model
     opt = parse_config()
-    model = create_model(model_name=opt.net.model_name,
+    model = create_model(model_name='yolov7',
                          model_cfg=opt.net,
                          num_classes=opt.data.nc,
                          sync_bn=opt.sync_bn if hasattr(opt, 'sync_bn') else False)

@@ -1,0 +1,97 @@
+import random, os, yaml, glob, re
+import numpy as np
+from datetime import datetime
+from pathlib import Path
+
+import mindspore as ms
+from mindspore import context
+from mindspore.context import ParallelMode
+from mindspore.communication.management import init, get_rank, get_group_size
+
+from mindyolo.utils import logger
+
+__all__ = ['init_env', 'set_seed']
+
+
+def set_seed(seed=2):
+    np.random.seed(seed)
+    random.seed(seed)
+    ms.set_seed(seed)
+
+
+def init_env(cfg):
+    # Set Context
+    context.set_context(mode=cfg.ms_mode, device_target=cfg.device_target, max_call_depth=2000)
+    if cfg.device_target == "Ascend":
+        device_id = int(os.getenv('DEVICE_ID', 0))
+        context.set_context(device_id=device_id)
+    elif cfg.device_target == "GPU" and cfg.get('ms_enable_graph_kernel', False):
+        context.set_context(enable_graph_kernel=True)
+
+    # Set Parallel
+    rank, rank_size, parallel_mode = 0, 1, ParallelMode.STAND_ALONE
+    if cfg.is_distributed:
+        init()
+        rank, rank_size, parallel_mode = get_rank(), get_group_size(), ParallelMode.DATA_PARALLEL
+    context.set_auto_parallel_context(parallel_mode=parallel_mode, gradients_mean=True, device_num=rank_size)
+    cfg.rank, cfg.rank_size = rank, rank_size
+    cfg.main_device = (rank % rank_size == 0)
+
+    # Set default cfg
+    cfg.total_batch_size = cfg.per_batch_size * cfg.rank_size
+    cfg.sync_bn = cfg.sync_bn and context.get_context("device_target") == "Ascend" and cfg.rank_size > 1
+    cfg.nbs = cfg.get('nbs', 64)
+    cfg.auto_accumulate = cfg.get('auto_accumulate', False)
+    cfg.accumulate = max(1, (cfg.nbs / cfg.total_batch_size).round()) \
+        if cfg.auto_accumulate else cfg.get('accumulate', 1)
+    # optimizer
+    cfg.optimizer.warmup_epochs = cfg.optimizer.get('warmup_epochs', 0)
+    cfg.optimizer.min_warmup_step = cfg.optimizer.get('min_warmup_step', 0)
+    cfg.optimizer.epochs = cfg.epochs
+    cfg.optimizer.nbs = cfg.nbs
+    cfg.optimizer.accumulate = cfg.accumulate
+    cfg.optimizer.total_batch_size = cfg.total_batch_size
+    # data
+    cfg.data.nc = 1 if cfg.single_cls else int(cfg.data.nc)  # number of classes
+    cfg.data.names = ['item'] if cfg.single_cls and len(cfg.names) != 1 else cfg.data.names  # class names
+    # loss
+    cfg.loss.loss_item_name = cfg.loss.get('loss_item_name', ['loss', 'lbox', 'lobj', 'lcls'])
+    assert len(cfg.data.names) == cfg.data.nc, '%g names found for nc=%g dataset in %s' % \
+                                               (len(cfg.data.names), cfg.data.nc, cfg.config)
+
+    # Directories and Save run settings
+    cfg.save_dir = _increment_path(Path(cfg.save_dir) / datetime.now().strftime("%Y.%m.%d-%H:%M:%S"), exist_ok=cfg.exist_ok)  # increment run
+    cfg.ckpt_save_dir = os.path.join(cfg.save_dir, 'weights')
+    cfg.sync_lock_dir = os.path.join(cfg.save_dir, 'sync_locks') if not cfg.enable_modelarts else '/tmp'
+    if cfg.main_device:
+        os.makedirs(cfg.ckpt_save_dir, exist_ok=True)
+        with open(os.path.join(cfg.save_dir, "cfg.yaml"), 'w') as f:
+            yaml.dump(vars(cfg), f, sort_keys=False)
+        # set logger dir
+        logger_dir = os.path.join(cfg.save_dir, "logs")
+        logger.setup_logging_file(log_dir=logger_dir)
+        # sync_lock for run_eval
+        os.makedirs(cfg.sync_lock_dir, exist_ok=False)
+
+    # Modelarts: Copy data, from the s3 bucket to the computing node
+    if cfg.enable_modelarts:
+        from mindyolo.utils.modelarts import sync_data
+        os.makedirs(cfg.data_dir, exist_ok=True)
+        sync_data(cfg.data_url, cfg.data_dir)
+        sync_data(cfg.save_dir, cfg.train_url)
+        cfg.train_set = os.path.join(cfg.data_dir, cfg.train_set)
+        cfg.val_set = os.path.join(cfg.data_dir, cfg.val_set)
+        cfg.test_set = os.path.join(cfg.data_dir, cfg.test_set)
+
+
+def _increment_path(path, exist_ok=True, sep=''):
+    # Increment path, i.e. runs/exp --> runs/exp{sep}0, runs/exp{sep}1 etc.
+    path = Path(path)  # os-agnostic
+    if (path.exists() and exist_ok) or (not path.exists()):
+        return str(path)
+    else:
+        dirs = glob.glob(f"{path}{sep}*")  # similar paths
+        matches = [re.search(rf"%s{sep}(\d+)" % path.stem, d) for d in dirs]
+        i = [int(m.groups()[0]) for m in matches if m]  # indices
+        n = max(i) + 1 if i else 2  # increment number
+        return f"{path}{sep}{n}"  # update path

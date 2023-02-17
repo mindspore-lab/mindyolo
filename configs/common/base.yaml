@@ -1,7 +1,6 @@
 # Env
 device_target: Ascend
-project: 'runs/train' # 'runs/eval'
-name: 'exp'
+save_dir: './runs'
 exist_ok: False
 device_per_servers: 8
 log_level: "INFO"
@@ -13,38 +12,39 @@ ms_amp_level: O0
 ms_loss_scaler: 'static'
 ms_loss_scaler_value: 1024.0
 ms_grad_sens: 1024.0
+ms_jit: True
+ms_enable_graph_kernel: False
+is_parallel: False
 num_parallel_workers: 4
 overflow_still_update: True
 clip_grad: False
 ema: True
-is_distributed: False
 weight: ''
 ema_weight: ''
+freeze: []
 epochs: 300
 per_batch_size: 32 # infer 1
-accumulate: 1
 img_size: 640
-run_eval: False
+nbs: 64
+accumulate: 1
+auto_accumulate: True
 log_interval: 1
-rect: False
-nms_time_limit: 10.0
 multi_scale: False
 single_cls: False
-optimizer: 'momentum'
 sync_bn: False
-linear_lr: False
-label_smoothing: 0.0
-freeze: []
+keep_checkpoint_max: 10
+run_eval: False
 v5_metric: False
+rect: False
+nms_time_limit: 20.0
 
-# Test
+# Eval
 conf_thres: 0.001
 iou_thres: 0.65
 task: 'val'
 augment: False
 verbose: False
 save_txt: False
-save_hybrid: False
 save_conf: False
 save_json: False
 no_trace: False
@@ -79,7 +79,7 @@ ms_loss_scaler_value: 'static loss scale value'
 ms_optim_loss_scale: 'optimizer loss scale'
 num_parallel_workers: 'num parallel worker for dataloader'
 overflow_still_update: 'overflow still update'
-is_distributed: 'Distribute train or not'
+is_parallel: 'Distribute train or not'
 recompute: 'Recompute'
 weight: 'initial weight path'
 ema_weight: 'initial ema weight path'
@@ -94,7 +94,6 @@ multi_scale: 'vary img-size +/- 50%'
 single_cls: 'train multi-class data as single-class'
 optimizer: 'select optimizer'
 sync_bn: 'use SyncBatchNorm, only available in DDP mode'
-label_smoothing: 'Label smoothing epsilon'
 freeze: 'Freeze layers'
 v5_metric: 'assume maximum recall as 1.0 in AP calculation'
 
@@ -105,7 +104,6 @@ task: 'train, val, test, speed or study'
 augment: 'augmented inference'
 verbose: 'report mAP by class'
 save_txt: 'save results to *.txt'
-save_hybrid: 'save label+prediction hybrid results to *.txt'
 save_conf: 'save confidences in --save-txt labels'
 save_json: 'save a cocoapi-compatible JSON results file'
 no_trace: 'don`t trace model'
