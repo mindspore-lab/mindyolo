@@ -1,11 +1,9 @@
-import sys
 import numpy as np
 import cv2
 
-sys.path.append('../')
-from general import normalize_shape
+from ..general import normalize_shape
 
-__all__ = ['Resize', 'BatchRandomResize']
+__all__ = ['Resize', 'BatchRandomResize', 'BatchLabelsPadding']
 
 
 class Resize:
@@ -56,7 +54,7 @@ class Resize:
 
         return polys
 
-    def __call__(self, img, w, h, gt_bbox, gt_class, *gt_poly):
+    def __call__(self, img, im_file, ori_shape, gt_bbox, gt_class, *gt_poly):
         """ Resize the image numpy.
         """
 
@@ -92,9 +90,9 @@ class Resize:
 
         if gt_poly:
             gt_poly = self.resize_poly(gt_poly, [im_scale_x, im_scale_y])
-            return img, resize_w, resize_h, gt_bbox, gt_class, gt_poly
+            return img, im_file, ori_shape, gt_bbox, gt_class, gt_poly
         else:
-            return img, resize_w, resize_h, gt_bbox, gt_class
+            return img, im_file, ori_shape, gt_bbox, gt_class
 
 
 class BatchRandomResize:
@@ -137,7 +135,7 @@ class BatchRandomResize:
         self.random_size = random_size
         self.random_interp = random_interp
 
-    def __call__(self, images, ws, hs, gt_bboxes, gt_classes, batch_info):
+    def __call__(self, images, im_files, ori_shapes, gt_bboxes, gt_classes, batch_info):
         """
         Resize the image numpy.
         """
@@ -161,6 +159,47 @@ class BatchRandomResize:
 
         resizer = Resize(target_size, self.keep_ratio, interp)
         for i in range(bs):
-            images[i], ws[i], hs[i], gt_bboxes[i], gt_classes[i] = resizer(images[i], ws[i], hs[i], gt_bboxes[i], gt_classes[i])
-        images, ws, hs, gt_bboxes, gt_classes = normalize_shape(images, ws, hs, gt_bboxes, gt_classes, batch_info)
-        return images, ws, hs, gt_bboxes, gt_classes
+            images[i], im_files[i], ori_shapes[i], gt_bboxes[i], gt_classes[i] = \
+                resizer(images[i], im_files[i], ori_shapes[i], gt_bboxes[i], gt_classes[i])
+        images, im_files, ori_shapes, gt_bboxes, gt_classes, batch_idx = \
+            normalize_shape(images, im_files, ori_shapes, gt_bboxes, gt_classes, batch_info)
+        return images, im_files, ori_shapes, gt_bboxes, gt_classes, batch_idx
+
+
+class BatchLabelsPadding:
+    """
+    Padding the targets of each batch
+    Args:
+        padding_size (int): samples target padding to this size, if targets size greater than padding_size, crop to this size.
+    """
+    def __init__(self, padding_size, padding_value=-1):
+        self.padding_size = padding_size
+        self.padding_value = padding_value
+
+    def __call__(self, images, im_files, ori_shapes, gt_bboxes, gt_classes, batch_info):
+        """
+        Padding the list of numpy labels.
+        """
+        gt_bboxes, gt_classes, batch_idx = self.padding(gt_bboxes, gt_classes)
+        return np.stack(images, 0).transpose((0, 3, 1, 2)), \
+               im_files, np.stack(ori_shapes, 0), \
+               np.stack(gt_bboxes, 0), np.stack(gt_classes, 0), np.stack(batch_idx, 0)
+
+    def padding(self, gt_bboxes, gt_classes):
+        """
+        Labels padding to target size.
+        """
+        ps = self.padding_size
+        pv = self.padding_value
+
+        batch_idx = []
+        for i, (gt_bbox, gt_class) in enumerate(zip(gt_bboxes, gt_classes)):
+            nL = gt_class.shape[0]
+            nL = nL if nL < ps else ps
+            gt_bboxes[i] = np.full((ps, 4), pv, dtype=np.float32)
+            gt_bboxes[i][:nL, :] = gt_bbox[:nL, :]
+            gt_classes[i] = np.full((ps, 1), pv, dtype=np.int32)
+            gt_classes[i][:nL, :] = gt_class[:nL, :]
+            batch_idx.append(np.full((ps, 1), i, dtype=np.int32))
+
+        return gt_bboxes, gt_classes, batch_idx

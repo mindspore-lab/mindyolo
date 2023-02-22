@@ -3,6 +3,11 @@ import copy
 import cv2
 import numpy as np
 
+__all__ = ['show_img_with_bbox', 'show_img_with_poly',
+           'bbox_ioa', 'sample_polys', 'resample_polys',
+           'poly2box', 'in_range', 'coco80_to_coco91_class',
+           'normalize_shape', 'normalize_shape_with_poly']
+
 
 def show_img_with_bbox(record, classes):
     """
@@ -180,7 +185,7 @@ def poly2box(poly, width=640, height=640):
     return np.array([x.min(), y.min(), x.max(), y.max()]) if any(x) else np.zeros((1, 4))  # xyxy
 
 
-def normalize_shape(images, ws, hs, gt_bboxes, gt_classes, batch_info):
+def normalize_shape(images, im_files, ori_shapes, gt_bboxes, gt_classes, batch_info):
     """
     Ensure labels have the same shape to avoid dynamics shapes
     """
@@ -188,17 +193,21 @@ def normalize_shape(images, ws, hs, gt_bboxes, gt_classes, batch_info):
     for gt_class in gt_classes:
         most_boxes_per_img = max(most_boxes_per_img, gt_class.shape[0])
 
+    batch_idx = []
     for i, (gt_bbox, gt_class) in enumerate(zip(gt_bboxes, gt_classes)):
         nL = gt_class.shape[0]
         gt_bboxes[i] = np.full((most_boxes_per_img, 4), -1, dtype=np.float32)
         gt_bboxes[i][:nL, :] = gt_bbox[:nL, :]
         gt_classes[i] = np.full((most_boxes_per_img, 1), -1, dtype=np.int32)
         gt_classes[i][:nL, :] = gt_class[:nL, :]
+        batch_idx.append(np.full((most_boxes_per_img, 1), i, dtype=np.int32))
 
-    return images, ws, hs, gt_bboxes, gt_classes
+    return np.stack(images, 0).transpose((0, 3, 1, 2)), \
+           im_files, np.stack(ori_shapes, 0), \
+           np.stack(gt_bboxes, 0), np.stack(gt_classes, 0), np.stack(batch_idx, 0)
 
 
-def normalize_shape_with_poly(images, ws, hs, gt_bboxes, gt_classes, gt_polys, batch_info):
+def normalize_shape_with_poly(images, im_files, ori_shapes, gt_bboxes, gt_classes, gt_polys, batch_info):
     """
     Ensure labels have the same shape to avoid dynamics shapes
     """
@@ -206,17 +215,33 @@ def normalize_shape_with_poly(images, ws, hs, gt_bboxes, gt_classes, gt_polys, b
     for gt_class in gt_classes:
         most_boxes_per_img = max(most_boxes_per_img, gt_class.shape[0])
 
+    batch_idx = []
     for i, (gt_bbox, gt_class, gt_poly) in enumerate(zip(gt_bboxes, gt_classes, gt_polys)):
         nL = gt_class.shape[0]
         gt_bboxes[i] = np.full((most_boxes_per_img, 4), -1, dtype=np.float32)
         gt_bboxes[i][:nL, :] = gt_bbox[:nL, :]
         gt_classes[i] = np.full((most_boxes_per_img, 1), -1, dtype=np.int32)
         gt_classes[i][:nL, :] = gt_class[:nL, :]
+        batch_idx.append(np.full((most_boxes_per_img, 1), i, dtype=np.int32))
         gt_poly = resample_polys(gt_poly, 1000)
         gt_polys[i] = np.full((most_boxes_per_img, 1000, 2), -1, dtype=np.float32)
         gt_polys[i][:nL, :] = gt_poly[:nL]
 
-    return images, ws, hs, gt_bboxes, gt_classes, gt_polys
+    return np.stack(images, 0).transpose((0, 3, 1, 2)),\
+           im_files, np.stack(ori_shapes, 0), \
+           np.stack(gt_bboxes, 0), np.stack(gt_classes, 0), np.stack(gt_polys, 0), np.stack(batch_idx, 0)
+
+
+def coco80_to_coco91_class():  # converts 80-index (val2014) to 91-index (paper)
+    # https://tech.amikelive.com/node-718/what-object-categories-labels-are-in-coco-dataset/
+    # a = np.loadtxt('data/coco.names', dtype='str', delimiter='\n')
+    # b = np.loadtxt('data/coco_paper.names', dtype='str', delimiter='\n')
+    # x1 = [list(a[i] == b).index(True) + 1 for i in range(80)]  # darknet to coco
+    # x2 = [list(b[i] == a).index(True) if any(b[i] == a) else None for i in range(91)]  # coco to darknet
+    x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 32, 33, 34,
+         35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+         64, 65, 67, 70, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 86, 87, 88, 89, 90]
+    return x
 
 
 def in_range(n, start, end=0):

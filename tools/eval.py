@@ -4,7 +4,7 @@ from mindyolo.utils.config import parse_config
 
 def main():
     cfg = parse_config()
-    enginer = Enginer(cfg, mode='eval')
+    enginer = Enginer(cfg, task='eval')
     enginer.eval()
 
 
