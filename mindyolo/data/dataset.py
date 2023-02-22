@@ -1,16 +1,14 @@
 import os
-import sys
 import cv2
 import copy
 import numpy as np
 
-import transforms
-from general import resample_polys
+from mindyolo.data import transforms
+from mindyolo.utils import logger
 
-sys.path.append('../')
-from utils import logger
-logger.setup_logging(logger_name="MindYOLO", log_level="INFO", rank_id=0, device_per_servers=8)
-logger.setup_logging_file(log_dir="./logs")
+from .general import resample_polys
+
+__all__ = ['COCODataset']
 
 
 class COCODataset:
@@ -112,9 +110,9 @@ class COCODataset:
             record_out['image'] = cv2.imread(img_path)  # BGR
 
         if self.detection_require_poly:
-            return record_out['image'], record_out['w'], record_out['h'], record_out['gt_bbox'], record_out['gt_class'], record_out['gt_poly']
+            return record_out['image'], record_out['im_file'], record_out['ori_shape'], record_out['gt_bbox'], record_out['gt_class'], record_out['gt_poly']
         else:
-            return record_out['image'], record_out['w'], record_out['h'], record_out['gt_bbox'], record_out['gt_class']
+            return record_out['image'], record_out['im_file'], record_out['ori_shape'], record_out['gt_bbox'], record_out['gt_class']
 
     def _sample_empty(self, records, num):
         # if empty_ratio is out of [0. ,1.), do not sample the records
@@ -171,8 +169,7 @@ class COCODataset:
             img_rec = {
                 'im_file': im_path,
                 'im_id': np.array([img_id]),
-                'h': im_h,
-                'w': im_w,
+                'ori_shape': np.array([im_h, im_w]),
             }
 
             if not self.load_image_only:
@@ -268,13 +265,9 @@ class COCODataset:
 
 
 if __name__ == '__main__':
-    from general import show_img_with_bbox, show_img_with_poly
-    from mindspore import context
-    import sys
-    sys.path.append('../')
-    from utils.config import parse_config
+    from mindyolo.utils.config import parse_config
+    from .general import show_img_with_bbox, show_img_with_poly
 
-    context.set_context(mode=context.PYNATIVE_MODE, pynative_synchronize=True)
     config = parse_config()
     data_config = config.Data
     image_dir = data_config.train_img_dir

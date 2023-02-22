@@ -30,7 +30,7 @@ def init_env(cfg):
 
     # Set Parallel
     rank, rank_size, parallel_mode = 0, 1, ParallelMode.STAND_ALONE
-    if cfg.is_distributed:
+    if cfg.is_parallel:
         init()
         rank, rank_size, parallel_mode = get_rank(), get_group_size(), ParallelMode.DATA_PARALLEL
     context.set_auto_parallel_context(parallel_mode=parallel_mode, gradients_mean=True, device_num=rank_size)
@@ -42,7 +42,7 @@ def init_env(cfg):
     cfg.sync_bn = cfg.sync_bn and context.get_context("device_target") == "Ascend" and cfg.rank_size > 1
     cfg.nbs = cfg.get('nbs', 64)
     cfg.auto_accumulate = cfg.get('auto_accumulate', False)
-    cfg.accumulate = max(1, (cfg.nbs / cfg.total_batch_size).round()) \
+    cfg.accumulate = max(1, np.round(cfg.nbs / cfg.total_batch_size)) \
         if cfg.auto_accumulate else cfg.get('accumulate', 1)
     # optimizer
     cfg.optimizer.warmup_epochs = cfg.optimizer.get('warmup_epochs', 0)
@@ -67,11 +67,12 @@ def init_env(cfg):
         os.makedirs(cfg.ckpt_save_dir, exist_ok=True)
         with open(os.path.join(cfg.save_dir, "cfg.yaml"), 'w') as f:
             yaml.dump(vars(cfg), f, sort_keys=False)
-        # set logger dir
-        logger_dir = os.path.join(cfg.save_dir, "logs")
-        logger.setup_logging_file(log_dir=logger_dir)
         # sync_lock for run_eval
         os.makedirs(cfg.sync_lock_dir, exist_ok=False)
+
+    # Set Logger
+    logger.setup_logging(logger_name="MindYOLO", log_level="INFO", rank_id=rank, device_per_servers=rank_size)
+    logger.setup_logging_file(log_dir=os.path.join(cfg.save_dir, "logs"))
 
     # Modelarts: Copy data, from the s3 bucket to the computing node
     if cfg.enable_modelarts:

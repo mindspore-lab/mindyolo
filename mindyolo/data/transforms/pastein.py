@@ -1,9 +1,7 @@
-import sys
 import numpy as np
 import cv2
 
-sys.path.append('../')
-from general import bbox_ioa, sample_polys
+from ..general import bbox_ioa, sample_polys
 
 __all__ = ['PasteIn']
 

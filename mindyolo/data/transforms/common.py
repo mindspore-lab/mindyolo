@@ -1,9 +1,7 @@
-import sys
 import numpy as np
 import cv2
 
-sys.path.append('../')
-from general import bbox_ioa
+from ..general import bbox_ioa
 
 __all__ = ['RandomFlip', 'RandomHSV', 'NormalizeImage', 'LetterBox', 'SimpleCopyPaste', 'NormalizeBox']
 
@@ -19,9 +17,10 @@ class RandomFlip:
         if not (isinstance(self.prob, float)):
             raise TypeError("{}: input type is invalid.".format(self))
 
-    def __call__(self, img, w, h, gt_bbox, gt_class, *gt_poly):
+    def __call__(self, img, im_file, ori_shape, gt_bbox, gt_class, *gt_poly):
         if np.random.random() < self.prob:
             img = np.fliplr(img)
+            h, w = img.shape[:2]
             oldx1 = gt_bbox[:, 0].copy()
             oldx2 = gt_bbox[:, 2].copy()
             gt_bbox[:, 0] = w - oldx2
@@ -32,9 +31,9 @@ class RandomFlip:
                     poly[:, 0] = w - poly[:, 0]
 
         if gt_poly:
-            return img, w, h, gt_bbox, gt_class, gt_poly
+            return img, im_file, ori_shape, gt_bbox, gt_class, gt_poly
         else:
-            return img, w, h, gt_bbox, gt_class
+            return img, im_file, ori_shape, gt_bbox, gt_class
 
 
 class NormalizeImage:
@@ -63,7 +62,7 @@ class NormalizeImage:
         if self.std and reduce(lambda x, y: x * y, self.std) == 0:
             raise ValueError('{}: std is invalid!'.format(self))
 
-    def __call__(self, img, w, h, gt_bbox, gt_class, *gt_poly):
+    def __call__(self, img, im_file, ori_shape, gt_bbox, gt_class, *gt_poly):
         """Normalize the image.
         Operators:
             1.(optional) Scale the pixel to [0,1]
@@ -84,9 +83,9 @@ class NormalizeImage:
             img /= std
 
         if gt_poly:
-            return img, w, h, gt_bbox, gt_class, gt_poly
+            return img, im_file, ori_shape, gt_bbox, gt_class, gt_poly
         else:
-            return img, w, h, gt_bbox, gt_class
+            return img, im_file, ori_shape, gt_bbox, gt_class
 
 
 class RandomHSV:
@@ -96,7 +95,7 @@ class RandomHSV:
     def __init__(self, hgain=0.5, sgain=0.5, vgain=0.5):
         self.gains = [hgain, sgain, vgain]
 
-    def __call__(self, img, w, h, gt_bbox, gt_class, *gt_poly):
+    def __call__(self, img, im_file, ori_shape, gt_bbox, gt_class, *gt_poly):
         r = np.random.uniform(-1, 1, 3) * self.gains + 1  # random gains
         hue, sat, val = cv2.split(cv2.cvtColor(img, cv2.COLOR_BGR2HSV))
 
@@ -109,9 +108,9 @@ class RandomHSV:
         img = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR)
 
         if gt_poly:
-            return img, w, h, gt_bbox, gt_class, gt_poly
+            return img, im_file, ori_shape, gt_bbox, gt_class, gt_poly
         else:
-            return img, w, h, gt_bbox, gt_class
+            return img, im_file, ori_shape, gt_bbox, gt_class
 
 
 class SimpleCopyPaste:
@@ -123,7 +122,7 @@ class SimpleCopyPaste:
         if not (isinstance(self.prob, float)):
             raise TypeError("{}: input type is invalid.".format(self))
 
-    def __call__(self, img, w, h, gt_bbox, gt_class, gt_poly):
+    def __call__(self, img, gt_bbox, gt_class, gt_poly):
         n = len(gt_poly)
         if self.prob and n:
             h, w, c = img.shape  # height, width, channels
@@ -143,7 +142,7 @@ class SimpleCopyPaste:
             i = result > 0  # pixels to replace
             img[i] = result[i]
 
-        return img, w, h, gt_bbox, gt_class, gt_poly
+        return img, gt_bbox, gt_class, gt_poly
 
 
 class LetterBox:
@@ -159,7 +158,7 @@ class LetterBox:
         self.scaleup = scaleup
         self.stride = stride
 
-    def __call__(self, img, w, h, gt_bbox, gt_class, *gt_poly):
+    def __call__(self, img, im_file, ori_shape, gt_bbox, gt_class, *gt_poly):
         shape = img.shape[:2]  # current shape [height, width]
         new_shape = self.new_shape
 
@@ -198,19 +197,19 @@ class LetterBox:
                 x[:, 0] = ratio[0] * x[:, 0] + dw
                 x[:, 1] = ratio[1] * x[:, 1] + dh
 
-            return img, new_shape[1], new_shape[0], gt_bbox, gt_class, gt_poly
+            return img, im_file, ori_shape, gt_bbox, gt_class, gt_poly
         else:
-            return img, new_shape[1], new_shape[0], gt_bbox, gt_class
+            return img, im_file, ori_shape, gt_bbox, gt_class
 
 
 class NormalizeBox:
     """Transform the bounding box's coornidates to [0,1]."""
-    def __call__(self, img, w, h, gt_bbox, gt_class, *gt_poly):
+    def __call__(self, img, im_file, ori_shape, gt_bbox, gt_class, *gt_poly):
         height, width, _ = img.shape
         gt_bbox[:, [0, 2]] /= width
         gt_bbox[:, [1, 3]] /= height
 
         if gt_poly:
-            return img, width, height, gt_bbox, gt_class, gt_poly
+            return img, im_file, ori_shape, gt_bbox, gt_class, gt_poly
         else:
-            return img, width, height, gt_bbox, gt_class
+            return img, im_file, ori_shape, gt_bbox, gt_class

@@ -2,7 +2,7 @@ import numpy as np
 
 import mindspore as ms
 import mindspore.numpy as mnp
-from mindspore import ops, nn, Tensor
+from mindspore import ops, nn, Tensor, Parameter
 
 from mindyolo.models.registry import register_model
 
@@ -30,11 +30,15 @@ class YOLOv7Loss(nn.Cell):
         self.hyp_obj = obj
         self.hyp_cls = cls
         self.hyp_anchor_t = anchor_t
-        self.anchors = anchors
-        self.stride = stride
         self.nc = nc                    # number of classes
         self.na = len(anchors[0]) // 2  # number of anchors
         self.nl = len(anchors)          # number of layers
+
+        stride = np.array(stride)
+        anchors = np.array(anchors).reshape((self.nl, -1, 2))
+        anchors = anchors / stride.reshape((-1, 1, 1))
+        self.stride = Parameter(Tensor(stride, ms.int32), requires_grad=False)
+        self.anchors = Parameter(Tensor(anchors, ms.float32), requires_grad=False)  # shape(nl,na,2)
 
         # Class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
         self.cp, self.cn = smooth_BCE(eps=label_smoothing)  # positive, negative BCE targets
@@ -341,37 +345,40 @@ class YOLOv7Loss(nn.Cell):
 
 @register_model
 class YOLOv7AuxLoss(nn.Cell):
-    def __init__(self, model, autobalance=False):
+    def __init__(
+            self,
+            box, obj, cls, anchor_t, label_smoothing, fl_gamma, cls_pw, obj_pw,
+            anchors, stride, nc, **kwargs):
         super(YOLOv7AuxLoss, self).__init__()
-        h = model.opt
-        self.hyp_box = h.box
-        self.hyp_obj = h.obj
-        self.hyp_cls = h.cls
-        self.hyp_anchor_t = h.anchor_t
+        self.hyp_box = box
+        self.hyp_obj = obj
+        self.hyp_cls = cls
+        self.hyp_anchor_t = anchor_t
+        self.nc = nc  # number of classes
+        self.na = len(anchors[0]) // 2  # number of anchors
+        self.nl = len(anchors)  # number of layers
+
+        stride = np.array(stride)
+        anchors = np.array(anchors).reshape((self.nl, -1, 2))
+        anchors = anchors / stride.reshape((-1, 1, 1))
+        self.stride = Parameter(Tensor(stride, ms.int32), requires_grad=False)
+        self.anchors = Parameter(Tensor(anchors, ms.float32), requires_grad=False)  # shape(nl,na,2)
 
         # Class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
         self.cp, self.cn = smooth_BCE(eps=h.label_smoothing)  # positive, negative BCE targets
         # Focal loss
-        g = h.fl_gamma  # focal loss gamma
+        g = fl_gamma  # focal loss gamma
         if g > 0:
-            BCEcls, BCEobj = FocalLoss(bce_pos_weight=Tensor([h.cls_pw], ms.float32), gamma=g), \
-                             FocalLoss(bce_pos_weight=Tensor([h.obj_pw], ms.float32), gamma=g)
+            BCEcls, BCEobj = FocalLoss(bce_pos_weight=Tensor([cls_pw], ms.float32), gamma=g), \
+                             FocalLoss(bce_pos_weight=Tensor([obj_pw], ms.float32), gamma=g)
         else:
             # Define criteria
-            BCEcls = BCEWithLogitsLoss(bce_pos_weight=Tensor(np.array([h.cls_pw]), ms.float32))
-            BCEobj = BCEWithLogitsLoss(bce_pos_weight=Tensor(np.array([h.obj_pw]), ms.float32))
+            BCEcls = BCEWithLogitsLoss(bce_pos_weight=Tensor(np.array([cls_pw]), ms.float32))
+            BCEobj = BCEWithLogitsLoss(bce_pos_weight=Tensor(np.array([obj_pw]), ms.float32))
 
-        m = model.model[-1]  # Detect() module
-        _balance = {3: [4.0, 1.0, 0.4]}.get(m.nl, [4.0, 1.0, 0.25, 0.06, 0.02])  # P3-P7
+        _balance = {3: [4.0, 1.0, 0.4]}.get(self.nl, [4.0, 1.0, 0.25, 0.06, 0.02])  # P3-P7
         self.balance = ms.Parameter(Tensor(_balance, ms.float32), requires_grad=False)
-        self.ssi = list(m.stride).index(16) if autobalance else 0  # stride 16 index
-        self.BCEcls, self.BCEobj, self.gr, self.autobalance = BCEcls, BCEobj, 1.0, autobalance
-
-        self.na = m.na  # number of anchors
-        self.nc = m.nc  # number of classes
-        self.nl = m.nl  # number of layers
-        self.anchors = m.anchors
-        self.stride = m.stride
+        self.BCEcls, self.BCEobj, self.gr = BCEcls, BCEobj, 1.0
 
         self._off = Tensor([
             [0, 0],
@@ -432,8 +439,6 @@ class YOLOv7AuxLoss(nn.Cell):
             tobj[b, a, gj, gi] = ((1.0 - self.gr) + self.gr * ops.stop_gradient(iou).clip(0, None)) * tmask  # iou ratio
             obji = self.BCEobj(pi[..., 4], tobj)
             lobj += obji * self.balance[i]  # obj loss
-            if self.autobalance:
-                self.balance[i] = self.balance[i] * 0.9999 + 0.0001 / ops.stop_gradient(obji)
             # 1.3. Classification
             selected_tcls = ops.cast(targets[i][:, 1], ms.int32)
             if self.nc > 1:  # cls loss (only if multiple classes)
@@ -464,12 +469,6 @@ class YOLOv7AuxLoss(nn.Cell):
                 t_aux[mnp.arange(n_aux), selected_tcls_aux] = self.cp
                 lcls += 0.25 * self.BCEcls(ps_aux[:, 5:], t_aux, ops.tile(tmask_aux[:, None], (1, t_aux.shape[1])))  # BCE
 
-            if self.autobalance:
-                self.balance[i] = self.balance[i] * 0.9999 + 0.0001 / ops.stop_gradient(obji)
-
-        if self.autobalance:
-            _balance_ssi = self.balance[self.ssi]
-            self.balance /= _balance_ssi
         lbox *= self.hyp_box
         lobj *= self.hyp_obj
         lcls *= self.hyp_cls

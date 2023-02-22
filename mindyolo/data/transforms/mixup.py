@@ -64,8 +64,6 @@ class MixUp:
 
         record_out = records_outs[0]
         record_out['image'] = im
-        record_out['w'] = w
-        record_out['h'] = h
         record_out['gt_class'] = gt_class
         record_out['gt_bbox'] = gt_bbox
         record_out['gt_poly'] = gt_poly

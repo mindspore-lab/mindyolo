@@ -2,23 +2,32 @@ import cv2
 
 import mindspore.dataset as de
 
-from dataset import COCODataset
-from transforms_factory import create_transforms, create_per_batch_map
-from general import normalize_shape, normalize_shape_with_poly
+from .transforms_factory import create_transforms, create_per_batch_map
+from .dataset import COCODataset
+from .general import normalize_shape
+
+__all__ = ['create_dataloader']
 
 
-def create_dataloader(config):
-    data_config = config.data
-    if config.task == 'train':
+def create_dataloader(data_config, task, per_batch_size):
+    if task == 'train':
         image_dir = data_config.train_img_dir
         anno_path = data_config.train_anno_path
-    if config.task == 'val':
+    elif task in ('val', 'eval'):
         image_dir = data_config.val_img_dir
         anno_path = data_config.val_anno_path
+    elif task == "test":
+        image_dir = data_config.test_img_dir
+        anno_path = data_config.test_anno_path
+    else:
+        raise NotImplementedError
 
     multi_imgs_transforms = getattr(data_config, 'multi_imgs_transforms', None)
-    dataset = COCODataset(dataset_dir=data_config.dataset_dir, image_dir=image_dir, anno_path=anno_path, multi_imgs_transforms=multi_imgs_transforms)
-    dataset_column_names = ['image', 'w', 'h', 'gt_bbox', 'gt_class']
+    dataset = COCODataset(dataset_dir=data_config.dataset_dir,
+                          image_dir=image_dir,
+                          anno_path=anno_path,
+                          multi_imgs_transforms=multi_imgs_transforms)
+    dataset_column_names = ['image', 'im_file', 'ori_shape', 'gt_bbox', 'gt_class']
     ds = de.GeneratorDataset(dataset, column_names=dataset_column_names)
 
     single_img_transforms = getattr(data_config, 'single_img_transforms', None)
@@ -32,19 +41,24 @@ def create_dataloader(config):
     else:
         per_batch_map = normalize_shape
 
-    ds = ds.batch(config.per_batch_size, input_columns=dataset_column_names, per_batch_map=per_batch_map)
+    batch_column = dataset_column_names + ['batch_idx',]
+    ds = ds.batch(per_batch_size,
+                  input_columns=dataset_column_names,
+                  output_columns=batch_column,
+                  per_batch_map=per_batch_map)
+    ds = ds.repeat(1)
 
     return ds
 
 
 if __name__ == '__main__':
-    from general import show_img_with_bbox, show_img_with_poly
-    import sys
-    sys.path.append('../')
-    from utils.config import parse_config
+    from .general import show_img_with_bbox, show_img_with_poly
+    from mindyolo.utils.config import parse_config
 
     config = parse_config()
-    ds = create_dataloader(config)
+    ds = create_dataloader(data_config=config.data,
+                           task='train',
+                           per_batch_size=config.per_batch_size)
     data_loader = ds.create_dict_iterator(output_numpy=True, num_epochs=1)
     print('done')
     for i, data in enumerate(data_loader):

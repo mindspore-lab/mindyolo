@@ -22,4 +22,7 @@ class Upsample(nn.Cell):
         self.mode = mode
 
     def construct(self, x):
-        return ops.interpolate(x, sizes=self.size, scales=self.scales, mode=self.mode)
+        if self.mode == 'nearest' and self.scales:
+            return ops.ResizeNearestNeighbor((x.shape[-2] * self.scales, x.shape[-1] * self.scales))(x)
+        else:
+            return ops.interpolate(x, sizes=self.sizes, scales=self.scales, mode=self.mode)

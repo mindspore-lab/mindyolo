@@ -14,7 +14,7 @@ from mindspore.amp import auto_mixed_precision
 from mindyolo.models import create_loss, create_model
 from mindyolo.optim import create_group_param, create_lr_scheduler, create_warmup_momentum_scheduler, \
     create_optimizer, EMA
-from mindyolo.data import create_dataset
+from mindyolo.data import create_dataloader
 from mindyolo.data.general import coco80_to_coco91_class
 from mindyolo.utils import logger
 from mindyolo.utils.all_finite import all_finite
@@ -28,17 +28,17 @@ __all__ = ['Enginer']
 
 
 class Enginer:
-    def __init__(self, cfg, mode='train'):
+    def __init__(self, cfg, task='train'):
 
-        # Check mode
-        assert mode.lower() in ('train', 'eval', 'test', 'predict'), \
-            "Trainer mode should be 'train', 'eval', 'test' or 'predict'"
+        # Check task
+        assert task.lower() in ('train', 'eval', 'test', 'predict'), \
+            "Trainer task should be 'train', 'eval', 'test' or 'predict'"
 
         # Init
         set_seed(cfg.get('seed', 2))
         init_env(cfg)
         self.cfg = cfg
-        self.mode = mode.lower()
+        self.task = task.lower()
         self.img_size = cfg.img_size
         self.rank_size = cfg.rank_size
         self.main_device = cfg.main_device
@@ -75,12 +75,16 @@ class Enginer:
         if self.ema:
             auto_mixed_precision(self.ema.ema, amp_level=self.amp_level)
 
-        if mode == 'train':
+        if task == 'train':
             # Create Dataset
-            self.dataset = create_dataset(cfg.data, mode=mode)
+            self.dataset = create_dataloader(data_config=cfg.data,
+                                             task=task,
+                                             per_batch_size=cfg.per_batch_size)
             self.steps_per_epoch = self.dataset.get_dataset_size()
             if self.run_eval:
-                self.eval_dataset = create_dataset(cfg.data, mode='eval')
+                self.eval_dataset = create_dataloader(data_config=cfg.data,
+                                                      task='eval',
+                                                      per_batch_size=cfg.per_batch_size * 2)
 
             # Create Loss
             self.loss = create_loss(
@@ -101,15 +105,20 @@ class Enginer:
             # Create train_step_fn
             self.reducer = self._get_gradreducer()
             self.scaler = self._get_loss_scaler()
-            self.train_step_fn = self._get_train_step_fn(ms_jit=self.ms_jit)
+            self.train_step_fn = self._get_train_step_fn(network=self.network, loss_fn=self.loss, optimizer=self.optimizer,
+                                                         rank_size=self.rank_size, scaler=self.scaler, reducer=self.reducer,
+                                                         overflow_still_update=self.overflow_still_update,
+                                                         ms_jit=self.ms_jit)
             self.network.set_train(True)
             self.optimizer.set_train(True)
 
-        elif mode in ('eval', 'test'):
-            self.dataset = create_dataset(cfg.data, mode=mode)
+        elif task in ('eval', 'test'):
+            self.dataset = create_dataloader(data_config=cfg.data,
+                                             task=task,
+                                             per_batch_size=cfg.per_batch_size)
             self.network.set_train(False)
 
-        elif mode in ('predict', 'detect'):
+        elif task in ('predict', 'detect'):
             raise NotImplementedError
 
         else:
@@ -205,7 +214,8 @@ class Enginer:
                     dtype = self.optimizer.momentum.dtype
                     self.optimizer.momentum = Tensor(self.warmup_momentum[i], dtype)
 
-            imgs, labels = data["img"], data["label_out"]
+            imgs, batch_idx, gt_class, gt_bbox = data["image"], data['batch_idx'], data["gt_class"], data["gt_bbox"]
+            labels = np.concatenate((batch_idx, gt_class, gt_bbox), -1) # (bs, N, 6)
             imgs, labels = Tensor(imgs, self.input_dtype), Tensor(labels, self.input_dtype)
             size = None
             if self.multi_scale:
@@ -294,10 +304,12 @@ class Enginer:
         result_dicts = []
 
         for i, data in enumerate(loader):
-            imgs, targets, paths, shapes = \
-                data["img"], data["label_out"], data["img_files"], data["shapes"]
+            imgs, batch_idx, gt_class, gt_bbox, paths, ori_shape = \
+                data["image"], data['batch_idx'], data["gt_class"], data["gt_bbox"],\
+                data["im_file"], data["ori_shape"]
             imgs_tensor = Tensor(imgs, self.input_dtype)
             nb, _, height, width = imgs.shape  # batch size, channels, height, width
+            targets = np.concatenate((batch_idx, gt_class, gt_bbox), -1)  # (bs, N, 6)
             targets = targets.reshape((-1, 6))
             targets = targets[targets[:, 1] >= 0]
 
@@ -323,7 +335,7 @@ class Enginer:
 
                 # Predictions
                 predn = np.copy(pred)
-                scale_coords(imgs[si].shape[1:], predn[:, :4], shapes[si][0, :], shapes[si][1:, :])  # native-space pred
+                scale_coords(imgs[si].shape[1:], predn[:, :4], ori_shape[si])  # native-space pred
 
                 image_id = int(path.stem) if path.stem.isnumeric() else path.stem
                 box = xyxy2xywh(predn[:, :4])  # xywh
@@ -397,31 +409,32 @@ class Enginer:
 
         return ops.HyperMap()(accu_fn, accumulate_grads, grads)
 
-    def _get_train_step_fn(self, ms_jit=False):
+    @staticmethod
+    def _get_train_step_fn(network, loss_fn, optimizer, rank_size, scaler, reducer, overflow_still_update=False, ms_jit=False):
 
         def forward_func(x, label, sizes=None):
             if sizes is not None:
                 x = ops.interpolate(x, sizes=sizes, coordinate_transformation_mode="asymmetric", mode="bilinear")
-            pred = self.network(x)
-            loss, loss_items = self.loss(pred, label, x)
-            loss *= self.rank_size
-            return self.scaler.scale(loss), loss_items
+            pred = network(x)
+            loss, loss_items = loss_fn(pred, label, x)
+            loss *= rank_size
+            return scaler.scale(loss), loss_items
 
-        grad_fn = ops.value_and_grad(forward_func, grad_position=None, weights=self.optimizer.parameters, has_aux=True)
+        grad_fn = ops.value_and_grad(forward_func, grad_position=None, weights=optimizer.parameters, has_aux=True)
 
         def train_step_func(x, label, sizes=None, optimizer_update=True):
             (loss, loss_items), grads = grad_fn(x, label, sizes)
-            loss = self.scaler.unscale(loss)
-            grads = self.reducer(grads)
-            unscaled_grads = self.scaler.unscale(grads)
+            loss = scaler.unscale(loss)
+            grads = reducer(grads)
+            unscaled_grads = scaler.unscale(grads)
             grads_finite = all_finite(unscaled_grads)
 
             if optimizer_update:
                 if grads_finite:
-                    loss = ops.depend(loss, self.optimizer(unscaled_grads))
+                    loss = ops.depend(loss, optimizer(unscaled_grads))
                 else:
-                    if self.overflow_still_update:
-                        loss = ops.depend(loss, self.optimizer(unscaled_grads))
+                    if overflow_still_update:
+                        loss = ops.depend(loss, optimizer(unscaled_grads))
 
             return loss, loss_items, unscaled_grads, grads_finite
 

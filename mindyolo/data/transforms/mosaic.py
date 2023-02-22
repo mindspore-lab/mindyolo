@@ -29,11 +29,11 @@ class Mosaic:
         self.mosaic_border = [-target_size // 2, -target_size // 2]
         self.simple_copy_paste = SimpleCopyPaste(prob=copy_paste_prob)
         self.random_perspective = RandomPerspective(degrees=degrees,
-                                               translate=translate,
-                                               scale=scale,
-                                               shear=shear,
-                                               perspective=perspective,
-                                               border=self.mosaic_border)
+                                                    translate=translate,
+                                                    scale=scale,
+                                                    shear=shear,
+                                                    perspective=perspective,
+                                                    border=self.mosaic_border)
 
     def __call__(self, records_outs):
         if np.random.random() < self.mosaic_prob:
@@ -85,8 +85,8 @@ class Mosaic:
                         x[:, 1] += padh
 
                 gt_bboxes4.append(gt_bbox)
-                gt_polys4.extend(gt_poly)
                 gt_classes4.append(gt_class)
+                gt_polys4.extend(gt_poly)
 
             # Concat/clip labels
             gt_classes4 = np.concatenate(gt_classes4, 0)
@@ -95,13 +95,13 @@ class Mosaic:
                 np.clip(x, 0, 2 * img_size, out=x)  # clip when using random_perspective()
 
             # Augment
-            img4, w, h, gt_bboxes4, gt_classes4, gt_polys4 = self.simple_copy_paste(img4, img_size * 2, img_size * 2, gt_bboxes4, gt_classes4, gt_polys4)
-            img4, w, h, gt_bboxes4, gt_classes4, gt_polys4 = self.random_perspective(img4, w, h, gt_bboxes4, gt_classes4, gt_polys4)
+            img4, gt_bboxes4, gt_classes4, gt_polys4 = \
+                self.simple_copy_paste(img4, gt_bboxes4, gt_classes4, gt_polys4)
+            img4, gt_bboxes4, gt_classes4, gt_polys4 = \
+                self.random_perspective(img4, gt_bboxes4, gt_classes4, gt_polys4)
 
             record_out = records_outs[0]
             record_out['image'] = img4
-            record_out['h'] = h
-            record_out['w'] = w
             record_out['gt_class'] = gt_classes4
             record_out['gt_bbox'] = gt_bboxes4
             record_out['gt_poly'] = gt_polys4

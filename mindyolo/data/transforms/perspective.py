@@ -1,11 +1,8 @@
-import sys
 import numpy as np
 import cv2
 import math
-import copy
 
-sys.path.append('../')
-from general import resample_polys, poly2box, in_range
+from ..general import resample_polys, poly2box
 
 __all__ = ['RandomPerspective']
 
@@ -20,8 +17,6 @@ class RandomPerspective:
         perspective (float): the perspective range to apply, transform range is [0, 0.001]
     """
     def __init__(self, degrees=10, translate=.1, scale=.1, shear=2, perspective=0.0, border=(0, 0)):
-        if not (in_range(degrees, -10, 10) and in_range(translate, -0.1, 0.1) and in_range(scale, 0.1, 2) and in_range(shear, -2, 2) and in_range(perspective, 0, 0.001)):
-            raise ValueError('{}: input value is invalid!'.format(self))
         self.degrees = degrees
         self.translate = translate
         self.scale = scale
@@ -29,7 +24,7 @@ class RandomPerspective:
         self.perspective = perspective
         self.border = border
 
-    def __call__(self, img, w, h, gt_bbox, gt_class, *gt_poly):
+    def __call__(self, img, gt_bbox, gt_class, gt_poly):
         height = img.shape[0] + self.border[0] * 2  # shape(h,w,c)
         width = img.shape[1] + self.border[1] * 2
 
@@ -75,7 +70,7 @@ class RandomPerspective:
         new_poly = [None] * n
         if n:
             if gt_poly:
-                resample_result = resample_polys(*gt_poly)  # upsample
+                resample_result = resample_polys(gt_poly)  # upsample
                 for i, poly in enumerate(resample_result):
                     xy = np.ones((len(poly), 3))
                     xy[:, :2] = poly
@@ -113,9 +108,9 @@ class RandomPerspective:
                     if value:
                         filter_result.append(new_poly[j])
         if gt_poly:
-            return img, width, height, gt_bbox, gt_class, gt_poly
+            return img, gt_bbox, gt_class, gt_poly
         else:
-            return img, width, height, gt_bbox, gt_class
+            return img, gt_bbox, gt_class
 
 
 def box_candidates(box1, box2, wh_thr=2, ar_thr=20, area_thr=0.1, eps=1e-16):  # box1(4,n), box2(4,n)
