@@ -37,9 +37,9 @@ class YOLOv7Head(nn.Cell):
         self.anchors = Parameter(Tensor(anchors, ms.float32), requires_grad=False) # shape(nl,na,2)
         self.anchor_grid = Parameter(Tensor(anchor_grid, ms.float32), requires_grad=False) # shape(nl,1,na,1,1,2)
         self.convert_matrix = Parameter(Tensor(np.array([[1, 0, 1, 0],
-                                                            [0, 1, 0, 1],
-                                                            [-0.5, 0, 0.5, 0],
-                                                            [0, -0.5, 0, 0.5]]), dtype=ms.float32), requires_grad=False)
+                                                         [0, 1, 0, 1],
+                                                         [-0.5, 0, 0.5, 0],
+                                                         [0, -0.5, 0, 0.5]]), dtype=ms.float32), requires_grad=False)
 
         self.m = nn.CellList([nn.Conv2d(x, self.no * self.na, 1,
                                         pad_mode="valid",
@@ -62,7 +62,8 @@ class YOLOv7Head(nn.Cell):
             if not self.training:  # inference
                 grid_tensor = self._make_grid(nx, ny, out.dtype)
 
-                y = ops.sigmoid(out)
+                # y = ops.sigmoid(out)
+                y = ops.Sigmoid()(out)
                 y[..., 0:2] = (y[..., 0:2] * 2. - 0.5 + grid_tensor) * self.stride[i]  # xy
                 y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
                 z += (y.view(bs, -1, self.no),)
@@ -157,7 +158,8 @@ class YOLOv7AuxHead(nn.Cell):
             if not self.training:  # inference
                 grid_tensor = self._make_grid(nx, ny, out1.dtype)
 
-                y = ops.sigmoid(out1)
+                # y = ops.sigmoid(out1)
+                y = ops.Sigmoid()(out1)
                 y[..., 0:2] = (y[..., 0:2] * 2. - 0.5 + grid_tensor) * self.stride[i]  # xy
                 y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
                 z += (y.view(bs, -1, self.no),)

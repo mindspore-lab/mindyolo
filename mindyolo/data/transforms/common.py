@@ -1,9 +1,13 @@
-import numpy as np
+import random
 import cv2
+import numpy as np
 
 from ..general import bbox_ioa
 
-__all__ = ['RandomFlip', 'RandomHSV', 'NormalizeImage', 'LetterBox', 'SimpleCopyPaste', 'NormalizeBox']
+__all__ = ['SimpleCopyPaste',
+           'RandomFlip', 'RandomHSV',
+           'NormalizeImage', 'TransposeImage',
+           'NormalizeBox', 'LetterBox']
 
 
 class RandomFlip:
@@ -17,7 +21,7 @@ class RandomFlip:
         if not (isinstance(self.prob, float)):
             raise TypeError("{}: input type is invalid.".format(self))
 
-    def __call__(self, img, im_file, ori_shape, gt_bbox, gt_class, *gt_poly):
+    def __call__(self, img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly=None):
         if np.random.random() < self.prob:
             img = np.fliplr(img)
             h, w = img.shape[:2]
@@ -31,9 +35,9 @@ class RandomFlip:
                     poly[:, 0] = w - poly[:, 0]
 
         if gt_poly:
-            return img, im_file, ori_shape, gt_bbox, gt_class, gt_poly
+            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly
         else:
-            return img, im_file, ori_shape, gt_bbox, gt_class
+            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class
 
 
 class NormalizeImage:
@@ -62,7 +66,7 @@ class NormalizeImage:
         if self.std and reduce(lambda x, y: x * y, self.std) == 0:
             raise ValueError('{}: std is invalid!'.format(self))
 
-    def __call__(self, img, im_file, ori_shape, gt_bbox, gt_class, *gt_poly):
+    def __call__(self, img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly=None):
         """Normalize the image.
         Operators:
             1.(optional) Scale the pixel to [0,1]
@@ -83,9 +87,38 @@ class NormalizeImage:
             img /= std
 
         if gt_poly:
-            return img, im_file, ori_shape, gt_bbox, gt_class, gt_poly
+            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly
         else:
-            return img, im_file, ori_shape, gt_bbox, gt_class
+            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class
+
+
+class TransposeImage:
+    """
+    Args:
+        bgr2rgb (bool): transpose image channel from BGR to RGB
+        hwc2chw (bool): transpose image dim from (h, w, c) to (c, h, w)
+    """
+
+    def __init__(self, bgr2rgb=True, hwc2chw=True):
+
+        self.bgr2rgb = bgr2rgb
+        self.hwc2chw = hwc2chw
+
+        if not (isinstance(bgr2rgb, bool) and isinstance(hwc2chw, bool)):
+            raise TypeError("{}: input type is invalid.".format(self))
+
+    def __call__(self, img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly=None):
+
+        if self.bgr2rgb:
+            img = img[:, :, ::-1]
+
+        if self.hwc2chw:
+            img = img.transpose(2, 0, 1)
+
+        if gt_poly:
+            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly
+        else:
+            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class
 
 
 class RandomHSV:
@@ -95,7 +128,7 @@ class RandomHSV:
     def __init__(self, hgain=0.5, sgain=0.5, vgain=0.5):
         self.gains = [hgain, sgain, vgain]
 
-    def __call__(self, img, im_file, ori_shape, gt_bbox, gt_class, *gt_poly):
+    def __call__(self, img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly=None):
         r = np.random.uniform(-1, 1, 3) * self.gains + 1  # random gains
         hue, sat, val = cv2.split(cv2.cvtColor(img, cv2.COLOR_BGR2HSV))
 
@@ -108,9 +141,9 @@ class RandomHSV:
         img = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR)
 
         if gt_poly:
-            return img, im_file, ori_shape, gt_bbox, gt_class, gt_poly
+            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly
         else:
-            return img, im_file, ori_shape, gt_bbox, gt_class
+            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class
 
 
 class SimpleCopyPaste:
@@ -127,13 +160,13 @@ class SimpleCopyPaste:
         if self.prob and n:
             h, w, c = img.shape  # height, width, channels
             im_new = np.zeros(img.shape, np.uint8)
-            for j in np.random.choice(range(n), size=round(self.prob * n), replace=False):
+            for j in random.sample(range(n), k=round(self.prob * n)):
                 b, p, c = gt_bbox[j], gt_poly[j], gt_class[j]
                 box = [w - b[2], b[1], w - b[0], b[3]]
                 ioa = bbox_ioa(box, gt_bbox)  # intersection over area
                 if (ioa < 0.30).all():  # allow 30% obscuration of existing labels
-                    gt_bbox = np.concatenate((gt_bbox, [box]), 0)
-                    gt_class = np.concatenate((gt_class, c[None]), 0)
+                    gt_bbox = np.concatenate((gt_bbox, [box,]), 0)
+                    gt_class = np.concatenate((gt_class, [c,]), 0)
                     gt_poly.append(np.concatenate((w - p[:, 0:1], p[:, 1:2]), 1))
                     cv2.drawContours(im_new, [gt_poly[j].astype(np.int32)], -1, (255, 255, 255), cv2.FILLED)
 
@@ -149,16 +182,15 @@ class LetterBox:
     """
     Resize and pad image while meeting stride-multiple constraints
     """
-    def __init__(self, new_shape=(640, 640), color=(114, 114, 114), auto=False, scalefill=False, scaleup=False, stride=32):
-        self.new_shape = (new_shape, new_shape) if isinstance(new_shape, int) else new_shape
-        self.new_shape = new_shape
+    def __init__(self, target_size=(640, 640), color=(114, 114, 114), auto=False, scalefill=False, scaleup=False, stride=32):
+        self.new_shape = (target_size, target_size) if isinstance(target_size, int) else target_size
         self.color = color
         self.auto = auto
         self.scalefill = scalefill
         self.scaleup = scaleup
         self.stride = stride
 
-    def __call__(self, img, im_file, ori_shape, gt_bbox, gt_class, *gt_poly):
+    def __call__(self, img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly=None):
         shape = img.shape[:2]  # current shape [height, width]
         new_shape = self.new_shape
 
@@ -168,7 +200,7 @@ class LetterBox:
             r = min(r, 1.0)
 
         # Compute padding
-        ratio = r, r  # width, height ratios
+        ratio = r, r  # height, width ratios
         new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
         dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]  # wh padding
         if self.auto:  # minimum rectangle
@@ -176,7 +208,7 @@ class LetterBox:
         elif self.scalefill:  # stretch
             dw, dh = 0.0, 0.0
             new_unpad = (new_shape[1], new_shape[0])
-            ratio = new_shape[1] / shape[1], new_shape[0] / shape[0]  # width, height ratios
+            ratio = new_shape[0] / shape[0], new_shape[1] / shape[1]  # height, width ratios
 
         dw /= 2  # divide padding into 2 sides
         dh /= 2
@@ -187,29 +219,51 @@ class LetterBox:
         left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
         img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=self.color)  # add border
 
-        gt_bbox[:, 0] = ratio[0] * gt_bbox[:, 0] + dw
-        gt_bbox[:, 1] = ratio[1] * gt_bbox[:, 1] + dh
-        gt_bbox[:, 2] = ratio[0] * gt_bbox[:, 2] + dw
-        gt_bbox[:, 3] = ratio[1] * gt_bbox[:, 3] + dh
+        h_ratio, w_ratio = ratio[0], ratio[1]
+        gt_bbox[:, 0] = w_ratio * gt_bbox[:, 0] + dw
+        gt_bbox[:, 1] = h_ratio * gt_bbox[:, 1] + dh
+        gt_bbox[:, 2] = w_ratio * gt_bbox[:, 2] + dw
+        gt_bbox[:, 3] = h_ratio * gt_bbox[:, 3] + dh
 
         if gt_poly:
             for x in gt_poly:
-                x[:, 0] = ratio[0] * x[:, 0] + dw
-                x[:, 1] = ratio[1] * x[:, 1] + dh
+                x[:, 0] = w_ratio * x[:, 0] + dw
+                x[:, 1] = h_ratio * x[:, 1] + dh
 
-            return img, im_file, ori_shape, gt_bbox, gt_class, gt_poly
+            pad += np.array([dh, dw])
+            ratio *= np.array(ratio)
+            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly
+
         else:
-            return img, im_file, ori_shape, gt_bbox, gt_class
+            pad += np.array([dh, dw])
+            ratio *= np.array(ratio)
+            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class
 
 
 class NormalizeBox:
     """Transform the bounding box's coornidates to [0,1]."""
-    def __call__(self, img, im_file, ori_shape, gt_bbox, gt_class, *gt_poly):
+    def __init__(self, xyxy2xywh=True):
+        self.xyxy2xywh = xyxy2xywh
+
+    def __call__(self, img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly=None):
         height, width, _ = img.shape
         gt_bbox[:, [0, 2]] /= width
         gt_bbox[:, [1, 3]] /= height
 
+        if self.xyxy2xywh:
+            gt_bbox = self.xyxy2xywh_fn(gt_bbox)
+
         if gt_poly:
-            return img, im_file, ori_shape, gt_bbox, gt_class, gt_poly
+            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly
         else:
-            return img, im_file, ori_shape, gt_bbox, gt_class
+            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class
+
+    @staticmethod
+    def xyxy2xywh_fn(x):
+        # Convert nx4 boxes from [x1, y1, x2, y2] to [x, y, w, h] where xy1=top-left, xy2=bottom-right
+        y = np.copy(x)
+        y[:, 0] = (x[:, 0] + x[:, 2]) / 2  # x center
+        y[:, 1] = (x[:, 1] + x[:, 3]) / 2  # y center
+        y[:, 2] = x[:, 2] - x[:, 0]  # width
+        y[:, 3] = x[:, 3] - x[:, 1]  # height
+        return y

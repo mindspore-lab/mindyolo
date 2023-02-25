@@ -37,8 +37,8 @@ class YOLOv7Loss(nn.Cell):
         stride = np.array(stride)
         anchors = np.array(anchors).reshape((self.nl, -1, 2))
         anchors = anchors / stride.reshape((-1, 1, 1))
-        self.stride = Parameter(Tensor(stride, ms.int32), requires_grad=False)
-        self.anchors = Parameter(Tensor(anchors, ms.float32), requires_grad=False)  # shape(nl,na,2)
+        self.stride = Tensor(stride, ms.int32)
+        self.anchors = Tensor(anchors, ms.float32)  # shape(nl,na,2)
 
         # Class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
         self.cp, self.cn = smooth_BCE(eps=label_smoothing)  # positive, negative BCE targets
@@ -361,11 +361,11 @@ class YOLOv7AuxLoss(nn.Cell):
         stride = np.array(stride)
         anchors = np.array(anchors).reshape((self.nl, -1, 2))
         anchors = anchors / stride.reshape((-1, 1, 1))
-        self.stride = Parameter(Tensor(stride, ms.int32), requires_grad=False)
-        self.anchors = Parameter(Tensor(anchors, ms.float32), requires_grad=False)  # shape(nl,na,2)
+        self.stride = Tensor(stride, ms.int32)
+        self.anchors = Tensor(anchors, ms.float32)  # shape(nl,na,2)
 
         # Class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
-        self.cp, self.cn = smooth_BCE(eps=h.label_smoothing)  # positive, negative BCE targets
+        self.cp, self.cn = smooth_BCE(eps=label_smoothing)  # positive, negative BCE targets
         # Focal loss
         g = fl_gamma  # focal loss gamma
         if g > 0:

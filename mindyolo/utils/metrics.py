@@ -95,19 +95,25 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
     return output
 
 
-def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
+def scale_coords(img1_shape, coords, img0_shape, ratio=None, pad=None):
     # Rescale coords (xyxy) from img1_shape to img0_shape
-    if ratio_pad is None:  # calculate from img0_shape
-        gain = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])  # gain  = old / new
-        pad = (img1_shape[1] - img0_shape[1] * gain) / 2, (img1_shape[0] - img0_shape[0] * gain) / 2  # wh padding
-    else:
-        # assert ratio_pad[0, 0] == ratio_pad[0, 1]
-        gain = ratio_pad[0, 0]
-        pad = ratio_pad[1, :]
 
-    coords[:, [0, 2]] -= pad[0]  # x padding
-    coords[:, [1, 3]] -= pad[1]  # y padding
-    coords[:, :4] /= gain
+    if ratio is None:  # calculate from img0_shape
+        ratio = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])  # ratio  = old / new
+        h_ratio, w_ratio = ratio, ratio
+    else:
+        h_ratio, w_ratio = ratio[:]
+
+    if pad is None:
+        padh, padw = (img1_shape[0] - img0_shape[0] * h_ratio) / 2, \
+                     (img1_shape[1] - img0_shape[1] * w_ratio) / 2
+    else:
+        padh, padw = pad[:]
+
+    coords[:, [0, 2]] -= padw       # x padding
+    coords[:, [1, 3]] -= padh       # y padding
+    coords[:, [0, 2]] /= w_ratio    # x rescale
+    coords[:, [1, 3]] /= h_ratio    # y rescale
     coords = _clip_coords(coords, img0_shape)
     return coords
 

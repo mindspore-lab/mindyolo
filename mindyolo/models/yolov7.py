@@ -41,7 +41,6 @@ class YOLOv7(nn.Cell):
         self.reset_parameter()
 
     def construct(self, x):
-        x /= 255.0 # normalize
         return self.model(x)
 
     def reset_parameter(self):

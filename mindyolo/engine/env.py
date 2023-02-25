@@ -33,7 +33,7 @@ def init_env(cfg):
     if cfg.is_parallel:
         init()
         rank, rank_size, parallel_mode = get_rank(), get_group_size(), ParallelMode.DATA_PARALLEL
-    context.set_auto_parallel_context(parallel_mode=parallel_mode, gradients_mean=True, device_num=rank_size)
+    context.set_auto_parallel_context(device_num=rank_size, parallel_mode=parallel_mode, gradients_mean=True)
     cfg.rank, cfg.rank_size = rank, rank_size
     cfg.main_device = (rank % rank_size == 0)
 
@@ -62,7 +62,7 @@ def init_env(cfg):
     # Directories and Save run settings
     cfg.save_dir = _increment_path(Path(cfg.save_dir) / datetime.now().strftime("%Y.%m.%d-%H:%M:%S"), exist_ok=cfg.exist_ok)  # increment run
     cfg.ckpt_save_dir = os.path.join(cfg.save_dir, 'weights')
-    cfg.sync_lock_dir = os.path.join(cfg.save_dir, 'sync_locks') if not cfg.enable_modelarts else '/tmp'
+    cfg.sync_lock_dir = os.path.join(cfg.save_dir, 'sync_locks') if not cfg.enable_modelarts else '/tmp/sync_locks'
     if cfg.main_device:
         os.makedirs(cfg.ckpt_save_dir, exist_ok=True)
         with open(os.path.join(cfg.save_dir, "cfg.yaml"), 'w') as f:
@@ -74,15 +74,17 @@ def init_env(cfg):
     logger.setup_logging(logger_name="MindYOLO", log_level="INFO", rank_id=rank, device_per_servers=rank_size)
     logger.setup_logging_file(log_dir=os.path.join(cfg.save_dir, "logs"))
 
-    # Modelarts: Copy data, from the s3 bucket to the computing node
+    # Modelarts: Copy data, from the s3 bucket to the computing node; Reset dataset dir.
     if cfg.enable_modelarts:
         from mindyolo.utils.modelarts import sync_data
         os.makedirs(cfg.data_dir, exist_ok=True)
         sync_data(cfg.data_url, cfg.data_dir)
         sync_data(cfg.save_dir, cfg.train_url)
-        cfg.train_set = os.path.join(cfg.data_dir, cfg.train_set)
-        cfg.val_set = os.path.join(cfg.data_dir, cfg.val_set)
-        cfg.test_set = os.path.join(cfg.data_dir, cfg.test_set)
+        if cfg.ckpt_url:
+            sync_data(cfg.ckpt_url, cfg.ckpt_dir)  # pretrain ckpt
+        cfg.data.dataset_dir = os.path.join(cfg.data_dir, cfg.data.dataset_dir)
+        cfg.weight = os.path.join(cfg.ckpt_dir, cfg.weight) if cfg.weight else ''
+        cfg.ema_weight = os.path.join(cfg.ckpt_dir, cfg.ema_weight) if cfg.ema_weight else ''
 
 
 def _increment_path(path, exist_ok=True, sep=''):

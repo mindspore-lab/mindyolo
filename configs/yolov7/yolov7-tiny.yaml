@@ -1,7 +1,7 @@
 __BASE__: [
-  '../../common/base.yaml',
-  '../../data/coco.yaml',
-  '../hyp/hyp.scratch.tiny.yaml',
+  '../common/base.yaml',
+  '../data/coco.yaml',
+  './hyp/hyp.scratch.tiny.yaml',
 ]
 
 run_eval: False
@@ -120,5 +120,5 @@ network:
      [65, 1, ConvNormAct, [256, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
      [73, 1, ConvNormAct, [512, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
 
-     [[74,75,76], 1, YOLOv7Head, [nc, anchors]],   # Detect(P3, P4, P5)
+     [[74,75,76], 1, YOLOv7Head, [nc, anchors, stride]],   # Detect(P3, P4, P5)
     ]
