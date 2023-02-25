@@ -1,7 +1,7 @@
 __BASE__: [
-  '../../common/base.yaml',
-  '../../data/coco.yaml',
-  '../hyp/hyp.scratch.p6.yaml',
+  '../common/base.yaml',
+  '../data/coco.yaml',
+  './hyp/hyp.scratch.p6.yaml',
 ]
 
 run_eval: False
@@ -316,5 +316,5 @@ network:
      [136, 1, ConvNormAct, [960, 3, 1]],
      [112, 1, ConvNormAct, [1280, 3, 1]],
 
-     [[257,258,259,260,261,262,263,264], 1, YOLOv7AuxHead, [nc, anchors]],   # Detect(P3, P4, P5, P6)
+     [[257,258,259,260,261,262,263,264], 1, YOLOv7AuxHead, [nc, anchors, stride]],   # Detect(P3, P4, P5, P6)
     ]

@@ -91,13 +91,16 @@ class COCODataset:
 
                     # get the other images
                     if k == 'Mosaic':
-                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(3)] # 3 additional image
+                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(8)] # 8 additional image
                     elif k == 'PasteIn':
-                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(120)]
+                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(20)]
                     elif k == 'MixUp':
-                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(7)]
+                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(4)]
                     elif k == 'SimpleCopyPaste':
                         records_outs = [record_out, ]
+                    else:
+                        records_outs = [record_out, ]
+
                     # apply the multi_images data enhancements in turn
                     for record_out in records_outs:
                         if 'image' not in record_out:
@@ -110,9 +113,15 @@ class COCODataset:
             record_out['image'] = cv2.imread(img_path)  # BGR
 
         if self.detection_require_poly:
-            return record_out['image'], record_out['im_file'], record_out['ori_shape'], record_out['gt_bbox'], record_out['gt_class'], record_out['gt_poly']
+            return record_out['image'], record_out['im_file'], \
+                   record_out['ori_shape'], record_out['pad'], record_out['ratio'], \
+                   record_out['gt_bbox'], record_out['gt_class'], record_out['gt_poly']
+
         else:
-            return record_out['image'], record_out['im_file'], record_out['ori_shape'], record_out['gt_bbox'], record_out['gt_class']
+            return record_out['image'], record_out['im_file'], \
+                   record_out['ori_shape'], record_out['pad'], record_out['ratio'], \
+                   record_out['gt_bbox'], record_out['gt_class']
+
 
     def _sample_empty(self, records, num):
         # if empty_ratio is out of [0. ,1.), do not sample the records
@@ -169,7 +178,9 @@ class COCODataset:
             img_rec = {
                 'im_file': im_path,
                 'im_id': np.array([img_id]),
-                'ori_shape': np.array([im_h, im_w]),
+                'ori_shape': np.array([im_h, im_w]),  # for eval, [h, w]
+                'pad': np.array([0.0, 0.0]),          # for eval, [padh, padw]
+                'ratio': np.array([1.0, 1.0])         # for eval, [ratio_h, ratio_w]
             }
 
             if not self.load_image_only:
@@ -199,7 +210,7 @@ class COCODataset:
                         bboxes.append(inst)
                     else:
                         logger.warning(
-                            'Found an invalid bbox in annotations: im_id: {}, '
+                            'Found an invalid bbox in annotations, drop: im_id: {}, '
                             'area: {} x1: {}, y1: {}, x2: {}, y2: {}.'.format(
                                 img_id, float(inst['area']), x1, y1, x2, y2))
 
@@ -240,7 +251,7 @@ class COCODataset:
 
                 gt_rec = {
                     'gt_class': gt_class,
-                    'gt_bbox': gt_bbox,
+                    'gt_bbox': gt_bbox, # (x1, y1, x2, y2)
                     'gt_poly': gt_poly,
                 }
 

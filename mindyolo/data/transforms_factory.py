@@ -10,7 +10,7 @@ def create_transforms(transforms_list):
         single_img_transforms:
             - RandomFlip: {prob: 0.5}
             - RandomHSV: {}
-            - LetterBox: {new_shape: [720, 720]}
+            - LetterBox: {target_size: 640}
     """
     transforms_ops = []
     for t in transforms_list:

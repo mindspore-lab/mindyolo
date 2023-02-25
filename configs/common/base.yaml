@@ -5,6 +5,7 @@ exist_ok: False
 device_per_servers: 8
 log_level: "INFO"
 is_parallel: False
+task: 'train'
 
 # Train
 ms_strategy: StaticShape
@@ -15,7 +16,6 @@ ms_loss_scaler_value: 1024.0
 ms_grad_sens: 1024.0
 ms_jit: True
 ms_enable_graph_kernel: False
-num_parallel_workers: 4
 overflow_still_update: True
 clip_grad: False
 ema: True
@@ -34,31 +34,25 @@ single_cls: False
 sync_bn: False
 keep_checkpoint_max: 10
 run_eval: False
-v5_metric: False
 rect: False
 nms_time_limit: 20.0
 
 # Eval
 conf_thres: 0.001
 iou_thres: 0.65
-task: 'val'
-augment: False
-verbose: False
-save_txt: False
-save_conf: False
-save_json: False
-no_trace: False
 
-# Infer
+# Export
 file_format: 'MINDIR' # export
 output_path: './' # preprocess
 result_path: './result_files' # postprocess
 
 # ModelArts
 enable_modelarts: False
-data_url: ''
-train_url: ''
 data_dir: '/cache/data/'
+ckpt_dir: '/cache/pretrain_ckpt/'
+data_url: ''
+ckpt_url: ''
+train_url: ''
 
 ---
 
@@ -69,6 +63,7 @@ name: 'save to project/name'
 exist_ok: 'existing project/name ok, do not increment'
 device_per_servers: 'device number on a server'
 log_level: 'log level, CRITICAL/ERROR/WARNING/INFO/DEBUG'
+task: 'train, val, test, export or predict'
 
 # Help Train
 ms_strategy: 'train strategy, StaticCell/StaticShape/MultiShape/DynamicShape'
@@ -95,18 +90,10 @@ single_cls: 'train multi-class data as single-class'
 optimizer: 'select optimizer'
 sync_bn: 'use SyncBatchNorm, only available in DDP mode'
 freeze: 'Freeze layers'
-v5_metric: 'assume maximum recall as 1.0 in AP calculation'
 
 # Help Test
 conf_thres: 'object confidence threshold'
 iou_thres: 'IOU threshold for NMS'
-task: 'train, val, test, speed or study'
-augment: 'augmented inference'
-verbose: 'report mAP by class'
-save_txt: 'save results to *.txt'
-save_conf: 'save confidences in --save-txt labels'
-save_json: 'save a cocoapi-compatible JSON results file'
-no_trace: 'don`t trace model'
 
 # Help Infer
 file_format: 'Infer-export: treat as single-class dataset'

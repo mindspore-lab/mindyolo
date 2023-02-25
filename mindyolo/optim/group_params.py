@@ -51,22 +51,23 @@ def group_param_yolov7(params, weight_decay,
     for i in range(epochs * steps_per_epoch):
         _lr = lrs[i]
         if i < warmup_steps:
-            lr_pg0.append(np.interp(i, xi, [0.0, _lr]))
-            lr_pg1.append(np.interp(i, xi, [0.0, _lr]))
-            lr_pg2.append(np.interp(i,
+            lr_pg0.append(np.interp(i,
                                     [0, warmup_bias_steps_first, warmup_steps],
                                     [warmup_bias_lr, warmup_bias_lr_first, _lr]))
+            lr_pg1.append(np.interp(i, xi, [0.0, _lr]))
+            lr_pg2.append(np.interp(i, xi, [0.0, _lr]))
+
         else:
             lr_pg0.append(_lr)
             lr_pg1.append(_lr)
             lr_pg2.append(_lr)
 
-        nbs = 64
-        weight_decay *= total_batch_size * accumulate / nbs  # scale weight_decay
-        group_params = [{'params': pg0, 'lr': lr_pg0},
-                        {'params': pg1, 'lr': lr_pg1, 'weight_decay': weight_decay},
-                        {'params': pg2, 'lr': lr_pg2}]
-        return group_params
+    nbs = 64
+    weight_decay *= total_batch_size * accumulate / nbs  # scale weight_decay
+    group_params = [{'params': pg0, 'lr': lr_pg0},
+                    {'params': pg1, 'lr': lr_pg1, 'weight_decay': weight_decay},
+                    {'params': pg2, 'lr': lr_pg2}]
+    return group_params
 
 
 def _group_param_common2(params):

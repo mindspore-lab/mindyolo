@@ -1,5 +1,5 @@
 import copy
-
+import random
 import cv2
 import numpy as np
 
@@ -120,7 +120,7 @@ def bbox_ioa(box1, box2):
     return inter_area / box2_area
 
 
-def sample_polys(img, gt_class, gt_bbox, gt_poly, probability=0.5):
+def sample_polys(img, gt_bbox, gt_class, gt_poly, probability=0.5):
     """
     Implement Copy-Paste augmentation https://arxiv.org/abs/2012.07177
     """
@@ -131,10 +131,10 @@ def sample_polys(img, gt_class, gt_bbox, gt_poly, probability=0.5):
     sample_polys = []
     if probability and n:
         h, w, c = img.shape  # height, width, channels
-        for j in np.random.choice(range(n), size=round(probability * n), replace=False):
+        for j in random.sample(range(n), k=round(probability * n)):
             b, c, g = gt_bbox[j], gt_class[j], gt_poly[j]
-            box = b[0].astype(int).clip(0, w - 1), b[1].astype(int).clip(0, h - 1), b[2].astype(int).clip(0, w - 1), b[
-                3].astype(int).clip(0, h - 1)
+            box = b[0].astype(int).clip(0, w - 1), b[1].astype(int).clip(0, h - 1), \
+                  b[2].astype(int).clip(0, w - 1), b[3].astype(int).clip(0, h - 1)
 
             # print(box)
             if (box[2] <= box[0]) or (box[3] <= box[1]):
@@ -153,12 +153,13 @@ def sample_polys(img, gt_class, gt_bbox, gt_poly, probability=0.5):
             sample_images.append(mask[box[1]:box[3], box[0]:box[2], :])
 
             new_poly = np.copy(g)
-            new_poly[:, 0] -= box[0]
-            new_poly[:, 1] -= box[3]
+            relative_offset_h, relative_offset_w = box[0], box[1]
+            new_poly[:, 0] -= relative_offset_w
+            new_poly[:, 1] -= relative_offset_h
 
             sample_polys.append(new_poly)
 
-    return sample_images, sample_masks, sample_classes, sample_polys
+    return sample_classes, sample_images, sample_masks, sample_polys
 
 
 def resample_polys(polys, n=1000):
@@ -181,11 +182,12 @@ def poly2box(poly, width=640, height=640):
     """
     x, y = poly.T  # segment xy
     inside = (x >= 0) & (y >= 0) & (x <= width) & (y <= height)
-    x, y, = x[inside], y[inside]
-    return np.array([x.min(), y.min(), x.max(), y.max()]) if any(x) else np.zeros((1, 4))  # xyxy
+    x, y = x[inside], y[inside]
+    return np.array([x.min(), y.min(), x.max(), y.max()]) if any(x) else np.zeros((1, 4)), \
+           poly[inside] if any(x) else np.zeros((1, 2))  # xyxy, poly
 
 
-def normalize_shape(images, im_files, ori_shapes, gt_bboxes, gt_classes, batch_info):
+def normalize_shape(images, im_files, ori_shapes, pads, ratios, gt_bboxes, gt_classes, batch_info):
     """
     Ensure labels have the same shape to avoid dynamics shapes
     """
@@ -202,12 +204,11 @@ def normalize_shape(images, im_files, ori_shapes, gt_bboxes, gt_classes, batch_i
         gt_classes[i][:nL, :] = gt_class[:nL, :]
         batch_idx.append(np.full((most_boxes_per_img, 1), i, dtype=np.int32))
 
-    return np.stack(images, 0).transpose((0, 3, 1, 2)), \
-           im_files, np.stack(ori_shapes, 0), \
+    return np.stack(images, 0), im_files, np.stack(ori_shapes, 0), np.stack(pads, 0), np.stack(ratios, 0), \
            np.stack(gt_bboxes, 0), np.stack(gt_classes, 0), np.stack(batch_idx, 0)
 
 
-def normalize_shape_with_poly(images, im_files, ori_shapes, gt_bboxes, gt_classes, gt_polys, batch_info):
+def normalize_shape_with_poly(images, im_files, ori_shapes, pads, ratios, gt_bboxes, gt_classes, gt_polys, batch_info):
     """
     Ensure labels have the same shape to avoid dynamics shapes
     """
@@ -228,16 +229,12 @@ def normalize_shape_with_poly(images, im_files, ori_shapes, gt_bboxes, gt_classe
         gt_polys[i][:nL, :] = gt_poly[:nL]
 
     return np.stack(images, 0).transpose((0, 3, 1, 2)),\
-           im_files, np.stack(ori_shapes, 0), \
+           im_files, np.stack(ori_shapes, 0), np.stack(pads, 0), np.stack(ratios, 0), \
            np.stack(gt_bboxes, 0), np.stack(gt_classes, 0), np.stack(gt_polys, 0), np.stack(batch_idx, 0)
 
 
 def coco80_to_coco91_class():  # converts 80-index (val2014) to 91-index (paper)
     # https://tech.amikelive.com/node-718/what-object-categories-labels-are-in-coco-dataset/
-    # a = np.loadtxt('data/coco.names', dtype='str', delimiter='\n')
-    # b = np.loadtxt('data/coco_paper.names', dtype='str', delimiter='\n')
-    # x1 = [list(a[i] == b).index(True) + 1 for i in range(80)]  # darknet to coco
-    # x2 = [list(b[i] == a).index(True) if any(b[i] == a) else None for i in range(91)]  # coco to darknet
     x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 32, 33, 34,
          35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
          64, 65, 67, 70, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 86, 87, 88, 89, 90]

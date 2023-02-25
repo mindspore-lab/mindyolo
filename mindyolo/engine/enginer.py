@@ -9,7 +9,6 @@ from pycocotools.cocoeval import COCOeval
 
 import mindspore as ms
 from mindspore import nn, ops, Tensor, context
-from mindspore.amp import auto_mixed_precision
 
 from mindyolo.models import create_loss, create_model
 from mindyolo.optim import create_group_param, create_lr_scheduler, create_warmup_momentum_scheduler, \
@@ -17,7 +16,6 @@ from mindyolo.optim import create_group_param, create_lr_scheduler, create_warmu
 from mindyolo.data import create_dataloader
 from mindyolo.data.general import coco80_to_coco91_class
 from mindyolo.utils import logger
-from mindyolo.utils.all_finite import all_finite
 from mindyolo.utils.checkpoint_manager import CheckpointManager
 from mindyolo.utils.metrics import non_max_suppression, scale_coords, xyxy2xywh
 from mindyolo.utils.modelarts import sync_data
@@ -28,21 +26,23 @@ __all__ = ['Enginer']
 
 
 class Enginer:
-    def __init__(self, cfg, task='train'):
+    def __init__(self, cfg):
 
         # Check task
-        assert task.lower() in ('train', 'eval', 'test', 'predict'), \
-            "Trainer task should be 'train', 'eval', 'test' or 'predict'"
+        task = cfg.task.lower()
+        assert task in ('train', 'val', 'eval', 'test', 'export', 'predict'), \
+            "Trainer task should be 'train', 'val', 'eval', 'test', 'export' or 'predict'"
 
         # Init
         set_seed(cfg.get('seed', 2))
         init_env(cfg)
         self.cfg = cfg
-        self.task = task.lower()
+        self.task = task
         self.img_size = cfg.img_size
         self.rank_size = cfg.rank_size
         self.main_device = cfg.main_device
         self.amp_level = cfg.get('ms_amp_level', 'O0')
+        self.input_dtype = ms.float32 if self.amp_level == "O0" else ms.float16
         self.ms_jit = cfg.get('ms_jit', False)
         self.is_parallel = cfg.is_parallel = cfg.get('is_parallel', False)
         self.run_eval = cfg.get('run_eval', False)
@@ -71,20 +71,24 @@ class Enginer:
             self.ema = None
         self.load_pretrain() # load pretrain
         self.freeze_layers() # freeze Layers
-        auto_mixed_precision(self.network, amp_level=self.amp_level)
+        ms.amp.auto_mixed_precision(self.network, amp_level=self.amp_level)
         if self.ema:
-            auto_mixed_precision(self.ema.ema, amp_level=self.amp_level)
+            ms.amp.auto_mixed_precision(self.ema.ema, amp_level=self.amp_level)
 
         if task == 'train':
             # Create Dataset
-            self.dataset = create_dataloader(data_config=cfg.data,
-                                             task=task,
-                                             per_batch_size=cfg.per_batch_size)
-            self.steps_per_epoch = self.dataset.get_dataset_size()
+            self.dataloader, self.dataset = create_dataloader(data_config=cfg.data,
+                                                              task=task,
+                                                              per_batch_size=cfg.per_batch_size,
+                                                              rank=cfg.rank, rank_size=cfg.rank_size,
+                                                              shuffle=True, drop_remainder=True)
+            self.steps_per_epoch = self.dataloader.get_dataset_size()
             if self.run_eval:
-                self.eval_dataset = create_dataloader(data_config=cfg.data,
-                                                      task='eval',
-                                                      per_batch_size=cfg.per_batch_size * 2)
+                self.eval_dataloader, self.eval_dataset = create_dataloader(data_config=cfg.data,
+                                                                            task='eval',
+                                                                            per_batch_size=cfg.per_batch_size * 2,
+                                                                            rank=0, rank_size=1,
+                                                                            shuffle=False, drop_remainder=False)
 
             # Create Loss
             self.loss = create_loss(
@@ -93,7 +97,7 @@ class Enginer:
                 stride=cfg.network.get('stride', None),
                 nc=cfg.data.get('nc', None)
             )
-            auto_mixed_precision(self.loss, amp_level=self.amp_level)
+            ms.amp.auto_mixed_precision(self.loss, amp_level=self.amp_level)
 
             # Create Optimizer
             cfg.optimizer.steps_per_epoch = self.steps_per_epoch
@@ -109,27 +113,70 @@ class Enginer:
                                                          rank_size=self.rank_size, scaler=self.scaler, reducer=self.reducer,
                                                          overflow_still_update=self.overflow_still_update,
                                                          ms_jit=self.ms_jit)
+            self.accumulate_grads_fn = self.get_accumulate_grads_fn()
             self.network.set_train(True)
             self.optimizer.set_train(True)
 
-        elif task in ('eval', 'test'):
-            self.dataset = create_dataloader(data_config=cfg.data,
-                                             task=task,
-                                             per_batch_size=cfg.per_batch_size)
+        elif task in ('val', 'eval', 'test'):
+            self.dataloader, self.dataset = create_dataloader(data_config=cfg.data,
+                                                              task=task,
+                                                              per_batch_size=cfg.per_batch_size,
+                                                              rank=0, rank_size=1,
+                                                              shuffle=False, drop_remainder=False)
             self.network.set_train(False)
 
-        elif task in ('predict', 'detect'):
-            raise NotImplementedError
+        elif task == 'detect':
+            self.network.set_train(False)
+
+            # Data preprocess
+            if 'detect' in cfg and 'single_img_transforms' in cfg.detect:
+                from mindyolo.data import create_transforms
+                self.transform_ops = create_transforms(cfg.detect.single_img_transforms)
+            else:
+                logger.warning("Detect: single_img_transforms is not set, the default method is currently used.")
+                from mindyolo.data import create_transforms
+                from mindyolo.data import Resize, LetterBox, NormalizeImage, TransposeImage
+                self.transform_ops = [
+                    Resize(target_size=cfg.img_size, keep_ratio=True),
+                    LetterBox(target_size=cfg.img_size),
+                    NormalizeImage(is_scale=True, norm_type='none'),
+                    TransposeImage(bgr2rgb=True, hwc2chw=True)
+                ]
+
+        elif task == 'export':
+
+            pass
 
         else:
             raise NotImplementedError
+
+    def run(self, *args):
+
+        task = self.task
+
+        if task == 'train':
+            self.train()
+
+        elif task in ('val', 'eval', 'test'):
+            self.eval()
+
+        elif task == 'export':
+            self.export()
+
+        elif task == 'detect':
+            assert len(args) == 1, f"The detect task needs to provide image input, but got: {args}"
+            return self.detect(*args)
+
+        else:
+            raise NotImplementedError
+
+        return 1
 
     def train(self):
         self.global_step = 0
         self.accumulate_cur_step = 0
         self.accumulate_grads = None
         self.warmup_steps = max(self.warmup_epochs * self.steps_per_epoch, self.min_warmup_step)
-        self.input_dtype = ms.float32 if self.amp_level == "O0" else ms.float16
         ckpt_save_dir = self.cfg.ckpt_save_dir
         keep_checkpoint_max = self.cfg.keep_checkpoint_max
         enable_modelarts = self.cfg.enable_modelarts
@@ -154,7 +201,7 @@ class Enginer:
                     eval_network = self.ema.ema if self.ema else self.network
                     _train_status = eval_network.training
                     eval_network.set_train(False)
-                    accuracy = self.eval(eval_network, self.eval_dataset)
+                    accuracy = self.eval(eval_network, self.eval_dataloader, self.eval_dataset)
                     accuracy = accuracy[0] if isinstance(accuracy, (list, tuple)) else accuracy
                     eval_network.set_train(_train_status)
 
@@ -186,10 +233,10 @@ class Enginer:
                     manager_ema.save_ckpoint(self.ema, num_ckpt=keep_checkpoint_max, save_path=save_path_ema)
                 logger.info(f"Saving model to {save_path}")
 
-            if enable_modelarts:
-                sync_data(save_path, self.cfg.train_url + "/weights/" + save_path.split("/")[-1])
-                if self.ema:
-                    sync_data(save_path_ema, self.cfg.train_url + "/weights/" + save_path_ema.split("/")[-1])
+                if enable_modelarts:
+                    sync_data(save_path, self.cfg.train_url + "/weights/" + save_path.split("/")[-1])
+                    if self.ema:
+                        sync_data(save_path_ema, self.cfg.train_url + "/weights/" + save_path_ema.split("/")[-1])
 
             logger.info(f"Epoch {self.epochs}/{cur_epoch}, epoch time: {(time.time() - s_time) / 60:.2f} min.")
             s_time = time.time()
@@ -201,7 +248,7 @@ class Enginer:
         logger.info("End Train.")
 
     def train_epoch(self, cur_epoch):
-        loader = self.dataset.create_dict_iterator(output_numpy=True, num_epochs=1)
+        loader = self.dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
         s_time = time.time()
         for i, data in enumerate(loader):
             cur_step = i + 1
@@ -250,7 +297,7 @@ class Enginer:
             if grads_finite or self.overflow_still_update:
                 self.accumulate_cur_step += 1
                 if self.accumulate_grads:
-                    self.accumulate_grads = self.accumulate_grads_fn(self.accumulate_grads, grads)
+                    self.accumulate_grads = self.accumulate_grads_fn(self.accumulate_grads, grads) # update self.accumulate_grads
                 else:
                     self.accumulate_grads = grads
 
@@ -258,20 +305,21 @@ class Enginer:
                     self.optimizer(self.accumulate_grads)
                     if self.ema:
                         self.ema.update()
-                        logger.info(f"-Epoch: {cur_epoch}, Step: {cur_step}, accumulate: {self.accumulate}, "
-                                    f"optimizer an accumulate step success.")
+                    logger.info(f"Epoch {self.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step}, accumulate: {self.accumulate}, "
+                                f"optimizer an accumulate step success.")
+                    from mindyolo.utils.all_finite import all_finite
                     if not all_finite(self.accumulate_grads):
                         logger.warning(f"overflow, still update.")
                     # reset accumulate
                     self.accumulate_grads, self.accumulate_cur_step = None, 0
             else:
-                logger.warning(f"Epoch: {cur_epoch}, Step: {cur_step}, accumulate: {self.accumulate}, "
+                logger.warning(f"Epoch {self.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step}, accumulate: {self.accumulate}, "
                                f"this step grad overflow, drop. Loss scale adjust to {self.scaler.scale_value.asnumpy()}")
 
         # train log
         if cur_step % self.log_interval == 0:
             size = size if size else imgs.shape[2:]
-            log_string = f"Epoch {self.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step + 1}, imgsize {size}"
+            log_string = f"Epoch {self.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step}, imgsize {size}"
             # print loss
             if len(self.loss_item_name) < len(loss_item):
                 self.loss_item_name += [f'loss_item{i}' for i in range(len(loss_item) - len(self.loss_item_name))]
@@ -280,8 +328,8 @@ class Enginer:
             # print lr
             if self.optimizer.dynamic_lr:
                 if self.optimizer.is_group_lr:
-                    cur_lr = [lr_cell(Tensor(self.global_step, ms.int32)).asnumpy().item() \
-                              for lr_cell in self.optimizer.learning_rate]
+                    lr_cell = self.optimizer.learning_rate[0]
+                    cur_lr = lr_cell(Tensor(self.global_step, ms.int32)).asnumpy().item()
                 else:
                     cur_lr = self.optimizer.learning_rate(Tensor(self.global_step, ms.int32)).asnumpy().item()
             else:
@@ -289,24 +337,26 @@ class Enginer:
             log_string += f", cur_lr: {cur_lr}"
             logger.info(log_string)
 
-    def eval(self, model=None, dataset=None):
+    def eval(self, model=None, dataloader=None, dataset=None):
 
         model = model if model else self.network
         dataset = dataset if dataset else self.dataset
-        loader = dataset.create_dict_iterator(output_numpy=True, num_epochs=1)
+        dataloader = dataloader if dataloader else self.dataloader
+        loader = dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
         anno_json_path = os.path.join(self.cfg.data.dataset_dir, self.cfg.data.val_anno_path)
         coco91class = coco80_to_coco91_class()
         is_coco_dataset = ('coco' in self.cfg.data.dataset_name)
 
-        step_num = dataset.get_dataset_size()
+        step_num = dataloader.get_dataset_size()
+        sample_num = 0
         infer_times = 0.
         nms_times = 0.
         result_dicts = []
 
         for i, data in enumerate(loader):
-            imgs, batch_idx, gt_class, gt_bbox, paths, ori_shape = \
-                data["image"], data['batch_idx'], data["gt_class"], data["gt_bbox"],\
-                data["im_file"], data["ori_shape"]
+            imgs, batch_idx, gt_class, gt_bbox, paths, ori_shape, pad, ratio = \
+                data['image'], data['batch_idx'], data['gt_class'], data['gt_bbox'],\
+                data['im_file'], data['ori_shape'], data['pad'], data['ratio']
             imgs_tensor = Tensor(imgs, self.input_dtype)
             nb, _, height, width = imgs.shape  # batch size, channels, height, width
             targets = np.concatenate((batch_idx, gt_class, gt_bbox), -1)  # (bs, N, 6)
@@ -330,6 +380,7 @@ class Enginer:
             # Statistics pred
             for si, pred in enumerate(out):
                 path = Path(str(paths[si]))
+                sample_num += 1
                 if len(pred) == 0:
                     continue
 
@@ -345,6 +396,7 @@ class Enginer:
                                          'category_id': coco91class[int(p[5])] if is_coco_dataset else int(p[5]),
                                          'bbox': [round(x, 3) for x in b],
                                          'score': round(p[4], 5)})
+            logger.info(f"Sample {step_num}/{i + 1}, time cost: {(time.time() - _t) * 1000:.2f} ms.")
 
         # Compute mAP
         try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
@@ -352,28 +404,83 @@ class Enginer:
             pred = anno.loadRes(result_dicts)  # init predictions api
             eval = COCOeval(anno, pred, 'bbox')
             if is_coco_dataset:
-                eval.params.imgIds = [int(Path(img_rec['im_file']).stem) for img_rec in loader.source.imgs_records] # image IDs to evaluate
+                eval.params.imgIds = [int(Path(img_rec['im_file']).stem) for img_rec in dataset.imgs_records] # image IDs to evaluate
             eval.evaluate()
             eval.accumulate()
             eval.summarize()
             map, map50 = eval.stats[:2]  # update results (mAP@0.5:0.95, mAP@0.5)
         except Exception as e:
-            print(f'pycocotools unable to run: {e}')
+            logger.warning(f'pycocotools unable to run: {e}')
             raise e
 
-        t = tuple(x / step_num * 1E3 for x in (infer_times, nms_times, infer_times + nms_times)) + \
+        t = tuple(x / sample_num * 1E3 for x in (infer_times, nms_times, infer_times + nms_times)) + \
             (height, width, self.cfg.per_batch_size)  # tuple
-        print(f'Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g;' % t)
+        logger.info(f'Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g;' % t)
 
         return map, map50
 
-    def export(self):
-        # TODO: Supplement export function
-        pass
+    def detect(self, img):
+        coco91class = coco80_to_coco91_class()
+        is_coco_dataset = ('coco' in self.cfg.data.dataset_name)
 
-    def predict(self):
-        # TODO: Supplement predict function
-        pass
+        im_file, ori_shape, pad, ratio, gt_bbox, gt_class = \
+            '', img.shape[:2], np.array([0., 0.]), np.array([1., 1.]), np.zeros((0, 4)), np.zeros((0, 1))
+        for op in self.transform_ops:
+            img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class = \
+                op(img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class)
+
+        imgs_tensor = Tensor(img[None], self.input_dtype)
+
+        # Run infer
+        _t = time.time()
+        out = self.network(imgs_tensor)  # inference and training outputs
+        out = out[0] if isinstance(out, (tuple, list)) else out
+        infer_times = time.time() - _t
+
+        # Run NMS
+        t = time.time()
+        out = out.asnumpy()
+        out = non_max_suppression(out, conf_thres=self.cfg.conf_thres, iou_thres=self.cfg.iou_thres,
+                                  multi_label=True, time_limit=self.cfg.nms_time_limit)
+        nms_times = time.time() - t
+
+        # Statistics pred
+        result_dicts = []
+
+        for si, pred in enumerate(out):
+            if len(pred) == 0:
+                continue
+
+            # Predictions
+            predn = np.copy(pred)
+            scale_coords(img.shape[1:], predn[:, :4], ori_shape[si])  # native-space pred
+
+            box = xyxy2xywh(predn[:, :4])  # xywh
+            box[:, :2] -= box[:, 2:] / 2  # xy center to top-left corner
+            category_ids, bboxes, scores = [], [], []
+            for p, b in zip(pred.tolist(), box.tolist()):
+                category_ids.append(coco91class[int(p[5])] if is_coco_dataset else int(p[5]))
+                bboxes.append([round(x, 3) for x in b])
+                scores.append(round(p[4], 5))
+            result_dict = {
+                'category_id': category_ids,
+                'bbox': bboxes,
+                'score': scores
+            }
+            result_dicts.append(result_dict)
+
+        t = tuple(x * 1E3 for x in (infer_times, nms_times, infer_times + nms_times)) + \
+            (self.img_size, self.img_size, 1)  # tuple
+        logger.info(f'Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g;' % t)
+        logger.info(f"Detect a image success.")
+
+        return result_dicts
+
+    def export(self):
+        from mindspore import export
+        input_arr = Tensor(np.ones([self.cfg.per_batch_size, 3, self.img_size, self.img_size]), ms.float32)
+        file_name = os.path.basename(self.cfg.config)[:-5]  # delete ".yaml"
+        export(self.network, input_arr, file_name=file_name, file_format=self.cfg.file_format)
 
     def load_pretrain(self):
         weight, ema_weight = self.cfg.weight, self.cfg.ema_weight
@@ -397,20 +504,25 @@ class Enginer:
             freeze = [f'model.{x}.' for x in freeze]  # parameter names to freeze (full or partial)
             for n, p in self.network.parameters_and_names():
                 if any(x in n for x in freeze):
-                    print('freezing %s' % n)
+                    logger.info('freezing %s' % n)
                     p.requires_grad = False
 
-    @staticmethod
-    @ms.ms_function
-    def accumulate_grads_fn(accumulate_grads, grads):
+    def get_accumulate_grads_fn(self):
+        hyper_map = ops.HyperMap()
 
         def accu_fn(g1, g2):
-            return g1 + g2
+            g1 = g1 + g2
+            return g1
 
-        return ops.HyperMap()(accu_fn, accumulate_grads, grads)
+        def accumulate_grads_fn(accumulate_grads, grads):
+            success = hyper_map(accu_fn, accumulate_grads, grads)
+            return success
+
+        return accumulate_grads_fn
 
     @staticmethod
     def _get_train_step_fn(network, loss_fn, optimizer, rank_size, scaler, reducer, overflow_still_update=False, ms_jit=False):
+        from mindyolo.utils.all_finite import all_finite
 
         def forward_func(x, label, sizes=None):
             if sizes is not None:

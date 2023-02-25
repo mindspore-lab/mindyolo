@@ -9,33 +9,51 @@ from .general import normalize_shape
 __all__ = ['create_dataloader']
 
 
-def create_dataloader(data_config, task, per_batch_size):
+def create_dataloader(data_config, task, per_batch_size, rank=0, rank_size=1, shuffle=True, drop_remainder=False):
     if task == 'train':
         image_dir = data_config.train_img_dir
         anno_path = data_config.train_anno_path
+        trans_config = getattr(data_config, 'train_transforms', data_config)
     elif task in ('val', 'eval'):
         image_dir = data_config.val_img_dir
         anno_path = data_config.val_anno_path
+        trans_config = getattr(data_config, 'eval_transforms', data_config)
     elif task == "test":
         image_dir = data_config.test_img_dir
         anno_path = data_config.test_anno_path
+        trans_config = getattr(data_config, 'eval_transforms', data_config)
+        trans_config = getattr(data_config, 'test_transforms', trans_config)
     else:
         raise NotImplementedError
 
-    multi_imgs_transforms = getattr(data_config, 'multi_imgs_transforms', None)
+    num_parallel_worker = getattr(data_config, 'num_parallel_worker', 4)
+
+    multi_imgs_transforms = getattr(trans_config, 'multi_imgs_transforms', None)
     dataset = COCODataset(dataset_dir=data_config.dataset_dir,
                           image_dir=image_dir,
                           anno_path=anno_path,
-                          multi_imgs_transforms=multi_imgs_transforms)
-    dataset_column_names = ['image', 'im_file', 'ori_shape', 'gt_bbox', 'gt_class']
-    ds = de.GeneratorDataset(dataset, column_names=dataset_column_names)
+                          multi_imgs_transforms=multi_imgs_transforms,
+                          allow_empty=True,
+                          detection_require_poly=False
+                          )
+    dataset_column_names = ['image', 'im_file',
+                            'ori_shape', 'pad', 'ratio',
+                            'gt_bbox', 'gt_class']
 
-    single_img_transforms = getattr(data_config, 'single_img_transforms', None)
+    if rank_size > 1:
+        ds = de.GeneratorDataset(dataset, column_names=dataset_column_names,
+                                 num_parallel_workers=num_parallel_worker, shuffle=shuffle,
+                                 num_shards=rank_size, shard_id=rank)
+    else:
+        ds = de.GeneratorDataset(dataset, column_names=dataset_column_names,
+                                 num_parallel_workers=num_parallel_worker, shuffle=shuffle)
+
+    single_img_transforms = getattr(trans_config, 'single_img_transforms', None)
     if single_img_transforms:
         single_img_transforms = create_transforms(single_img_transforms)
-        ds = ds.map(operations=single_img_transforms, input_columns=dataset_column_names)
+        ds = ds.map(operations=single_img_transforms, input_columns=dataset_column_names, num_parallel_workers=num_parallel_worker)
 
-    per_batch_map = getattr(data_config, 'batch_imgs_transform', None)
+    per_batch_map = getattr(trans_config, 'batch_imgs_transform', None)
     if per_batch_map:
         per_batch_map = create_per_batch_map(per_batch_map)
     else:
@@ -45,10 +63,13 @@ def create_dataloader(data_config, task, per_batch_size):
     ds = ds.batch(per_batch_size,
                   input_columns=dataset_column_names,
                   output_columns=batch_column,
-                  per_batch_map=per_batch_map)
+                  per_batch_map=per_batch_map,
+                  num_parallel_workers=num_parallel_worker,
+                  drop_remainder=drop_remainder
+                  )
     ds = ds.repeat(1)
 
-    return ds
+    return ds, dataset
 
 
 if __name__ == '__main__':

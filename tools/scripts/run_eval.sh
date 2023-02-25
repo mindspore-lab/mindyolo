@@ -1,6 +1,6 @@
-if [ $# != 2 ]
+if [ $# != 4 ]
 then
-    echo "Usage: bash run_test.sh [CONFIG_PATH] [DEVICE_TRAGET] [DEVICE_ID|CUDA_VISIBLE_DEVICES]"
+    echo "Usage: bash run_test.sh [CONFIG_PATH] [DEVICE_TRAGET] [DEVICE_ID|CUDA_VISIBLE_DEVICES] [WEIGHT]"
 exit 1
 fi
 
@@ -14,6 +14,7 @@ get_real_path(){
 
 CONFIG_PATH=$(get_real_path $1)
 DEVICE_TRAGET=$2
+WEIGHT=$4
 DEVICE_NUM=1
 
 PARALLEL=0
@@ -53,10 +54,8 @@ if [ ! -f $CONFIG_PATH ]; then
     exit 1
 fi
 
-
-BASE_PATH=$(cd ./"`dirname $0`" || exit; pwd)
-cd $BASE_PATH
-
 python ./tools/eval.py \
-  --device_target=$DEVICE_TRAGET \
-  --config=$CONFIG_FILE > log.txt 2>&1 &
+    --config=$CONFIG_PATH \
+    --task='eval' \
+    --device_target=$DEVICE_TRAGET \
+    --weight=$WEIGHT  > log.txt 2>&1 &

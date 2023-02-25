@@ -28,21 +28,29 @@ loss:
   use_aux: 1 # use ComputeLossAuxOTA on p6 train
 
 data:
-  hsv_h: 0.015  # image HSV-Hue augmentation (fraction)
-  hsv_s: 0.7  # image HSV-Saturation augmentation (fraction)
-  hsv_v: 0.4  # image HSV-Value augmentation (fraction)
-  degrees: 0.0  # image rotation (+/- deg)
-  translate: 0.2  # image translation (+/- fraction)
-  scale: 0.9  # image scale (+/- gain)
-  shear: 0.0  # image shear (+/- deg)
-  perspective: 0.0  # image perspective (+/- fraction), range 0-0.001
-  flipud: 0.0  # image flip up-down (probability)
-  fliplr: 0.5  # image flip left-right (probability)
-  mosaic: 1.0  # image mosaic (probability)
-  mixup: 0.15  # image mixup (probability)
-  copy_paste: 0.0  # image copy paste (probability)
-  paste_in: 0.15  # image copy paste (probability), use 0 for faster training
-  max_box_per_img: 160 # label mask
+  num_parallel_workers: 4
+
+  train_transforms:
+    multi_imgs_transforms:
+      - Mosaic: { mosaic_prob: 1.0, copy_paste_prob: 0.0, degrees: 0.0, translate: 0.2, scale: 0.9, shear: 0.0,
+                  perspective: 0.0, target_size: 1280 }
+      - MixUp: { prob: 0.15, alpha: 8.0, beta: 8.0, mosaic_needed: True }
+      - PasteIn: { prob: 0.15, target_size: 1280 }
+    single_img_transforms:
+      - RandomHSV: { hgain: 0.015, sgain: 0.7, vgain: 0.4 }
+      - RandomFlip: { prob: 0.5 }
+      - NormalizeBox: { xyxy2xywh: True }
+      - NormalizeImage: { is_scale: True, norm_type: none }
+      - TransposeImage: { bgr2rgb: True, hwc2chw: True }
+    batch_imgs_transform:
+      BatchLabelsPadding: { padding_size: 160, padding_value: -1 }
+
+  eval_transforms:
+    single_img_transforms:
+      - Resize: { target_size: 640, keep_ratio: True }
+      - LetterBox: { target_size: 1280 }
+      - NormalizeBox: { xyxy2xywh: True }
+      - NormalizeImage: { is_scale: True, norm_type: none }
+      - TransposeImage: { bgr2rgb: True, hwc2chw: True }
 
 img_size: 1280 # image sizes
-epoch_eval_interval: [[200, 10], [250, 5], [300, 1]] # eval interval

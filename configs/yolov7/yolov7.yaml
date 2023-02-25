@@ -1,7 +1,7 @@
 __BASE__: [
-  '../../common/base.yaml',
-  '../../data/coco.yaml',
-  '../hyp/hyp.scratch.p5.yaml',
+  '../common/base.yaml',
+  '../data/coco.yaml',
+  './hyp/hyp.scratch.p5.yaml',
 ]
 
 run_eval: False
