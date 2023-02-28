@@ -73,8 +73,9 @@ fi
 if [ $PARALLEL == 1 ]; then
     if [ $USE_MPI == 1 ]; then
         mpirun --allow-run-as-root -n $RANK_SIZE --merge-stderr-to-stdout \
-        python ./tools/train.py \
+        python ./tools/run.py \
             --config=$CONFIG_PATH \
+            --task='train' \
             --device_target=$DEVICE_TRAGET \
             --is_parallel=True > log.txt 2>&1 &
     else
@@ -99,8 +100,9 @@ if [ $PARALLEL == 1 ]; then
             export RANK_ID=$i
 
             echo "start training for rank $RANK_ID, device $DEVICE_ID"
-            taskset -c $cmdopt python ./train.py \
+            taskset -c $cmdopt python ./run.py \
                 --config=$CONFIG_PATH \
+                --task='train' \
                 --device_target=Ascend \
                 --is_parallel=True > log$i.txt 2>&1 &
         done

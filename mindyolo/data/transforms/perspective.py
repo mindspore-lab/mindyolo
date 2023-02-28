@@ -105,7 +105,7 @@ class RandomPerspective:
                     filter_result.append(new_poly[j])
             gt_poly = filter_result
 
-            return img, gt_bbox, gt_class, gt_poly
+        return img, gt_bbox, gt_class, gt_poly
 
 
 def box_candidates(box1, box2, wh_thr=2, ar_thr=20, area_thr=0.1, eps=1e-16):  # box1(4,n), box2(4,n)

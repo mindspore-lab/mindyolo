@@ -34,7 +34,7 @@ class PasteIn:
             record_out = [sample_records_outs[(i + _i) % sample_records_len] for _i in range(4)]
             sample_classes_, sample_images_, sample_masks_, sample_polys_ = \
                 self.load_samples(record_out)
-            sample_classes += sample_classes
+            sample_classes += sample_classes_
             sample_images += sample_images_
             sample_masks += sample_masks_
             sample_polys += sample_polys_
