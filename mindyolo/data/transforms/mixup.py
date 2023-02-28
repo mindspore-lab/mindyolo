@@ -50,7 +50,7 @@ class MixUp:
 
         gt_bbox = np.concatenate((gt_bbox, gt_bbox2), 0)
         gt_class = np.concatenate((gt_class, gt_class2), 0)
-        gt_poly = gt_poly.extend(gt_poly2)
+        gt_poly.extend(gt_poly2)
         record_out['image'] = img
         record_out['gt_bbox'] = gt_bbox
         record_out['gt_class'] = gt_class
