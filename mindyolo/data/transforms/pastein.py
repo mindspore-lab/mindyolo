@@ -2,6 +2,8 @@ import random
 import cv2
 import numpy as np
 
+from mindyolo.utils import logger
+
 from ..general import bbox_ioa, sample_polys
 
 __all__ = ['PasteIn']
@@ -38,7 +40,13 @@ class PasteIn:
             sample_images += sample_images_
             sample_masks += sample_masks_
             sample_polys += sample_polys_
+            i += 4
+            if i > 40:
+                logger.warning(f"PasteIn: Sampling more than 10 times, break sampling, "
+                               f"the number of samples is {len(sample_classes)}")
+                break
             if len(sample_classes) == 0:
+                logger.warning("PasteIn: Sampling first time, the number of samples is zero.")
                 break
 
         image, gt_bbox, gt_class, gt_poly = \
