@@ -32,8 +32,7 @@ data:
 
   train_transforms:
     multi_imgs_transforms:
-      - Mosaic: { mosaic_prob: 1.0, copy_paste_prob: 0.0, degrees: 0.0, translate: 0.1, scale: 0.5, shear: 0.0,
-                  perspective: 0.0, target_size: 640 }
+      - Mosaic: { mosaic_prob: 1.0, copy_paste_prob: 0.0, translate: 0.1, scale: 0.5, target_size: 640 }
       - MixUp: { prob: 0.05, alpha: 8.0, beta: 8.0, mosaic_needed: True }
       - PasteIn: { prob: 0.05, target_size: 640 }
     single_img_transforms:

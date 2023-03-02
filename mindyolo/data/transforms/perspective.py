@@ -16,16 +16,19 @@ class RandomPerspective:
         scale (float): the scale range to apply, transform range is [0.1, 2]
         shear (float): the shear range to apply, transform range is [-2, 2]
         perspective (float): the perspective range to apply, transform range is [0, 0.001]
+        border: border to remove
+        consider_poly(bool): whether to consider the change of gt_poly
     """
-    def __init__(self, degrees=10, translate=.1, scale=.1, shear=2, perspective=0.0, border=(0, 0)):
+    def __init__(self, degrees=0.0, translate=.2, scale=.9, shear=0.0, perspective=0.0, border=(0, 0), consider_poly=False):
         self.degrees = degrees
         self.translate = translate
         self.scale = scale
         self.shear = shear
         self.perspective = perspective
         self.border = border
+        self.consider_poly = consider_poly
 
-    def __call__(self, img, gt_bbox, gt_class, gt_poly=None):
+    def __call__(self, img, gt_bbox, gt_class, gt_poly=[]):
         height = img.shape[0] + self.border[0] * 2  # shape(h,w,c)
         width = img.shape[1] + self.border[1] * 2
 
@@ -66,9 +69,9 @@ class RandomPerspective:
         # Transform label coordinates
         n = len(gt_bbox)
         if n:
-            use_segments = any(x.any() for x in gt_poly)
+            use_segments = len(gt_poly) > 0
             new_bbox = np.zeros((n, 4))
-            new_poly = [np.zeros((1, 2))] * n
+            new_poly = np.zeros((n, 100, 2))
             if use_segments:
                 resample_result = resample_polys(gt_poly)  # upsample
                 for i, poly in enumerate(resample_result):
@@ -78,7 +81,10 @@ class RandomPerspective:
                     xy = xy[:, :2] / xy[:, 2:3] if self.perspective else xy[:, :2]  # perspective rescale or affine
 
                     # clip
-                    new_bbox[i], new_poly[i] = poly2box(xy, width, height)
+                    if self.consider_poly:
+                        new_bbox[i], new_poly[i] = poly2box(xy, width, height, self.consider_poly)
+                    else:
+                        new_bbox[i] = poly2box(xy, width, height, self.consider_poly)
             else:
                 xy = np.ones((n * 4, 3))
                 xy[:, :2] = gt_bbox[:, [0, 1, 2, 3, 0, 3, 2, 1]].reshape(n * 4, 2)  # x1y1, x2y2, x1y2, x2y1
@@ -98,14 +104,13 @@ class RandomPerspective:
             i = box_candidates(box1=gt_bbox.T * s, box2=new_bbox.T, area_thr=0.01 if use_segments else 0.10)
             gt_class = gt_class[i]
             gt_bbox = new_bbox[i]
-            # filter candidates for poly
-            filter_result = []
-            for j, value in enumerate(i):
-                if value:
-                    filter_result.append(new_poly[j])
-            gt_poly = filter_result
 
-        return img, gt_bbox, gt_class, gt_poly
+            # filter candidates for poly
+            if self.consider_poly:
+                gt_poly = new_poly[i]
+                return img, gt_bbox, gt_class, gt_poly
+            else:
+                return img, gt_bbox, gt_class
 
 
 def box_candidates(box1, box2, wh_thr=2, ar_thr=20, area_thr=0.1, eps=1e-16):  # box1(4,n), box2(4,n)

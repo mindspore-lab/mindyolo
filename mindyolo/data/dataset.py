@@ -3,7 +3,6 @@ import cv2
 import copy
 import numpy as np
 
-from mindyolo.data import transforms
 from mindyolo.utils import logger
 
 from .general import resample_polys
@@ -57,7 +56,7 @@ class COCODataset:
                  empty_ratio=1.,
                  multi_imgs_transforms=None,
                  is_segmentaion=False,
-                 detection_require_poly=False
+                 consider_poly=False
                  ):
         self.dataset_dir = dataset_dir
         self.anno_path = anno_path
@@ -69,7 +68,7 @@ class COCODataset:
         self.empty_ratio = empty_ratio
         self.muliti_imgs_transforms = multi_imgs_transforms
         self.is_segmentaion = is_segmentaion
-        self.detection_require_poly = detection_require_poly
+        self.consider_poly = consider_poly
         self.parse_dataset()
 
     def __len__(self, ):
@@ -84,44 +83,31 @@ class COCODataset:
 
         # multi_imgs_transforms
         if self.muliti_imgs_transforms:
-            for t in self.muliti_imgs_transforms:
-                for k, v in t.items():
-                    op_cls = getattr(transforms, k) # get class name of the operator
-                    f = op_cls(**v) # Instantiate the class object
+            for f in self.muliti_imgs_transforms:
+                # get the other images
+                records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in
+                                                 range(f.additional_imgs)]  # 8 additional image
 
-                    # get the other images
-                    if k == 'Mosaic':
-                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(8)] # 8 additional image
-                    elif k == 'PasteIn':
-                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(20)]
-                    elif k == 'MixUp':
-                        records_outs = [record_out, ] + [copy.deepcopy(self.imgs_records[np.random.randint(n)]) for _ in range(4)]
-                    elif k == 'SimpleCopyPaste':
-                        records_outs = [record_out, ]
-                    else:
-                        records_outs = [record_out, ]
+                # apply the multi_images data enhancements in turn
+                for record_out in records_outs:
+                    if 'image' not in record_out:
+                        img_path = record_out['im_file']
+                        record_out['image'] = cv2.imread(img_path)  # BGR
 
-                    # apply the multi_images data enhancements in turn
-                    for record_out in records_outs:
-                        if 'image' not in record_out:
-                            img_path = record_out['im_file']
-                            record_out['image'] = cv2.imread(img_path)  # BGR
-
-                    record_out = f(records_outs)
+                record_out = f(records_outs)
         else:
             img_path = record_out['im_file']
             record_out['image'] = cv2.imread(img_path)  # BGR
 
-        if self.detection_require_poly:
-            return record_out['image'], record_out['im_file'], \
+        if self.consider_poly:
+            return record_out['image'], record_out['im_file'], record_out['im_id'], \
                    record_out['ori_shape'], record_out['pad'], record_out['ratio'], \
                    record_out['gt_bbox'], record_out['gt_class'], record_out['gt_poly']
 
         else:
-            return record_out['image'], record_out['im_file'], \
+            return record_out['image'], record_out['im_file'], record_out['im_id'], \
                    record_out['ori_shape'], record_out['pad'], record_out['ratio'], \
                    record_out['gt_bbox'], record_out['gt_class']
-
 
     def _sample_empty(self, records, num):
         # if empty_ratio is out of [0. ,1.), do not sample the records
@@ -240,14 +226,13 @@ class COCODataset:
                             np.delete(gt_bbox, i)
                         else:
                             gt_poly[i] = box['segmentation'][0]
-                            if self.detection_require_poly:
-                                gt_poly[i] = resample_polys(gt_poly[i])
                         has_segmentation = True
 
                 if has_segmentation and not any(gt_poly) and not self.allow_empty:
                     continue
 
                 gt_poly = [np.array(x, dtype=np.float32).reshape(-1, 2) for x in gt_poly]
+                gt_poly = resample_polys(gt_poly)
 
                 gt_rec = {
                     'gt_class': gt_class,
@@ -273,24 +258,3 @@ class COCODataset:
             empty_records = self._sample_empty(empty_records, len(records))
             records += empty_records
         self.imgs_records = records
-
-
-if __name__ == '__main__':
-    from mindyolo.utils.config import parse_config
-    from .general import show_img_with_bbox, show_img_with_poly
-
-    config = parse_config()
-    data_config = config.Data
-    image_dir = data_config.train_img_dir
-    anno_path = data_config.train_anno_path
-    multi_imgs_transforms = getattr(data_config, 'multi_imgs_transforms', None)
-
-    dataset = COCODataset(dataset_dir=data_config.dataset_dir, image_dir=image_dir, anno_path=anno_path,
-                          multi_imgs_transforms=multi_imgs_transforms)
-    print('done')
-    data = dataset[0]
-    img = show_img_with_bbox(data, config.Data.names)
-    # img = show_img_with_poly(data)
-    cv2.namedWindow('img', cv2.WINDOW_FREERATIO)
-    cv2.imshow('img', img)
-    cv2.waitKey(0)

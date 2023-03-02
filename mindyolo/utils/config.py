@@ -45,7 +45,7 @@ def parse_config():
     parser_config = argparse.ArgumentParser(description='Config', add_help=False)
     current_dir = os.path.dirname(os.path.abspath(__file__))
     parser_config.add_argument('--config', type=str,
-                               default=os.path.join(current_dir, '../../configs/yolov7/net/yolov7.yaml'),
+                               default=os.path.join(current_dir, '../../configs/yolov7/yolov7.yaml'),
                                help='YAML config file specifying default arguments.')
     args_config, args_main = parser_config.parse_known_args()
     default, helper, choices = load_config(args_config.config)
