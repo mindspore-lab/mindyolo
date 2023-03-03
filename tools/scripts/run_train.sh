@@ -23,7 +23,7 @@ if [ $DEVICE_NUM -gt 1 ]; then
     PARALLEL=1
 fi
 
-USE_MPI=1
+USE_MPI=0
 if [ $# == 5 ]; then
     USE_MPI=$5
     if [ $DEVICE_TRAGET == 'GPU' ] && [ $USE_MPI == 0 ] && [ $PARALLEL == 1 ]; then
