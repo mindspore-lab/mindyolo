@@ -14,7 +14,7 @@ optimizer:
   end_factor: 0.1
 
 loss:
-  name: YOLOv7Loss
+  name: YOLOv7LossV2
   loss_item_name: ['loss', 'lbox', 'lobj', 'lcls'] # branch name returned by lossitem
   box: 0.05  # box loss gain
   cls: 0.3  # cls loss gain

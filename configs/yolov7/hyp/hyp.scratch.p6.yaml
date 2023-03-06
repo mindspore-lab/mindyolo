@@ -14,7 +14,7 @@ optimizer:
   end_factor: 0.2  # final OneCycleLR learning rate (lr0 * lrf)
 
 loss:
-  name: YOLOv7AuxLoss
+  name: YOLOv7AuxLossV2
   loss_item_name: ['box', 'cls', 'obj'] # branch name returned by loss
   box: 0.05  # box loss gain
   cls: 0.3  # cls loss gain

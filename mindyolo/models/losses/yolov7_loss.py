@@ -6,7 +6,8 @@ from mindspore import ops, nn, Tensor, Parameter
 
 from mindyolo.models.registry import register_model
 
-from .focal_loss import FocalLoss, BCEWithLogitsLoss, smooth_BCE
+from .focal_loss import FocalLoss
+from .bce_loss import BCEWithLogitsLoss
 from .iou_loss import bbox_iou, batch_box_iou
 
 CLIP_VALUE = 1000.
@@ -16,6 +17,10 @@ __all__ = [
     'YOLOv7Loss',
     'YOLOv7AuxLoss'
 ]
+
+def smooth_BCE(eps=0.1):
+    # return positive, negative label smoothing BCE targets, https://github.com/ultralytics/yolov3/issues/238#issuecomment-598028441
+    return 1.0 - 0.5 * eps, 0.5 * eps
 
 
 @register_model

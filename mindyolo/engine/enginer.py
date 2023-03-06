@@ -19,6 +19,7 @@ from mindyolo.utils import logger
 from mindyolo.utils.checkpoint_manager import CheckpointManager
 from mindyolo.utils.metrics import non_max_suppression, scale_coords, xyxy2xywh
 from mindyolo.utils.modelarts import sync_data
+from mindyolo.utils.all_finite import all_finite
 
 from .env import init_env, set_seed
 
@@ -529,8 +530,12 @@ class Enginer:
         return accumulate_grads_fn
 
     @staticmethod
-    def _get_train_step_fn(network, loss_fn, optimizer, rank_size, scaler, reducer, overflow_still_update=False, ms_jit=False):
-        from mindyolo.utils.all_finite import all_finite
+    def _get_train_step_fn(network, loss_fn, optimizer, rank_size, scaler, reducer,
+                           overflow_still_update=False, ms_jit=False):
+        if ms_jit:
+            train_net = TrainStepCell(network, loss_fn, optimizer, scaler, reducer, rank_size, overflow_still_update)
+            train_net.set_train(True)
+            return train_net
 
         def forward_func(x, label, sizes=None):
             if sizes is not None:
@@ -557,12 +562,7 @@ class Enginer:
                         loss = ops.depend(loss, optimizer(unscaled_grads))
 
             return loss, loss_items, unscaled_grads, grads_finite
-
-        @ms.ms_function
-        def jit_warpper(*args):
-            return train_step_func(*args)
-
-        return train_step_func if not ms_jit else jit_warpper
+        return train_step_func
 
     def _get_gradreducer(self):
         if self.is_parallel:
@@ -591,3 +591,68 @@ class Enginer:
             raise NotImplementedError(f"Not support ms_loss_scaler: {ms_loss_scaler}")
 
         return loss_scaler
+
+
+class WithLossCell(nn.Cell):
+    r"""
+       Cell with loss function.
+
+       Wraps the network with loss function. This Cell accepts data and label as inputs and
+       the computed loss will be returned.
+
+       Args:
+           network (Cell): The backbone network to wrap.
+           loss_fn (Cell): The loss function used to compute loss.
+
+       Inputs:
+           - **x** (Tensor) - Input Tensor.
+           - **label** (Tensor) - Label Tensor.
+           - **size** (Tensor) - Input resize size, default is None.
+
+       Outputs:
+           - **loss** (Tensor) Tensor, a tensor means the loss value, the shape of which is usually :math:`()`.
+           - **loss_item** (Tensor) Tensor, aux loss.
+       """
+    def __init__(self, network, loss_fn, scaler, rank_size=1):
+        super(WithLossCell, self).__init__()
+        self.network = network
+        self.loss_fn = loss_fn
+        self.scaler = scaler
+        self.rank_size = rank_size
+
+    def construct(self, x, label, sizes=None):
+        if sizes is not None:
+            x = ops.interpolate(x, sizes=sizes, coordinate_transformation_mode="asymmetric", mode="bilinear")
+        pred = self.network(x)
+        loss, loss_items = self.loss_fn(pred, label, x)
+        loss *= self.rank_size
+        return self.scaler.scale(loss), loss_items
+
+
+class TrainStepCell(nn.Cell):
+    """Network training with loss scaling."""
+    def __init__(self, network, loss_fn, optimizer, scaler, reducer, rank_size=1, overflow_still_update=False):
+        super(TrainStepCell, self).__init__()
+        self.forward_net = WithLossCell(network, loss_fn, scaler, rank_size)
+        self.scaler = scaler
+        self.reducer = reducer
+        self.optimizer = optimizer
+        self.grad_fn = ops.value_and_grad(self.forward_net, grad_position=None,
+                                          weights=optimizer.parameters, has_aux=True)
+        self.overflow_still_update = overflow_still_update
+
+    def construct(self, x, label, sizes=None, optimizer_update=True):
+        (loss, loss_items), grads = self.grad_fn(x, label, sizes)
+        loss = self.scaler.unscale(loss)
+        grads = self.reducer(grads)
+        unscaled_grads = self.scaler.unscale(grads)
+        grads_finite = all_finite(unscaled_grads)
+
+        if optimizer_update:
+            if grads_finite:
+                loss = ops.depend(loss, self.optimizer(unscaled_grads))
+            else:
+                if self.overflow_still_update:
+                    loss = ops.depend(loss, self.optimizer(unscaled_grads))
+
+        return loss, loss_items, unscaled_grads, grads_finite

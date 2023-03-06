@@ -50,6 +50,7 @@ class ConvNormAct(nn.Cell):
         else:
             self.bn = nn.BatchNorm2d(c2, momentum=(1 - 0.03), eps=1e-3)
         self.act = nn.SiLU() if act is True else (act if isinstance(act, nn.Cell) else Identity)
+        self.act.recompute()
 
     def construct(self, x):
         return self.act(self.bn(self.conv(x)))
