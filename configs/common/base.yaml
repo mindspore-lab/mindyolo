@@ -41,6 +41,10 @@ nms_time_limit: 20.0
 conf_thres: 0.001
 iou_thres: 0.65
 
+# Predict
+input_img: ''
+output_img: ''
+
 # Export
 file_format: 'MINDIR' # export
 output_path: './' # preprocess

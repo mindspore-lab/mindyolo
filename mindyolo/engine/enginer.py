@@ -420,6 +420,13 @@ class Enginer:
         return map, map50
 
     def detect(self, img):
+        if isinstance(img, str) and os.path.isfile(img):
+            import cv2
+            img = cv2.imread(img)
+        elif isinstance(img, np.ndarray):
+            pass
+        else:
+            raise ValueError("Detect: input image not available.")
         coco91class = coco80_to_coco91_class()
         is_coco_dataset = ('coco' in self.cfg.data.dataset_name)
 
@@ -471,7 +478,8 @@ class Enginer:
 
         t = tuple(x * 1E3 for x in (infer_times, nms_times, infer_times + nms_times)) + \
             (self.img_size, self.img_size, 1)  # tuple
-        logger.info(f'Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g;' % t)
+        logger.info(f"Predict result is: {result_dicts}")
+        logger.info(f"Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g;" % t)
         logger.info(f"Detect a image success.")
 
         return result_dicts

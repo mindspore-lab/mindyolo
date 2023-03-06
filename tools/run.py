@@ -8,7 +8,7 @@ from mindyolo.utils.config import parse_config
 def run():
     cfg = parse_config()
     enginer = Enginer(cfg)
-    enginer.run()
+    enginer.run(cfg.input_img)
 
 
 if __name__ == '__main__':
