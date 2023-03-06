@@ -1,13 +1,13 @@
 import numpy as np
 import cv2
 
-from ..general import normalize_shape
+from ..general import normalize_shape, normalize_shape_with_poly
 
 __all__ = ['Resize', 'BatchRandomResize', 'BatchLabelsPadding']
 
 
 class Resize:
-    def __init__(self, target_size=[640, 640], keep_ratio=False, interp=None):
+    def __init__(self, target_size=[640, 640], keep_ratio=False, interp=None, consider_poly=False):
         """
         Resize image to target size. if keep_ratio is True,
         resize the image's long side to the maximum of target_size
@@ -16,13 +16,15 @@ class Resize:
             target_size (int|list): image target size
             keep_ratio (bool): whether keep_ratio or not, default true
             interp (int, option): the interpolation method
+            consider_poly(bool): whether to consider the change of gt_poly
         """
         super(Resize, self).__init__()
-        self.keep_ratio = keep_ratio
         if isinstance(target_size, int):
             target_size = [target_size, target_size]
         self.target_size = target_size
+        self.keep_ratio = keep_ratio
         self.interp = interp
+        self.consider_poly = consider_poly
 
     def resize_image(self, image, scale):
         im_scale_x, im_scale_y = scale
@@ -36,60 +38,59 @@ class Resize:
             fy=im_scale_y,
             interpolation=interp)
 
-    def resize_bbox(self, bbox, scale, size):
-        im_scale_x, im_scale_y = scale
-        resize_w, resize_h = size
-        bbox[:, 0::2] *= im_scale_x
-        bbox[:, 1::2] *= im_scale_y
-        bbox[:, 0::2] = np.clip(bbox[:, 0::2], 0, resize_w)
-        bbox[:, 1::2] = np.clip(bbox[:, 1::2], 0, resize_h)
-
-        return bbox
-
-    def resize_poly(self, polys, scale):
-        im_scale_x, im_scale_y = scale
-        for i, poly in enumerate(polys):
-            poly[:, 0] *= im_scale_x
-            poly[:, 1] *= im_scale_y
-            polys[i] = poly
-
-        return polys
-
-    def __call__(self, img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly=None):
-        """ Resize the image numpy.
-        """
-
+    def __call__(self, img, gt_bbox, gt_class, gt_poly=[]):
+        """ Resize the image numpy."""
         # apply image
-        img_shape = img.shape
+        shape = img.shape
+        new_shape = self.target_size
         if self.keep_ratio:
+            # Scale ratio (new / old)
+            r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
 
-            img_size_min = np.min(img_shape[0:2])
-            img_size_max = np.max(img_shape[0:2])
+            # Compute padding
+            ratio = r, r  # height, width ratios
+            new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
+            dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]  # wh padding
 
-            target_size_min = np.min(self.target_size)
-            target_size_max = np.max(self.target_size)
+            dw /= 2  # divide padding into 2 sides
+            dh /= 2
 
-            im_scale = min(target_size_min / img_size_min,
-                           target_size_max / img_size_max)
+            if shape[::-1] != new_unpad:  # resize
+                img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_LINEAR)
+            top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
+            left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+            img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(114, 114, 114))  # add border
 
-            im_scale_x = im_scale
-            im_scale_y = im_scale
+            h_ratio, w_ratio = ratio[0], ratio[1]
+            gt_bbox[:, 0] = w_ratio * gt_bbox[:, 0] + dw
+            gt_bbox[:, 1] = h_ratio * gt_bbox[:, 1] + dh
+            gt_bbox[:, 2] = w_ratio * gt_bbox[:, 2] + dw
+            gt_bbox[:, 3] = h_ratio * gt_bbox[:, 3] + dh
+
+            if self.consider_poly and len(gt_poly):
+                gt_poly[..., 0] = w_ratio * gt_poly[..., 0] + dw
+                gt_poly[..., 1] = h_ratio * gt_poly[..., 1] + dh
         else:
-            im_scale_y = self.target_size[1] / img_shape[0]
-            im_scale_x = self.target_size[0] / img_shape[1]
+            im_scale_y = self.target_size[1] / shape[0]
+            im_scale_x = self.target_size[0] / shape[1]
 
-        img = self.resize_image(img, [im_scale_x, im_scale_y])
-        resize_h, resize_w = img.shape[:2]
-        ratio *= np.array([resize_h / img_shape[0], resize_w / img_shape[1]])
+            img = self.resize_image(img, [im_scale_x, im_scale_y])
+            resize_h, resize_w = img.shape[:2]
 
-        if len(gt_bbox) > 0:
-            gt_bbox = self.resize_bbox(gt_bbox, [im_scale_x, im_scale_y], [resize_w, resize_h])
+            if len(gt_bbox) > 0:
+                gt_bbox[:, 0::2] *= im_scale_x
+                gt_bbox[:, 1::2] *= im_scale_y
+                gt_bbox[:, 0::2] = np.clip(gt_bbox[:, 0::2], 0, resize_w)
+                gt_bbox[:, 1::2] = np.clip(gt_bbox[:, 1::2], 0, resize_h)
 
-        if gt_poly:
-            gt_poly = self.resize_poly(gt_poly, [im_scale_x, im_scale_y])
-            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class, gt_poly
+            if self.consider_poly and len(gt_poly):
+                gt_poly[..., 0] *= im_scale_x
+                gt_poly[..., 1] *= im_scale_y
+
+        if self.consider_poly:
+            return img, gt_bbox, gt_class, gt_poly
         else:
-            return img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class
+            return img, gt_bbox, gt_class
 
 
 class BatchRandomResize:
@@ -103,6 +104,7 @@ class BatchRandomResize:
             a [[min_short_edge, long_edge], [max_short_edge, long_edge]]
         random_size (bool): whether random select target size of image
         random_interp (bool): whether random select interpolation method
+        consider_poly(bool): whether to consider the change of gt_poly
     """
     def __init__(self,
                  target_size=[640, 640],
@@ -110,7 +112,10 @@ class BatchRandomResize:
                  interp=cv2.INTER_LINEAR,
                  random_range=False,
                  random_size=True,
-                 random_interp=False):
+                 random_interp=False,
+                 consider_poly=False
+                 ):
+        self.target_size = target_size
         self.keep_ratio = keep_ratio
         self.interp = interp
         self.interps = [
@@ -120,6 +125,10 @@ class BatchRandomResize:
             cv2.INTER_CUBIC,
             cv2.INTER_LANCZOS4,
         ]
+        self.random_range = random_range
+        self.random_size = random_size
+        self.random_interp = random_interp
+        self.consider_poly = consider_poly
 
         if (random_range or random_size) and isinstance(target_size, int):
             raise TypeError("Type of target_size is invalid when random_size or random_range is True. Must be List or "
@@ -127,15 +136,9 @@ class BatchRandomResize:
         if random_range and not len(target_size) == 2:
             raise TypeError("target_size must be two list as [[min_short_edge, long_edge], [max_short_edge, "
                             "long_edge]] when random_range is True.")
-        self.target_size = target_size
-        self.random_range = random_range
-        self.random_size = random_size
-        self.random_interp = random_interp
 
-    def __call__(self, images, im_files, ori_shapes, pads, ratios, gt_bboxes, gt_classes, batch_info):
-        """
-        Resize the image numpy.
-        """
+    def __call__(self, images, gt_bboxes, gt_classes, batch_info):
+        """Resize the image numpy."""
         bs = len(images)
         if self.random_range:
             img_scale_long = [max(s) for s in self.target_size]
@@ -145,7 +148,8 @@ class BatchRandomResize:
             target_size = [short_edge, long_edge]
         else:
             if self.random_size:
-                target_size = np.random.choice(self.target_size)
+                index = np.random.choice(len(self.target_size))
+                target_size = self.target_size[index]
             else:
                 target_size = self.target_size
 
@@ -154,13 +158,17 @@ class BatchRandomResize:
         else:
             interp = self.interp
 
-        resizer = Resize(target_size, self.keep_ratio, interp)
+        resizer = Resize(target_size, self.keep_ratio, interp, consider_poly=False)
         for i in range(bs):
-            images[i], im_files[i], ori_shapes[i], gt_bboxes[i], gt_classes[i] = \
-                resizer(images[i], im_files[i], ori_shapes[i], gt_bboxes[i], gt_classes[i])
-        images, im_files, ori_shapes, gt_bboxes, gt_classes, batch_idx = \
-            normalize_shape(images, im_files, ori_shapes, pads, ratios, gt_bboxes, gt_classes, batch_info)
-        return images, im_files, ori_shapes, gt_bboxes, gt_classes, batch_idx
+            images[i], gt_bboxes[i], gt_classes[i] = \
+                resizer(images[i], gt_bboxes[i], gt_classes[i])
+        if self.consider_poly:
+            images, gt_bboxes, gt_classes, batch_idx = \
+                normalize_shape(images, gt_bboxes, gt_classes, batch_info)
+        else:
+            images, gt_bboxes, gt_classes, batch_idx = \
+                normalize_shape(images, gt_bboxes, gt_classes, batch_info)
+        return images, gt_bboxes, gt_classes, batch_idx
 
 
 class BatchLabelsPadding:
@@ -173,13 +181,12 @@ class BatchLabelsPadding:
         self.padding_size = padding_size
         self.padding_value = padding_value
 
-    def __call__(self, images, im_files, ori_shapes, pads, ratios, gt_bboxes, gt_classes, batch_info):
+    def __call__(self, images, gt_bboxes, gt_classes, batch_info):
         """
         Padding the list of numpy labels.
         """
         gt_bboxes, gt_classes, batch_idx = self.padding(gt_bboxes, gt_classes)
-        return np.stack(images, 0), im_files, np.stack(ori_shapes, 0), np.stack(pads, 0), np.stack(ratios, 0), \
-               np.stack(gt_bboxes, 0), np.stack(gt_classes, 0), np.stack(batch_idx, 0)
+        return np.stack(images, 0), np.stack(gt_bboxes, 0), np.stack(gt_classes, 0), np.stack(batch_idx, 0)
 
     def padding(self, gt_bboxes, gt_classes):
         """

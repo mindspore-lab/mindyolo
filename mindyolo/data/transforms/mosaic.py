@@ -12,33 +12,41 @@ class Mosaic:
     """
     Mosaic Data Augmentation and Perspective
     1. get mosaic image, get mosaic_labels
-    2. copy_paste
+    2. copy_paste(optional)
     3. random_perspective augment
     Args:
+        additional_imgs(int): number of additional_images needed
         mosaic_prob (float): probability of using Mosaic, 1.0 as default
         copy_paste_prob (float): probability of using SimpleCopyPaste, 0.0 as default
-        degrees (float): the rotate range to apply, transform range is [-10, 10]
         translate (float): the translate range to apply, transform range is [-0.1, 0.1]
         scale (float): the scale range to apply, transform range is [0.1, 2]
-        shear (float): the shear range to apply, transform range is [-2, 2]
-        perspective (float): the perspective range to apply, transform range is [0, 0.001]
+        target_size: the newshape after letterbox
+        consider_poly(bool): whether to consider the change of gt_poly
     """
-    def __init__(self, mosaic_prob=1.0, copy_paste_prob=0.0, degrees=0.0, translate=0.2, scale=0.9, shear=0.0, perspective=0.0, target_size=640):
-
+    def __init__(self,
+                 additional_imgs=8,
+                 mosaic_prob=1.0,
+                 copy_paste_prob=0.0,
+                 translate=0.2,
+                 scale=0.9,
+                 target_size=640,
+                 consider_poly=False):
+        self.additional_imgs = additional_imgs
         self.mosaic_prob = mosaic_prob
-        self.target_size = target_size
+        self.copy_paste_prob = copy_paste_prob
         self.mosaic_border = [-target_size // 2, -target_size // 2]
+        self.target_size = target_size
+        self.consider_poly = consider_poly
+
         self.simple_copy_paste = SimpleCopyPaste(prob=copy_paste_prob)
-        self.random_perspective = RandomPerspective(degrees=degrees,
-                                                    translate=translate,
+        self.random_perspective = RandomPerspective(translate=translate,
                                                     scale=scale,
-                                                    shear=shear,
-                                                    perspective=perspective,
-                                                    border=self.mosaic_border)
+                                                    border=self.mosaic_border,
+                                                    consider_poly=consider_poly)
 
     def __call__(self, records_outs):
         if random.random() < self.mosaic_prob:
-            if random.random() < 0.8:
+            if random.random() < 1.0:
                 record_out = self.mosaic4(records_outs[:4])
             else:
                 record_out = self.mosaic9(records_outs[:9])
@@ -54,16 +62,17 @@ class Mosaic:
         yc, xc = [int(random.uniform(-x, 2 * img_size + x)) for x in self.mosaic_border]  # mosaic center x, y
         for i, record_out in enumerate(records_outs):
             # Load image
-            img = record_out['image']  # BGR
-            gt_bbox = record_out['gt_bbox']
-            gt_poly = record_out['gt_poly']
+            img, gt_bbox, gt_class = record_out['image'], record_out['gt_bbox'], record_out['gt_class']  # BGR
+            if self.copy_paste_prob or self.consider_poly:
+                gt_poly = record_out['gt_poly']
+
             h0, w0 = img.shape[:2]  # orig hw
             r = img_size / max(h0, w0)  # resize image to img_size
             if r != 1:  # always resize down, only resize up if training with augmentation
                 img = cv2.resize(img, (int(w0 * r), int(h0 * r)), interpolation=cv2.INTER_LINEAR)
                 gt_bbox *= r
-                for poly in gt_poly:
-                    poly *= r
+                if self.copy_paste_prob or self.consider_poly:
+                    gt_poly *= r
 
             h, w = img.shape[:2]  # hw_resized
 
@@ -88,35 +97,46 @@ class Mosaic:
             padw = x1a - x1b  # relative x offset
 
             # Labels
-            gt_poly, gt_class = record_out['gt_poly'], record_out['gt_class']
             if gt_bbox.size:
                 gt_bbox[:, [0, 2]] += padw
                 gt_bbox[:, [1, 3]] += padh
-                for x in gt_poly:
-                    x[:, 0] += padw
-                    x[:, 1] += padh
+                if self.copy_paste_prob or self.consider_poly:
+                    gt_poly[..., 0] += padw
+                    gt_poly[..., 1] += padh
 
             gt_bboxes4.append(gt_bbox)
             gt_classes4.append(gt_class)
-            gt_polys4.extend(gt_poly)
+            if self.copy_paste_prob or self.consider_poly:
+                gt_polys4.append(gt_poly)
 
         # Concat/clip labels
         gt_bboxes4 = np.concatenate(gt_bboxes4, 0)
         gt_classes4 = np.concatenate(gt_classes4, 0)
-        for x in (gt_bboxes4, *gt_polys4):
+        if self.copy_paste_prob or self.consider_poly:
+            gt_polys4 = np.concatenate(gt_polys4, 0)
+
+        gt_to_clip = [gt_bboxes4]
+        if self.copy_paste_prob or self.consider_poly:
+            gt_to_clip.append(gt_polys4)
+        for x in gt_to_clip:
             np.clip(x, 0, 2 * img_size, out=x)  # clip when using random_perspective()
 
         # Augment
         img4, gt_bboxes4, gt_classes4, gt_polys4 = \
             self.simple_copy_paste(img4, gt_bboxes4, gt_classes4, gt_polys4)
-        img4, gt_bboxes4, gt_classes4, gt_polys4 = \
-            self.random_perspective(img4, gt_bboxes4, gt_classes4, gt_polys4)
+        if self.consider_poly:
+            img4, gt_bboxes4, gt_classes4, gt_polys4 = \
+                self.random_perspective(img4, gt_bboxes4, gt_classes4, gt_polys4)
+        else:
+            img4, gt_bboxes4, gt_classes4 = \
+                self.random_perspective(img4, gt_bboxes4, gt_classes4)
 
         record_out = records_outs[0]
         record_out['image'] = img4
         record_out['gt_class'] = gt_classes4
         record_out['gt_bbox'] = gt_bboxes4
-        record_out['gt_poly'] = gt_polys4
+        if self.consider_poly:
+            record_out['gt_poly'] = gt_polys4
 
         return record_out
 
@@ -126,17 +146,16 @@ class Mosaic:
         gt_bboxes9, gt_classes9, gt_polys9,  = [], [], []
         for i, record_out in enumerate(records_outs):
             # Load image
-            img = record_out['image']  # BGR
-            gt_bbox = record_out['gt_bbox']
-            gt_poly = record_out['gt_poly']
-            gt_class = record_out['gt_class']
+            img, gt_bbox, gt_class = record_out['image'], record_out['gt_bbox'], record_out['gt_class']  # BGR
+            if self.copy_paste_prob or self.consider_poly:
+                gt_poly = record_out['gt_poly']
             h0, w0 = img.shape[:2]  # orig hw
             r = s / max(h0, w0)  # resize image to img_size
             if r != 1:  # always resize down, only resize up if training with augmentation
                 img = cv2.resize(img, (int(w0 * r), int(h0 * r)), interpolation=cv2.INTER_LINEAR)
                 gt_bbox *= r
-                for poly in gt_poly:
-                    poly *= r
+                if self.copy_paste_prob or self.consider_poly:
+                    gt_poly *= r
 
             h, w = img.shape[:2]  # hw_resized
 
@@ -169,13 +188,14 @@ class Mosaic:
             if gt_bbox.size:
                 gt_bbox[:, [0, 2]] += padx
                 gt_bbox[:, [1, 3]] += pady
-                for x in gt_poly:
-                    x[:, 0] += padx
-                    x[:, 1] += pady
+                if self.copy_paste_prob or self.consider_poly:
+                    gt_poly[..., 0] += padx
+                    gt_poly[..., 1] += pady
 
             gt_bboxes9.append(gt_bbox)
             gt_classes9.append(gt_class)
-            gt_polys9.extend(gt_poly)
+            if self.copy_paste_prob or self.consider_poly:
+                gt_polys9.append(gt_poly)
 
             # Image
             img9[y1:y2, x1:x2] = img[y1 - pady:, x1 - padx:]  # img9[ymin:ymax, xmin:xmax]
@@ -188,25 +208,37 @@ class Mosaic:
         # Concat/clip labels
         gt_bboxes9 = np.concatenate(gt_bboxes9, 0)
         gt_classes9 = np.concatenate(gt_classes9, 0)
+        if self.copy_paste_prob or self.consider_poly:
+            gt_polys9 = np.concatenate(gt_polys9, 0)
+
         gt_bboxes9[:, [0, 2]] -= xc
         gt_bboxes9[:, [1, 3]] -= yc
-        c = np.array([xc, yc])  # centers
-        gt_polys9 = [x - c for x in gt_polys9]
+        if self.copy_paste_prob or self.consider_poly:
+            gt_polys9[..., 0] -= xc
+            gt_polys9[..., 1] -= yc
 
-        for x in (gt_bboxes9, *gt_polys9):
+        gt_to_clip = [gt_bboxes9]
+        if self.copy_paste_prob or self.consider_poly:
+            gt_to_clip.append(gt_polys9)
+        for x in gt_to_clip:
             np.clip(x, 0, 2 * s, out=x)  # clip when using random_perspective()
 
         # Augment
         img9, gt_bboxes9, gt_classes9, gt_polys9 = \
             self.simple_copy_paste(img9, gt_bboxes9, gt_classes9, gt_polys9)
-        img9, gt_bboxes9, gt_classes9, gt_polys9 = \
-            self.random_perspective(img9, gt_bboxes9, gt_classes9, gt_polys9)
+        if self.consider_poly:
+            img9, gt_bboxes9, gt_classes9, gt_polys9 = \
+                self.random_perspective(img9, gt_bboxes9, gt_classes9, gt_polys9)
+        else:
+            img9, gt_bboxes9, gt_classes9 = \
+                self.random_perspective(img9, gt_bboxes9, gt_classes9)
 
         record_out = records_outs[0]
         record_out['image'] = img9
         record_out['gt_class'] = gt_classes9
         record_out['gt_bbox'] = gt_bboxes9
-        record_out['gt_poly'] = gt_polys9
+        if self.consider_poly:
+            record_out['gt_poly'] = gt_polys9
 
         return record_out
 

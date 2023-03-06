@@ -7,17 +7,26 @@ __all__ = ['MixUp']
 
 
 class MixUp:
-    def __init__(self, prob=1.0, alpha=1.5, beta=1.5, mosaic_needed=False):
+    def __init__(self, additional_imgs=9, prob=1.0, alpha=8.0, beta=8.0, mosaic_needed=False, consider_poly=False):
         """ Mixup image and gt_bbox/gt_class/gt_poly
         Args:
+            additional_imgs(int): number of additional_images needed
+            prob (float): the probability of mixup
             alpha (float): alpha parameter of beta distribute
             beta (float): beta parameter of beta distribute
+            mosaic_needed(bool): whether apply mosaic for the second image
+            consider_poly(bool): whether to consider the change of gt_poly
         """
+        self.additional_imgs = additional_imgs
         self.prob = prob
         self.alpha = alpha
         self.beta = beta
         self.mosaic_needed = mosaic_needed
-        self.mosaic = Mosaic(mosaic_prob=1.0)
+        self.consider_poly = consider_poly
+
+        if self.mosaic_needed:
+            self.mosaic = Mosaic(mosaic_prob=1.0, consider_poly=consider_poly)
+
         if self.alpha <= 0.0:
             raise ValueError("alpha shold be positive in {}".format(self))
         if self.beta <= 0.0:
@@ -33,12 +42,14 @@ class MixUp:
         else:
             record_out2 = records_outs[1]
 
-        img, gt_bbox, gt_class, gt_poly = \
-            record_out['image'], record_out['gt_bbox'], record_out['gt_class'], record_out['gt_poly']  # BGR
-        img2, gt_bbox2, gt_class2, gt_poly2 = \
-            record_out2['image'], record_out2['gt_bbox'], record_out2['gt_class'], record_out2['gt_poly']  # BGR
+        img, gt_bbox, gt_class = record_out['image'], record_out['gt_bbox'], record_out['gt_class']  # BGR
+        img2, gt_bbox2, gt_class2 = record_out2['image'], record_out2['gt_bbox'], record_out2['gt_class']  # BGR
 
-        r = np.random.beta(8.0, 8.0)  # mixup ratio, alpha=beta=8.0
+        if self.consider_poly:
+            gt_poly = record_out['gt_poly']
+            gt_poly2 = record_out2['gt_poly']
+
+        r = np.random.beta(self.alpha, self.beta)  # mixup ratio, alpha=beta=8.0
         if img.shape[:2] == img2.shape[:2]:
             img = (img * r + img2 * (1 - r)).astype(np.uint8)
         else:
@@ -50,10 +61,13 @@ class MixUp:
 
         gt_bbox = np.concatenate((gt_bbox, gt_bbox2), 0)
         gt_class = np.concatenate((gt_class, gt_class2), 0)
-        gt_poly.extend(gt_poly2)
+
         record_out['image'] = img
         record_out['gt_bbox'] = gt_bbox
         record_out['gt_class'] = gt_class
-        record_out['gt_poly'] = gt_poly
+
+        if self.consider_poly:
+            gt_poly = np.concatenate((gt_poly, gt_poly2), 0)
+            record_out['gt_poly'] = gt_poly
 
         return record_out

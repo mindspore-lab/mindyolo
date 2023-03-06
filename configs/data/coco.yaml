@@ -25,6 +25,5 @@ data:
            'hair drier', 'toothbrush' ]
 
   # transforms
-  detection_require_poly: False
   multi_imgs_transforms: []
   single_img_transforms: []

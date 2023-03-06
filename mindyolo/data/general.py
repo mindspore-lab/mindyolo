@@ -1,4 +1,4 @@
-import copy
+import math
 import random
 import cv2
 import numpy as np
@@ -20,8 +20,8 @@ def show_img_with_bbox(record, classes):
     """
     if isinstance(record, tuple):
         img = record[0]
-        category_ids = record[4]
-        bboxes = record[3]
+        category_ids = record[7]
+        bboxes = record[6]
     else:
         img = record['image'][0]
         category_ids = record['gt_class'][0]
@@ -80,8 +80,8 @@ def show_img_with_poly(record):
     """
     if isinstance(record, tuple):
         img = record[0]
-        category_ids = record[4]
-        polys = record[5]
+        category_ids = record[7]
+        polys = record[8]
     else:
         img = record['image'][0]
         category_ids = record['gt_class'][0]
@@ -153,7 +153,7 @@ def sample_polys(img, gt_bbox, gt_class, gt_poly, probability=0.5):
             sample_images.append(mask[box[1]:box[3], box[0]:box[2], :])
 
             new_poly = np.copy(g)
-            relative_offset_h, relative_offset_w = box[0], box[1]
+            relative_offset_w, relative_offset_h = box[0], box[1]
             new_poly[:, 0] -= relative_offset_w
             new_poly[:, 1] -= relative_offset_h
 
@@ -162,11 +162,11 @@ def sample_polys(img, gt_bbox, gt_class, gt_poly, probability=0.5):
     return sample_classes, sample_images, sample_masks, sample_polys
 
 
-def resample_polys(polys, n=1000):
+def resample_polys(polys, n=100):
     """
     Up-sample an (n,2) segment
     """
-    resample_result = copy.deepcopy(polys)
+    resample_result = np.zeros((len(polys), n, 2), dtype=np.float32)
     for i, s in enumerate(polys):
         s = np.concatenate((s, s[0:1, :]), axis=0)
         x = np.linspace(0, len(s) - 1, n)
@@ -176,18 +176,23 @@ def resample_polys(polys, n=1000):
     return resample_result
 
 
-def poly2box(poly, width=640, height=640):
+def poly2box(poly, width=640, height=640, consider_poly=False):
     """
     Convert 1 segment label to 1 box label, applying inside-image constraint, i.e. (xy1, xy2, ...) to (xyxy)
     """
     x, y = poly.T  # segment xy
     inside = (x >= 0) & (y >= 0) & (x <= width) & (y <= height)
     x, y = x[inside], y[inside]
-    return np.array([x.min(), y.min(), x.max(), y.max()]) if any(x) else np.zeros((1, 4)), \
-           poly[inside] if any(x) else np.zeros((1, 2))  # xyxy, poly
+    if consider_poly:
+        poly[:, 0] = np.clip(poly[:, 0], 0, width)
+        poly[:, 1] = np.clip(poly[:, 1], 0, width)
+        return np.array([x.min(), y.min(), x.max(), y.max()]) if any(x) else np.zeros((1, 4)), \
+           poly if any(x) else np.zeros((1, 2))  # xyxy, poly
+    else:
+        return np.array([x.min(), y.min(), x.max(), y.max()]) if any(x) else np.zeros((1, 4))
 
 
-def normalize_shape(images, im_files, ori_shapes, pads, ratios, gt_bboxes, gt_classes, batch_info):
+def normalize_shape(images, gt_bboxes, gt_classes, batch_info):
     """
     Ensure labels have the same shape to avoid dynamics shapes
     """
@@ -199,16 +204,16 @@ def normalize_shape(images, im_files, ori_shapes, pads, ratios, gt_bboxes, gt_cl
     for i, (gt_bbox, gt_class) in enumerate(zip(gt_bboxes, gt_classes)):
         nL = gt_class.shape[0]
         gt_bboxes[i] = np.full((most_boxes_per_img, 4), -1, dtype=np.float32)
-        gt_bboxes[i][:nL, :] = gt_bbox[:nL, :]
         gt_classes[i] = np.full((most_boxes_per_img, 1), -1, dtype=np.int32)
-        gt_classes[i][:nL, :] = gt_class[:nL, :]
         batch_idx.append(np.full((most_boxes_per_img, 1), i, dtype=np.int32))
+        if nL:
+            gt_bboxes[i][:nL, :] = gt_bbox[:nL, :]
+            gt_classes[i][:nL, :] = gt_class[:nL, :]
 
-    return np.stack(images, 0), im_files, np.stack(ori_shapes, 0), np.stack(pads, 0), np.stack(ratios, 0), \
-           np.stack(gt_bboxes, 0), np.stack(gt_classes, 0), np.stack(batch_idx, 0)
+    return np.stack(images, 0), np.stack(gt_bboxes, 0), np.stack(gt_classes, 0), np.stack(batch_idx, 0)
 
 
-def normalize_shape_with_poly(images, im_files, ori_shapes, pads, ratios, gt_bboxes, gt_classes, gt_polys, batch_info):
+def normalize_shape_with_poly(images, gt_bboxes, gt_classes, gt_polys, batch_info):
     """
     Ensure labels have the same shape to avoid dynamics shapes
     """
@@ -224,13 +229,10 @@ def normalize_shape_with_poly(images, im_files, ori_shapes, pads, ratios, gt_bbo
         gt_classes[i] = np.full((most_boxes_per_img, 1), -1, dtype=np.int32)
         gt_classes[i][:nL, :] = gt_class[:nL, :]
         batch_idx.append(np.full((most_boxes_per_img, 1), i, dtype=np.int32))
-        gt_poly = resample_polys(gt_poly, 1000)
-        gt_polys[i] = np.full((most_boxes_per_img, 1000, 2), -1, dtype=np.float32)
+        gt_polys[i] = np.full((most_boxes_per_img, 100, 2), -1, dtype=np.float32)
         gt_polys[i][:nL, :] = gt_poly[:nL]
 
-    return np.stack(images, 0).transpose((0, 3, 1, 2)),\
-           im_files, np.stack(ori_shapes, 0), np.stack(pads, 0), np.stack(ratios, 0), \
-           np.stack(gt_bboxes, 0), np.stack(gt_classes, 0), np.stack(gt_polys, 0), np.stack(batch_idx, 0)
+    return np.stack(images, 0), np.stack(gt_bboxes, 0), np.stack(gt_classes, 0), np.stack(gt_polys, 0), np.stack(batch_idx, 0)
 
 
 def coco80_to_coco91_class():  # converts 80-index (val2014) to 91-index (paper)
@@ -243,3 +245,16 @@ def coco80_to_coco91_class():  # converts 80-index (val2014) to 91-index (paper)
 
 def in_range(n, start, end=0):
     return start <= n <= end if end >= start else end <= n <= start
+
+
+def make_divisible(x, divisor):
+    # Returns x evenly divisible by divisor
+    return math.ceil(x / divisor) * divisor
+
+
+def check_img_size(img_size, s=32):
+    # Verify img_size is a multiple of stride s
+    new_size = make_divisible(img_size, int(s))  # ceil gs-multiple
+    if new_size != img_size:
+        print('WARNING: --img-size %g must be multiple of max stride %g, updating to %g' % (img_size, s, new_size))
+    return new_size
