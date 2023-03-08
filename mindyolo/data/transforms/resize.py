@@ -68,8 +68,9 @@ class Resize:
             gt_bbox[:, 3] = h_ratio * gt_bbox[:, 3] + dh
 
             if self.consider_poly and len(gt_poly):
-                gt_poly[..., 0] = w_ratio * gt_poly[..., 0] + dw
-                gt_poly[..., 1] = h_ratio * gt_poly[..., 1] + dh
+                for poly in gt_poly:
+                    poly[..., 0] = w_ratio * poly[..., 0] + dw
+                    poly[..., 1] = h_ratio * poly[..., 1] + dh
         else:
             im_scale_y = self.target_size[1] / shape[0]
             im_scale_x = self.target_size[0] / shape[1]
@@ -84,8 +85,9 @@ class Resize:
                 gt_bbox[:, 1::2] = np.clip(gt_bbox[:, 1::2], 0, resize_h)
 
             if self.consider_poly and len(gt_poly):
-                gt_poly[..., 0] *= im_scale_x
-                gt_poly[..., 1] *= im_scale_y
+                for poly in gt_poly:
+                    poly[..., 0] *= im_scale_x
+                    poly[..., 1] *= im_scale_y
 
         if self.consider_poly:
             return img, gt_bbox, gt_class, gt_poly

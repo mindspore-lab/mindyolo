@@ -46,7 +46,7 @@ class Mosaic:
 
     def __call__(self, records_outs):
         if random.random() < self.mosaic_prob:
-            if random.random() < 1.0:
+            if random.random() < 0.8:
                 record_out = self.mosaic4(records_outs[:4])
             else:
                 record_out = self.mosaic9(records_outs[:9])
@@ -72,7 +72,8 @@ class Mosaic:
                 img = cv2.resize(img, (int(w0 * r), int(h0 * r)), interpolation=cv2.INTER_LINEAR)
                 gt_bbox *= r
                 if self.copy_paste_prob or self.consider_poly:
-                    gt_poly *= r
+                    for poly in gt_poly:
+                        poly *= r
 
             h, w = img.shape[:2]  # hw_resized
 
@@ -101,23 +102,22 @@ class Mosaic:
                 gt_bbox[:, [0, 2]] += padw
                 gt_bbox[:, [1, 3]] += padh
                 if self.copy_paste_prob or self.consider_poly:
-                    gt_poly[..., 0] += padw
-                    gt_poly[..., 1] += padh
+                    for poly in gt_poly:
+                        poly[..., 0] += padw
+                        poly[..., 1] += padh
 
             gt_bboxes4.append(gt_bbox)
             gt_classes4.append(gt_class)
             if self.copy_paste_prob or self.consider_poly:
-                gt_polys4.append(gt_poly)
+                gt_polys4.extend(gt_poly)
 
         # Concat/clip labels
         gt_bboxes4 = np.concatenate(gt_bboxes4, 0)
         gt_classes4 = np.concatenate(gt_classes4, 0)
-        if self.copy_paste_prob or self.consider_poly:
-            gt_polys4 = np.concatenate(gt_polys4, 0)
 
         gt_to_clip = [gt_bboxes4]
         if self.copy_paste_prob or self.consider_poly:
-            gt_to_clip.append(gt_polys4)
+            gt_to_clip.extend(gt_polys4)
         for x in gt_to_clip:
             np.clip(x, 0, 2 * img_size, out=x)  # clip when using random_perspective()
 
@@ -155,7 +155,8 @@ class Mosaic:
                 img = cv2.resize(img, (int(w0 * r), int(h0 * r)), interpolation=cv2.INTER_LINEAR)
                 gt_bbox *= r
                 if self.copy_paste_prob or self.consider_poly:
-                    gt_poly *= r
+                    for poly in gt_poly:
+                        poly *= r
 
             h, w = img.shape[:2]  # hw_resized
 
@@ -189,13 +190,14 @@ class Mosaic:
                 gt_bbox[:, [0, 2]] += padx
                 gt_bbox[:, [1, 3]] += pady
                 if self.copy_paste_prob or self.consider_poly:
-                    gt_poly[..., 0] += padx
-                    gt_poly[..., 1] += pady
+                    for poly in gt_poly:
+                        poly[..., 0] += padx
+                        poly[..., 1] += pady
 
             gt_bboxes9.append(gt_bbox)
             gt_classes9.append(gt_class)
             if self.copy_paste_prob or self.consider_poly:
-                gt_polys9.append(gt_poly)
+                gt_polys9.extend(gt_poly)
 
             # Image
             img9[y1:y2, x1:x2] = img[y1 - pady:, x1 - padx:]  # img9[ymin:ymax, xmin:xmax]
@@ -208,18 +210,17 @@ class Mosaic:
         # Concat/clip labels
         gt_bboxes9 = np.concatenate(gt_bboxes9, 0)
         gt_classes9 = np.concatenate(gt_classes9, 0)
-        if self.copy_paste_prob or self.consider_poly:
-            gt_polys9 = np.concatenate(gt_polys9, 0)
 
         gt_bboxes9[:, [0, 2]] -= xc
         gt_bboxes9[:, [1, 3]] -= yc
         if self.copy_paste_prob or self.consider_poly:
-            gt_polys9[..., 0] -= xc
-            gt_polys9[..., 1] -= yc
+            for poly in gt_polys9:
+                poly[..., 0] -= xc
+                poly[..., 1] -= yc
 
         gt_to_clip = [gt_bboxes9]
         if self.copy_paste_prob or self.consider_poly:
-            gt_to_clip.append(gt_polys9)
+            gt_to_clip.extend(gt_polys9)
         for x in gt_to_clip:
             np.clip(x, 0, 2 * s, out=x)  # clip when using random_perspective()
 

@@ -162,17 +162,16 @@ def sample_polys(img, gt_bbox, gt_class, gt_poly, probability=0.5):
     return sample_classes, sample_images, sample_masks, sample_polys
 
 
-def resample_polys(polys, n=100):
+def resample_polys(polys, n=1000):
     """
     Up-sample an (n,2) segment
     """
-    resample_result = np.zeros((len(polys), n, 2), dtype=np.float32)
+    resample_result = []
     for i, s in enumerate(polys):
         s = np.concatenate((s, s[0:1, :]), axis=0)
         x = np.linspace(0, len(s) - 1, n)
         xp = np.arange(len(s))
-        resample_result[i] = np.concatenate([np.interp(x, xp, s[:, i]) for i in range(2)]).reshape(2,
-                                                                                                   -1).T  # segment xy
+        resample_result.append(np.concatenate([np.interp(x, xp, s[:, i]) for i in range(2)]).reshape(2, -1).T)  # segment xy
     return resample_result
 
 

@@ -82,7 +82,8 @@ class PasteIn:
             if r != 1:  # always resize down, only resize up if training with augmentation
                 img = cv2.resize(img, (int(w0 * r), int(h0 * r)), interpolation=cv2.INTER_LINEAR)
                 gt_bbox *= r
-                gt_poly *= r
+                for poly in gt_poly:
+                    poly *= r
 
             h, w = img.shape[:2]  # hw_resized
 
@@ -109,18 +110,18 @@ class PasteIn:
             if gt_bbox.size:
                 gt_bbox[:, [0, 2]] += padw
                 gt_bbox[:, [1, 3]] += padh
-                gt_poly[..., 0] += padw
-                gt_poly[..., 1] += padh
+                for poly in gt_poly:
+                    poly[..., 0] += padw
+                    poly[..., 1] += padh
 
             gt_bboxes4.append(gt_bbox)
             gt_classes4.append(gt_class)
-            gt_polys4.append(gt_poly)
+            gt_polys4.extend(gt_poly)
 
         # Concat/clip labels
         gt_classes4 = np.concatenate(gt_classes4, 0)
         gt_bboxes4 = np.concatenate(gt_bboxes4, 0)
-        gt_polys4 = np.concatenate(gt_polys4, 0)
-        for x in (gt_bboxes4, gt_polys4):
+        for x in (gt_bboxes4, *gt_polys4):
             np.clip(x, 0, 2 * img_size, out=x)
 
         # Augment
@@ -141,7 +142,7 @@ class PasteIn:
         # create random masks
         scales = [0.75] * 2 + [0.5] * 4 + [0.25] * 4 + [0.125] * 4 + [0.0625] * 6  # image size fraction
         for s in scales:
-            if np.random.random() < 0.2:
+            if random.random() < 0.2:
                 continue
             mask_h = random.randint(1, int(h * s))
             mask_w = random.randint(1, int(w * s))
@@ -182,11 +183,11 @@ class PasteIn:
                         if gt_bbox.shape[0] > 0:
                             gt_bbox = np.concatenate((gt_bbox, [[*box]]), 0)
                             gt_class = np.concatenate((gt_class, [sample_classes[sel_ind]]), 0)
-                            gt_poly = np.concatenate((gt_poly, [r_poly]), 0)
+                            gt_poly.append(r_poly)
                         else:
                             gt_bbox = np.array([[*box]])
                             gt_class = np.array([sample_classes[sel_ind]])
-                            gt_poly = np.array([r_poly])
+                            gt_poly = [r_poly]
 
                         image[ymin:ymin + r_h, xmin:xmin + r_w] = temp_crop
 

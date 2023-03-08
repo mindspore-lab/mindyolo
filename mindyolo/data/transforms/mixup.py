@@ -67,7 +67,7 @@ class MixUp:
         record_out['gt_class'] = gt_class
 
         if self.consider_poly:
-            gt_poly = np.concatenate((gt_poly, gt_poly2), 0)
+            gt_poly.extend(gt_poly2)
             record_out['gt_poly'] = gt_poly
 
         return record_out

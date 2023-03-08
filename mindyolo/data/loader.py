@@ -42,14 +42,11 @@ def create_dataloader(data_config, task, per_batch_size, rank=0, rank_size=1, sh
     if 'SimpleCopyPaste' in transforms_name_list:
         last_trans_need_poly = transforms_name_list.index('SimpleCopyPaste')
         consider_poly = True
-    else:
-        if 'PasteIn' in transforms_name_list:
-            last_trans_need_poly = max(last_trans_need_poly, transforms_name_list.index('PasteIn'))
-        if 'Mosaic' in transforms_name_list:
-            mosaic_index = transforms_name_list.index('Mosaic')
-            mosaic = transforms_dict_list[mosaic_index]
-            if mosaic['Mosaic']['copy_paste_prob']:
-                last_trans_need_poly = max(last_trans_need_poly, mosaic_index)
+    elif 'Mosaic' in transforms_name_list:
+        mosaic_index = transforms_name_list.index('Mosaic')
+        mosaic = transforms_dict_list[mosaic_index]
+        if mosaic['Mosaic']['copy_paste_prob']:
+            last_trans_need_poly = max(last_trans_need_poly, mosaic_index)
 
     transforms_list = []
     for i, transform_name in enumerate(transforms_name_list):

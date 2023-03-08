@@ -34,7 +34,8 @@ class RandomFlip:
             gt_bbox[:, 2] = w - oldx1  # x1 and x2 will be exchanged after flip
 
         if self.consider_poly and len(gt_poly):
-            gt_poly[..., 0] = w - gt_poly[..., 0]
+            for poly in gt_poly:
+                poly[..., 0] = w - poly[..., 0]
             return img, gt_bbox, gt_class, gt_poly
         else:
             return img, gt_bbox, gt_class
@@ -87,7 +88,7 @@ class SimpleCopyPaste:
                 if (ioa < 0.30).all():  # allow 30% obscuration of existing labels
                     gt_bbox = np.concatenate((gt_bbox, [box, ]), 0)
                     gt_class = np.concatenate((gt_class, [c, ]), 0)
-                    gt_poly = np.concatenate((gt_poly, [np.concatenate((w - p[:, 0:1], p[:, 1:2]), 1)]), 0)
+                    gt_poly.append(np.concatenate((w - p[:, 0:1], p[:, 1:2]), 1))
                     cv2.drawContours(im_new, [gt_poly[j].astype(np.int32)], -1, (255, 255, 255), cv2.FILLED)
 
             result = cv2.bitwise_and(src1=img, src2=im_new)
@@ -151,8 +152,9 @@ class LetterBox:
         gt_bbox[:, 3] = h_ratio * gt_bbox[:, 3] + dh
 
         if self.consider_poly and len(gt_poly):
-            gt_poly[..., 0] = w_ratio * gt_poly[..., 0] + dw
-            gt_poly[..., 1] = h_ratio * gt_poly[..., 1] + dh
+            for poly in gt_poly:
+                poly[..., 0] = w_ratio * poly[..., 0] + dw
+                poly[..., 1] = h_ratio * poly[..., 1] + dh
 
         pad += np.array([dh, dw])
         ratio *= np.array(ratio)
