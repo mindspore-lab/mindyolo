@@ -54,7 +54,7 @@ def create_optimizer(
     else:
         raise ValueError(f'Invalid optimizer: {optim}')
 
-    if os.path.exists(checkpoint_path):
+    if checkpoint_path.endswith('.ckpt') and os.path.isfile(checkpoint_path):
         param_dict = load_checkpoint(checkpoint_path)
         load_param_into_net(optimizer, param_dict)
 

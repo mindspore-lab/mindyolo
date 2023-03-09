@@ -39,8 +39,10 @@ def init_env(cfg):
 
     # Set default cfg
     cfg.total_batch_size = cfg.per_batch_size * cfg.rank_size
+    cfg.sync_bn = cfg.get('sync_bn', False)
     cfg.sync_bn = cfg.sync_bn and context.get_context("device_target") == "Ascend" and cfg.rank_size > 1
     cfg.nbs = cfg.get('nbs', 64)
+    cfg.is_parallel = cfg.get('is_parallel', False)
     cfg.auto_accumulate = cfg.get('auto_accumulate', False)
     cfg.accumulate = max(1, np.round(cfg.nbs / cfg.total_batch_size)) \
         if cfg.auto_accumulate else cfg.get('accumulate', 1)

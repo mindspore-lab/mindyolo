@@ -232,7 +232,6 @@ class COCODataset:
                     continue
 
                 gt_poly = [np.array(x, dtype=np.float32).reshape(-1, 2) for x in gt_poly]
-                gt_poly = resample_polys(gt_poly)
 
                 gt_rec = {
                     'gt_class': gt_class,

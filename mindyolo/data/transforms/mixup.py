@@ -7,7 +7,7 @@ __all__ = ['MixUp']
 
 
 class MixUp:
-    def __init__(self, additional_imgs=9, prob=1.0, alpha=8.0, beta=8.0, mosaic_needed=False, consider_poly=False):
+    def __init__(self, additional_imgs=9, prob=0.15, alpha=8.0, beta=8.0, mosaic_needed=True, consider_poly=False):
         """ Mixup image and gt_bbox/gt_class/gt_poly
         Args:
             additional_imgs(int): number of additional_images needed
@@ -67,7 +67,7 @@ class MixUp:
         record_out['gt_class'] = gt_class
 
         if self.consider_poly:
-            gt_poly = np.concatenate((gt_poly, gt_poly2), 0)
+            gt_poly.extend(gt_poly2)
             record_out['gt_poly'] = gt_poly
 
         return record_out

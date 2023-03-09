@@ -5,21 +5,21 @@ from .scheduler import cosine_decay_lr
 __all__ = ['create_group_param']
 
 
-def create_group_param(params, weight_decay=0.0, **kwargs):
+def create_group_param(params, gp_weight_decay=0.0, **kwargs):
     """
     Create group parameters for optimizer.
 
     Args:
         params: Network parameters
-        weight_decay: Weight decay. Default: 0.0
+        gp_weight_decay: Weight decay. Default: 0.0
         **kwargs: Others
     """
     if 'group_param' in kwargs:
         gp_strategy = kwargs['group_param']
         if gp_strategy == 'filter_bias_and_bn':
-            return filter_bias_and_bn(params, weight_decay)
+            return filter_bias_and_bn(params, gp_weight_decay)
         elif gp_strategy == "yolov7":
-            return group_param_yolov7(params, weight_decay=weight_decay, **kwargs)
+            return group_param_yolov7(params, weight_decay=gp_weight_decay, **kwargs)
         else:
             raise NotImplementedError
     else:

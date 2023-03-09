@@ -162,17 +162,16 @@ def sample_polys(img, gt_bbox, gt_class, gt_poly, probability=0.5):
     return sample_classes, sample_images, sample_masks, sample_polys
 
 
-def resample_polys(polys, n=100):
+def resample_polys(polys, n=1000):
     """
     Up-sample an (n,2) segment
     """
-    resample_result = np.zeros((len(polys), n, 2), dtype=np.float32)
+    resample_result = []
     for i, s in enumerate(polys):
         s = np.concatenate((s, s[0:1, :]), axis=0)
         x = np.linspace(0, len(s) - 1, n)
         xp = np.arange(len(s))
-        resample_result[i] = np.concatenate([np.interp(x, xp, s[:, i]) for i in range(2)]).reshape(2,
-                                                                                                   -1).T  # segment xy
+        resample_result.append(np.concatenate([np.interp(x, xp, s[:, i]) for i in range(2)]).reshape(2, -1).T)  # segment xy
     return resample_result
 
 
@@ -192,7 +191,7 @@ def poly2box(poly, width=640, height=640, consider_poly=False):
         return np.array([x.min(), y.min(), x.max(), y.max()]) if any(x) else np.zeros((1, 4))
 
 
-def normalize_shape(images, gt_bboxes, gt_classes, batch_info):
+def normalize_shape(images, gt_bboxes, gt_classes):
     """
     Ensure labels have the same shape to avoid dynamics shapes
     """
@@ -200,20 +199,20 @@ def normalize_shape(images, gt_bboxes, gt_classes, batch_info):
     for gt_class in gt_classes:
         most_boxes_per_img = max(most_boxes_per_img, gt_class.shape[0])
 
-    batch_idx = []
+    batch_idxes = []
     for i, (gt_bbox, gt_class) in enumerate(zip(gt_bboxes, gt_classes)):
         nL = gt_class.shape[0]
         gt_bboxes[i] = np.full((most_boxes_per_img, 4), -1, dtype=np.float32)
         gt_classes[i] = np.full((most_boxes_per_img, 1), -1, dtype=np.int32)
-        batch_idx.append(np.full((most_boxes_per_img, 1), i, dtype=np.int32))
+        batch_idxes.append(np.full((most_boxes_per_img, 1), i, dtype=np.int32))
         if nL:
             gt_bboxes[i][:nL, :] = gt_bbox[:nL, :]
             gt_classes[i][:nL, :] = gt_class[:nL, :]
 
-    return np.stack(images, 0), np.stack(gt_bboxes, 0), np.stack(gt_classes, 0), np.stack(batch_idx, 0)
+    return images, gt_bboxes, gt_classes, batch_idxes
 
 
-def normalize_shape_with_poly(images, gt_bboxes, gt_classes, gt_polys, batch_info):
+def normalize_shape_with_poly(images, gt_bboxes, gt_classes, gt_polys):
     """
     Ensure labels have the same shape to avoid dynamics shapes
     """
@@ -221,18 +220,18 @@ def normalize_shape_with_poly(images, gt_bboxes, gt_classes, gt_polys, batch_inf
     for gt_class in gt_classes:
         most_boxes_per_img = max(most_boxes_per_img, gt_class.shape[0])
 
-    batch_idx = []
+    batch_idxes = []
     for i, (gt_bbox, gt_class, gt_poly) in enumerate(zip(gt_bboxes, gt_classes, gt_polys)):
         nL = gt_class.shape[0]
         gt_bboxes[i] = np.full((most_boxes_per_img, 4), -1, dtype=np.float32)
         gt_bboxes[i][:nL, :] = gt_bbox[:nL, :]
         gt_classes[i] = np.full((most_boxes_per_img, 1), -1, dtype=np.int32)
         gt_classes[i][:nL, :] = gt_class[:nL, :]
-        batch_idx.append(np.full((most_boxes_per_img, 1), i, dtype=np.int32))
+        batch_idxes.append(np.full((most_boxes_per_img, 1), i, dtype=np.int32))
         gt_polys[i] = np.full((most_boxes_per_img, 100, 2), -1, dtype=np.float32)
         gt_polys[i][:nL, :] = gt_poly[:nL]
 
-    return np.stack(images, 0), np.stack(gt_bboxes, 0), np.stack(gt_classes, 0), np.stack(gt_polys, 0), np.stack(batch_idx, 0)
+    return images, gt_bboxes, gt_classes, gt_polys, batch_idxes
 
 
 def coco80_to_coco91_class():  # converts 80-index (val2014) to 91-index (paper)

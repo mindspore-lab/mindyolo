@@ -114,7 +114,7 @@ def cosine_decay_lr(start_factor, end_factor, lr_init, steps_per_epoch, epochs, 
     """
 
     if t_max is None:
-        t_max = epochs - 1 if epochs > 1 else 1
+        t_max = epochs
     lrs = []
     start_lr = lr_init * start_factor
     end_lr = lr_init * end_factor
