@@ -1,7 +1,6 @@
 optimizer:
   optimizer: momentum
   lr_init: 0.01  # initial learning rate (SGD=1E-2, Adam=1E-3)
-  weight_decay: 0.0005  # optimizer weight decay 5e-4
   momentum: 0.937  # SGD momentum/Adam beta1
   nesterov: True # update gradients with NAG(Nesterov Accelerated Gradient) algorithm
   loss_scale: 1.0 # loss scale for optimizer
@@ -10,6 +9,7 @@ optimizer:
   warmup_bias_lr: 0.1  # warmup initial bias lr
   min_warmup_step: 1000 # minimum warmup step
   group_param: yolov7 # group param strategy
+  gp_weight_decay: 0.0005  # group param weight decay 5e-4
   start_factor: 1.0
   end_factor: 0.1
 
@@ -55,3 +55,4 @@ data:
       - TransposeImage: { bgr2rgb: True, hwc2chw: True }
 
 img_size: 640 # image sizes
+sync_bn: True

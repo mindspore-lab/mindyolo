@@ -44,7 +44,7 @@ class Enginer:
         self.amp_level = cfg.get('ms_amp_level', 'O0')
         self.input_dtype = ms.float32 if self.amp_level == "O0" else ms.float16
         self.ms_jit = cfg.get('ms_jit', False)
-        self.is_parallel = cfg.is_parallel = cfg.get('is_parallel', False)
+        self.is_parallel = cfg.is_parallel
         self.run_eval = cfg.get('run_eval', False)
         self.auto_accumulate = cfg.auto_accumulate
         self.accumulate = cfg.accumulate
@@ -61,7 +61,7 @@ class Enginer:
         self.network = create_model(model_name=cfg.network.model_name,
                                     model_cfg=cfg.network,
                                     num_classes=cfg.data.nc,
-                                    sync_bn=cfg.sync_bn if hasattr(cfg, 'sync_bn') else False)
+                                    sync_bn=cfg.sync_bn)
         if cfg.ema and self.main_device:
             ema_network = create_model(model_name=cfg.network.model_name,
                                        model_cfg=cfg.network,
@@ -176,7 +176,7 @@ class Enginer:
         self.global_step = 0
         self.accumulate_cur_step = 0
         self.accumulate_grads = None
-        self.warmup_steps = max(self.warmup_epochs * self.steps_per_epoch, self.min_warmup_step)
+        self.warmup_steps = max(round(self.warmup_epochs * self.steps_per_epoch), self.min_warmup_step)
         ckpt_save_dir = self.cfg.ckpt_save_dir
         keep_checkpoint_max = self.cfg.keep_checkpoint_max
         enable_modelarts = self.cfg.enable_modelarts
@@ -187,13 +187,45 @@ class Enginer:
         manager_best = CheckpointManager(ckpt_save_policy='top_k') if self.run_eval else None
         ckpt_filelist_best = []
 
-        s_time = time.time()
-        for i in range(self.epochs):
-            cur_epoch = i + 1
+        self.dataloader = self.dataloader.repeat(self.epochs)
+        loader = self.dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
+        s_step_time = time.time()
+        s_epoch_time = time.time()
+        for i, data in enumerate(loader):
+            cur_epoch = (i // self.steps_per_epoch) + 1
+            cur_step = (i % self.steps_per_epoch) + 1
 
-            self.train_epoch(cur_epoch)
+            self.global_step += 1
+            if self.global_step < self.warmup_steps:
+                xp, fp = [0, self.warmup_steps], [1, self.cfg.nbs / self.cfg.total_batch_size]
+                self.accumulate = max(1, np.interp(self.global_step, xp,
+                                                   fp).round()) if self.auto_accumulate else self.accumulate
+                if self.warmup_momentum and isinstance(self.optimizer, (nn.SGD, nn.Momentum)):
+                    dtype = self.optimizer.momentum.dtype
+                    self.optimizer.momentum = Tensor(self.warmup_momentum[i], dtype)
 
-            if self.run_eval:
+            imgs, batch_idx, gt_class, gt_bbox = data["image"], data['batch_idx'], data["gt_class"], data["gt_bbox"]
+            labels = np.concatenate((batch_idx, gt_class, gt_bbox), -1)  # (bs, N, 6)
+            imgs, labels = Tensor(imgs, self.input_dtype), Tensor(labels, self.input_dtype)
+            size = None
+            if self.multi_scale:
+                gs = max(int(np.array(self.stride).max()), 32)
+                sz = random.randrange(self.img_size * 0.5, self.img_size * 1.5 + gs) // gs * gs  # size
+                sf = sz / max(imgs.shape[2:])  # scale factor
+                if sf != 1:
+                    size = tuple(
+                        [math.ceil(x * sf / gs) * gs for x in imgs.shape[2:]])  # new shape (stretched to gs-multiple)
+
+            self.train_step(imgs, labels, size, cur_step=cur_step, cur_epoch=cur_epoch)
+
+            # train log
+            if cur_step % self.log_interval == 0:
+                logger.info(f"Epoch {self.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step}, "
+                            f"step time: {(time.time() - s_step_time) * 1000 / self.log_interval:.2f} ms")
+                s_step_time = time.time()
+
+            # run eval per epoch on main device
+            if self.run_eval and (i + 1) % self.steps_per_epoch == 0:
                 s_eval_time = time.time()
                 sync_lock = os.path.join(sync_lock_dir, "/run_eval_sync.lock" + str(cur_epoch))
                 # single device run eval only
@@ -221,16 +253,17 @@ class Enginer:
                         break
                     time.sleep(1)
 
-            # Each server contains 8 devices as most.
-            if self.main_device:
+            # save checkpoint per epoch on main device
+            if self.main_device and (i + 1) % self.steps_per_epoch == 0:
                 # Save Checkpoint
                 ms.save_checkpoint(self.optimizer, os.path.join(ckpt_save_dir, f'optim_{model_name}.ckpt'),
                                    async_save=True)
                 save_path = os.path.join(ckpt_save_dir, f"{model_name}-{cur_epoch}_{self.steps_per_epoch}.ckpt")
                 manager.save_ckpoint(self.network, num_ckpt=keep_checkpoint_max, save_path=save_path)
                 if self.ema:
-                    save_path_ema = os.path.join(ckpt_save_dir, f"EMA_{model_name}-{cur_epoch}_{self.steps_per_epoch}.ckpt")
-                    manager_ema.save_ckpoint(self.ema, num_ckpt=keep_checkpoint_max, save_path=save_path_ema)
+                    save_path_ema = os.path.join(ckpt_save_dir,
+                                                 f"EMA_{model_name}-{cur_epoch}_{self.steps_per_epoch}.ckpt")
+                    manager_ema.save_ckpoint(self.ema.ema, num_ckpt=keep_checkpoint_max, save_path=save_path_ema)
                 logger.info(f"Saving model to {save_path}")
 
                 if enable_modelarts:
@@ -238,47 +271,14 @@ class Enginer:
                     if self.ema:
                         sync_data(save_path_ema, self.cfg.train_url + "/weights/" + save_path_ema.split("/")[-1])
 
-            logger.info(f"Epoch {self.epochs}/{cur_epoch}, epoch time: {(time.time() - s_time) / 60:.2f} min.")
-            s_time = time.time()
+                logger.info(f"Epoch {self.epochs}/{cur_epoch}, epoch time: {(time.time() - s_epoch_time) / 60:.2f} min.")
+                s_epoch_time = time.time()
 
         if enable_modelarts and ckpt_filelist_best:
             for p in ckpt_filelist_best:
                 sync_data(p, self.cfg.train_url + '/weights/best/' + p.split("/")[-1])
 
         logger.info("End Train.")
-
-    def train_epoch(self, cur_epoch):
-        loader = self.dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
-        s_time = time.time()
-        for i, data in enumerate(loader):
-            cur_step = i + 1
-
-            self.global_step += 1
-            if self.global_step < self.warmup_steps:
-                xp, fp = [0, self.warmup_steps], [1, self.cfg.nbs / self.cfg.total_batch_size]
-                self.accumulate = max(1, np.interp(self.global_step, xp, fp).round()) if self.auto_accumulate else self.accumulate
-                if self.warmup_momentum and isinstance(self.optimizer, (nn.SGD, nn.Momentum)):
-                    dtype = self.optimizer.momentum.dtype
-                    self.optimizer.momentum = Tensor(self.warmup_momentum[i], dtype)
-
-            imgs, batch_idx, gt_class, gt_bbox = data["image"], data['batch_idx'], data["gt_class"], data["gt_bbox"]
-            labels = np.concatenate((batch_idx, gt_class, gt_bbox), -1) # (bs, N, 6)
-            imgs, labels = Tensor(imgs, self.input_dtype), Tensor(labels, self.input_dtype)
-            size = None
-            if self.multi_scale:
-                gs = max(int(np.array(self.stride).max()), 32)
-                sz = random.randrange(self.img_size * 0.5, self.img_size * 1.5 + gs) // gs * gs  # size
-                sf = sz / max(imgs.shape[2:])  # scale factor
-                if sf != 1:
-                    size = tuple([math.ceil(x * sf / gs) * gs for x in imgs.shape[2:]])  # new shape (stretched to gs-multiple)
-
-            self.train_step(imgs, labels, size, cur_step=cur_step, cur_epoch=cur_epoch)
-
-            # train log
-            if cur_step % self.log_interval == 0:
-                logger.info(f"Epoch {self.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step}, "
-                            f"step time: {(time.time() - s_time) * 1000 / self.log_interval:.2f} ms")
-                s_time = time.time()
 
     def train_step(self, imgs, labels, size=None, cur_step=0, cur_epoch=0):
         if self.accumulate == 1:
@@ -538,13 +538,12 @@ class Enginer:
             pred = network(x)
             loss, loss_items = loss_fn(pred, label, x)
             loss *= rank_size
-            return scaler.scale(loss), loss_items
+            return scaler.scale(loss), ops.stop_gradient(loss_items)
 
         grad_fn = ops.value_and_grad(forward_func, grad_position=None, weights=optimizer.parameters, has_aux=True)
 
         def train_step_func(x, label, sizes=None, optimizer_update=True):
             (loss, loss_items), grads = grad_fn(x, label, sizes)
-            loss = scaler.unscale(loss)
             grads = reducer(grads)
             unscaled_grads = scaler.unscale(grads)
             grads_finite = all_finite(unscaled_grads)
@@ -556,7 +555,7 @@ class Enginer:
                     if overflow_still_update:
                         loss = ops.depend(loss, optimizer(unscaled_grads))
 
-            return loss, loss_items, unscaled_grads, grads_finite
+            return scaler.unscale(loss), loss_items, unscaled_grads, grads_finite
 
         @ms.ms_function
         def jit_warpper(*args):

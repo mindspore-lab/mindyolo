@@ -2,7 +2,7 @@ import mindspore.dataset as de
 
 from .transforms_factory import create_transform
 from .dataset import COCODataset
-from .general import normalize_shape
+from .transforms.batch import BatchNormalizeShape
 
 __all__ = ['create_dataloader']
 
@@ -83,29 +83,18 @@ def create_dataloader(data_config, task, per_batch_size, rank=0, rank_size=1, sh
         ds = de.GeneratorDataset(dataset, column_names=dataset_column_names,
                                  num_parallel_workers=num_parallel_worker, shuffle=shuffle)
 
-    if task != 'train':
-        map_columns = ['image', 'pad', 'ratio', 'gt_bbox', 'gt_class']
-    else:
-        map_columns = ['image', 'gt_bbox', 'gt_class']
-    if consider_poly:
-        map_columns.append('gt_poly')
-
     if single_img_transforms:
         ds = ds.map(operations=single_img_transforms,
-                    input_columns=map_columns,
+                    input_columns=dataset_column_names,
                     num_parallel_workers=num_parallel_worker)
-
-    ds = ds.project(['image', 'im_file', 'im_id',
-                     'ori_shape', 'pad', 'ratio',
-                     'gt_bbox', 'gt_class'])
 
     per_batch_map = getattr(trans_config, 'batch_imgs_transform', None)
     if per_batch_map:
         per_batch_map = create_transform(per_batch_map)
     else:
-        per_batch_map = normalize_shape
+        per_batch_map = BatchNormalizeShape()
 
-    input_columns = ['image', 'gt_bbox', 'gt_class']
+    input_columns = dataset_column_names
     batch_column = input_columns + ['batch_idx',]
     ds = ds.batch(per_batch_size,
                   input_columns=input_columns,

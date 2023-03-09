@@ -35,7 +35,8 @@ class EMA(nn.Cell):
             if weight.dtype == ms.int32:
                 return self.assign(ema_v, weight)
             else:
-                return self.assign(ema_v, weight * (1. - d) + ema_v * d)
+                tep_v = ema_v * d
+                return self.assign(ema_v, weight * (1. - d) + tep_v)
 
         updates = ops.assign_add(self.updates, 1)
         d = self.decay(self.updates)

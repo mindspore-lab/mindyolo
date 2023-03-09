@@ -71,10 +71,11 @@ class RandomPerspective:
         if n:
             use_segments = len(gt_poly) > 0
             new_bbox = np.zeros((n, 4))
-            new_poly = np.zeros((n, 100, 2))
+            if self.consider_poly:
+                new_poly = [np.zeros((1000, 2))] * n
             if use_segments:
-                resample_result = resample_polys(gt_poly)  # upsample
-                for i, poly in enumerate(resample_result):
+                gt_poly = resample_polys(gt_poly)  # upsample
+                for i, poly in enumerate(gt_poly):
                     xy = np.ones((len(poly), 3))
                     xy[:, :2] = poly
                     xy = xy @ M.T  # transform
@@ -107,7 +108,10 @@ class RandomPerspective:
 
             # filter candidates for poly
             if self.consider_poly:
-                gt_poly = new_poly[i]
+                gt_poly = []
+                for j, value in enumerate(i):
+                    if value:
+                        gt_poly.append(new_poly[j])
                 return img, gt_bbox, gt_class, gt_poly
             else:
                 return img, gt_bbox, gt_class

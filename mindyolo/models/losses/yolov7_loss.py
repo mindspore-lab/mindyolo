@@ -358,6 +358,11 @@ class YOLOv7AuxLoss(nn.Cell):
         self.na = len(anchors[0]) // 2  # number of anchors
         self.nl = len(anchors)  # number of layers
 
+        # modify weight of box/obj/cls when aux_loss
+        self.hyp_box *= 3. / self.nl
+        self.hyp_cls *= self.nc / 80. * 3. / self.nl
+        self.hyp_obj *= 2.0 ** 2 * 3. / self.nl
+
         stride = np.array(stride)
         anchors = np.array(anchors).reshape((self.nl, -1, 2))
         anchors = anchors / stride.reshape((-1, 1, 1))
