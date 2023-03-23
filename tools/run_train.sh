@@ -73,9 +73,8 @@ fi
 if [ $PARALLEL == 1 ]; then
     if [ $USE_MPI == 1 ]; then
         mpirun --allow-run-as-root -n $RANK_SIZE --merge-stderr-to-stdout \
-        python ./tools/run.py \
+        python train.py \
             --config=$CONFIG_PATH \
-            --task='train' \
             --device_target=$DEVICE_TRAGET \
             --is_parallel=True > log.txt 2>&1 &
     else
@@ -85,9 +84,10 @@ if [ $PARALLEL == 1 ]; then
 
         rm -rf ./train_parallel
         mkdir ./train_parallel
+        cp -r ./*.py ./train_parallel
         cp -r ./mindyolo ./train_parallel
         cp -r ./configs ./train_parallel
-        cp -r ./tools/*.py ./train_parallel
+        cp -r ./tools/*.sh ./train_parallel
         cd ./train_parallel || exit
 
         for((i=0; i<${DEVICE_NUM}; i++))
@@ -100,9 +100,8 @@ if [ $PARALLEL == 1 ]; then
             export RANK_ID=$i
 
             echo "start training for rank $RANK_ID, device $DEVICE_ID"
-            taskset -c $cmdopt python ./run.py \
+            taskset -c $cmdopt python train.py \
                 --config=$CONFIG_PATH \
-                --task='train' \
                 --device_target=Ascend \
                 --is_parallel=True > log$i.txt 2>&1 &
         done
@@ -110,9 +109,8 @@ if [ $PARALLEL == 1 ]; then
         cd ..
     fi
 else
-    python ./tools/run.py \
+    python train.py \
         --config=$CONFIG_PATH \
-        --task='train' \
         --device_target=$DEVICE_TRAGET \
         --is_parallel=False > log.txt 2>&1 &
 fi

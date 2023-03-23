@@ -100,20 +100,19 @@ def scale_coords(img1_shape, coords, img0_shape, ratio=None, pad=None):
 
     if ratio is None:  # calculate from img0_shape
         ratio = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])  # ratio  = old / new
-        h_ratio, w_ratio = ratio, ratio
     else:
-        h_ratio, w_ratio = ratio[:]
+        ratio = ratio[0]
 
     if pad is None:
-        padh, padw = (img1_shape[0] - img0_shape[0] * h_ratio) / 2, \
-                     (img1_shape[1] - img0_shape[1] * w_ratio) / 2
+        padh, padw = (img1_shape[0] - img0_shape[0] * ratio) / 2, \
+                     (img1_shape[1] - img0_shape[1] * ratio) / 2
     else:
         padh, padw = pad[:]
 
-    coords[:, [0, 2]] -= padw       # x padding
-    coords[:, [1, 3]] -= padh       # y padding
-    coords[:, [0, 2]] /= w_ratio    # x rescale
-    coords[:, [1, 3]] /= h_ratio    # y rescale
+    coords[:, [0, 2]] -= padw     # x padding
+    coords[:, [1, 3]] -= padh     # y padding
+    coords[:, [0, 2]] /= ratio    # x rescale
+    coords[:, [1, 3]] /= ratio    # y rescale
     coords = _clip_coords(coords, img0_shape)
     return coords
 

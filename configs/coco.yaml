@@ -24,6 +24,5 @@ data:
            'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear',
            'hair drier', 'toothbrush' ]
 
-  # transforms
-  multi_imgs_transforms: []
-  single_img_transforms: []
+  train_transforms: []
+  test_transforms: []

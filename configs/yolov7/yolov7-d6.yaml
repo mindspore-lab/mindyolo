@@ -1,16 +1,14 @@
 __BASE__: [
-  '../common/base.yaml',
-  '../data/coco.yaml',
-  './hyp/hyp.scratch.p6.yaml',
+  '../coco.yaml',
+  './hyp.scratch.p6.yaml',
 ]
 
-run_eval: False
 per_batch_size: 16 # 16 * 8 = 128
+img_size: 1280
+sync_bn: True
 
 network:
   model_name: yolov7
-  recompute: True
-  recompute_layers: 5
 
   depth_multiple: 1.0  # model depth multiple
   width_multiple: 1.0  # layer channel multiple

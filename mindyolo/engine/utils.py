@@ -10,7 +10,7 @@ from mindspore.communication.management import init, get_rank, get_group_size
 
 from mindyolo.utils import logger
 
-__all__ = ['init_env', 'set_seed']
+__all__ = ['set_default', 'set_seed']
 
 
 def set_seed(seed=2):
@@ -19,13 +19,13 @@ def set_seed(seed=2):
     ms.set_seed(seed)
 
 
-def init_env(cfg):
+def set_default(cfg):
     # Set Context
     context.set_context(mode=cfg.ms_mode, device_target=cfg.device_target, max_call_depth=2000)
     if cfg.device_target == "Ascend":
         device_id = int(os.getenv('DEVICE_ID', 0))
         context.set_context(device_id=device_id)
-    elif cfg.device_target == "GPU" and cfg.get('ms_enable_graph_kernel', False):
+    elif cfg.device_target == "GPU" and cfg.ms_enable_graph_kernel:
         context.set_context(enable_graph_kernel=True)
 
     # Set Parallel
@@ -35,17 +35,12 @@ def init_env(cfg):
         rank, rank_size, parallel_mode = get_rank(), get_group_size(), ParallelMode.DATA_PARALLEL
     context.set_auto_parallel_context(device_num=rank_size, parallel_mode=parallel_mode, gradients_mean=True)
     cfg.rank, cfg.rank_size = rank, rank_size
-    cfg.main_device = (rank % rank_size == 0)
 
     # Set default cfg
     cfg.total_batch_size = cfg.per_batch_size * cfg.rank_size
-    cfg.sync_bn = cfg.get('sync_bn', False)
     cfg.sync_bn = cfg.sync_bn and context.get_context("device_target") == "Ascend" and cfg.rank_size > 1
-    cfg.nbs = cfg.get('nbs', 64)
-    cfg.is_parallel = cfg.get('is_parallel', False)
-    cfg.auto_accumulate = cfg.get('auto_accumulate', False)
     cfg.accumulate = max(1, np.round(cfg.nbs / cfg.total_batch_size)) \
-        if cfg.auto_accumulate else cfg.get('accumulate', 1)
+        if cfg.auto_accumulate else cfg.accumulate
     # optimizer
     cfg.optimizer.warmup_epochs = cfg.optimizer.get('warmup_epochs', 0)
     cfg.optimizer.min_warmup_step = cfg.optimizer.get('min_warmup_step', 0)
@@ -62,10 +57,11 @@ def init_env(cfg):
                                                (len(cfg.data.names), cfg.data.nc, cfg.config)
 
     # Directories and Save run settings
-    cfg.save_dir = _increment_path(Path(cfg.save_dir) / datetime.now().strftime("%Y.%m.%d-%H:%M:%S"), exist_ok=cfg.exist_ok)  # increment run
+    cfg.save_dir = os.path.join(cfg.save_dir, datetime.now().strftime("%Y.%m.%d-%H:%M:%S"))
     cfg.ckpt_save_dir = os.path.join(cfg.save_dir, 'weights')
     cfg.sync_lock_dir = os.path.join(cfg.save_dir, 'sync_locks') if not cfg.enable_modelarts else '/tmp/sync_locks'
-    if cfg.main_device:
+    os.makedirs(cfg.save_dir, exist_ok=True)
+    if rank % rank_size == 0:
         os.makedirs(cfg.ckpt_save_dir, exist_ok=True)
         with open(os.path.join(cfg.save_dir, "cfg.yaml"), 'w') as f:
             yaml.dump(vars(cfg), f, sort_keys=False)
@@ -87,16 +83,3 @@ def init_env(cfg):
         cfg.data.dataset_dir = os.path.join(cfg.data_dir, cfg.data.dataset_dir)
         cfg.weight = os.path.join(cfg.ckpt_dir, cfg.weight) if cfg.weight else ''
         cfg.ema_weight = os.path.join(cfg.ckpt_dir, cfg.ema_weight) if cfg.ema_weight else ''
-
-
-def _increment_path(path, exist_ok=True, sep=''):
-    # Increment path, i.e. runs/exp --> runs/exp{sep}0, runs/exp{sep}1 etc.
-    path = Path(path)  # os-agnostic
-    if (path.exists() and exist_ok) or (not path.exists()):
-        return str(path)
-    else:
-        dirs = glob.glob(f"{path}{sep}*")  # similar paths
-        matches = [re.search(rf"%s{sep}(\d+)" % path.stem, d) for d in dirs]
-        i = [int(m.groups()[0]) for m in matches if m]  # indices
-        n = max(i) + 1 if i else 2  # increment number
-        return f"{path}{sep}{n}"  # update path

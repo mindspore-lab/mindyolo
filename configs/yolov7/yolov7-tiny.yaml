@@ -1,12 +1,11 @@
 __BASE__: [
-  '../common/base.yaml',
-  '../data/coco.yaml',
-  './hyp/hyp.scratch.tiny.yaml',
+  '../coco.yaml',
+  './hyp.scratch.tiny.yaml',
 ]
 
-run_eval: False
 per_batch_size: 16 # 16 * 8 = 128
-
+img_size: 640 # image sizes
+sync_bn: True
 
 network:
   model_name: yolov7

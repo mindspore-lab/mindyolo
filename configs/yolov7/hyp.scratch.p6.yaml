@@ -31,26 +31,19 @@ data:
   num_parallel_workers: 4
 
   train_transforms:
-    multi_imgs_transforms:
-      - Mosaic: { mosaic_prob: 1.0, copy_paste_prob: 0.0, translate: 0.2, scale: 0.9, target_size: 1280 }
-      - MixUp: { prob: 0.15, alpha: 8.0, beta: 8.0, mosaic_needed: True }
-      - PasteIn: { prob: 0.15, target_size: 1280 }
-    single_img_transforms:
-      - RandomHSV: { hgain: 0.015, sgain: 0.7, vgain: 0.4 }
-      - RandomFlip: { prob: 0.5 }
-      - NormalizeBox: { xyxy2xywh: True }
-      - NormalizeImage: { is_scale: True, norm_type: none }
-      - TransposeImage: { bgr2rgb: True, hwc2chw: True }
-    batch_imgs_transform:
-      BatchLabelsPadding: { padding_size: 160, padding_value: -1 }
+    - {func_name: mosaic, prob: 1.0, mosaic9_prob: 0.2, translate: 0.2, scale: 0.9}
+    - {func_name: mixup, prob: 0.15, alpha: 8.0, beta: 8.0, needed_mosaic: True}
+    - {func_name: hsv_augment, prob: 1.0, hgain: 0.015, sgain: 0.7, vgain: 0.4}
+    - {func_name: pastein, prob: 0.15, num_sample: 30}
+    - {func_name: label_norm, xyxy2xywh_: True}
+    - {func_name: fliplr, prob: 0.5}
+    - {func_name: label_pad, padding_size: 160, padding_value: -1}
+    - {func_name: image_norm, scale: 255.}
+    - {func_name: image_transpose, bgr2rgb: True, hwc2chw: True}
 
-  eval_transforms:
-    single_img_transforms:
-      - Resize: { target_size: 640, keep_ratio: True }
-      - LetterBox: { target_size: 1280 }
-      - NormalizeBox: { xyxy2xywh: True }
-      - NormalizeImage: { is_scale: True, norm_type: none }
-      - TransposeImage: { bgr2rgb: True, hwc2chw: True }
-
-img_size: 1280 # image sizes
-sync_bn: True
+  test_transforms:
+    - {func_name: letterbox, scaleup: False}
+    - {func_name: label_norm, xyxy2xywh_: True}
+    - {func_name: label_pad, padding_size: 160, padding_value: -1}
+    - {func_name: image_norm, scale: 255. }
+    - {func_name: image_transpose, bgr2rgb: True, hwc2chw: True }
