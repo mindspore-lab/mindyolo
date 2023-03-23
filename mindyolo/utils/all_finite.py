@@ -1,7 +1,7 @@
 import mindspore as ms
 
 # TODO: Delete this code when publish
-def compare_version(v1, v2="1.9.0"):
+def compare_version(v1, v2="2.0.0"):
     """
     :param v1: version, format like 1.8.1
     :param v2: version, format like 1.8.1

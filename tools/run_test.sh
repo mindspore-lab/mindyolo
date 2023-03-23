@@ -54,8 +54,7 @@ if [ ! -f $CONFIG_PATH ]; then
     exit 1
 fi
 
-python ./tools/run.py \
+python ./test.py \
     --config=$CONFIG_PATH \
-    --task='eval' \
     --device_target=$DEVICE_TRAGET \
-    --weight=$WEIGHT  > log$DEVICE_ID.txt 2>&1 &
+    --weight=$WEIGHT  > log_test_$DEVICE_ID.txt 2>&1 &

@@ -13,51 +13,31 @@ from mindspore import nn, ops, Tensor, context
 from mindyolo.models import create_loss, create_model
 from mindyolo.optim import create_group_param, create_lr_scheduler, create_warmup_momentum_scheduler, \
     create_optimizer, EMA
-from mindyolo.data import create_dataloader
-from mindyolo.data.general import coco80_to_coco91_class
+from mindyolo.data import COCODataset, create_loader
+from mindyolo.data import COCO80_TO_COCO91_CLASS
 from mindyolo.utils import logger
 from mindyolo.utils.checkpoint_manager import CheckpointManager
 from mindyolo.utils.metrics import non_max_suppression, scale_coords, xyxy2xywh
 from mindyolo.utils.modelarts import sync_data
 
-from .env import init_env, set_seed
+from .utils import set_default, set_seed
 
 __all__ = ['Enginer']
 
 
 class Enginer:
-    def __init__(self, cfg):
-
-        # Check task
-        task = cfg.task.lower()
-        assert task in ('train', 'val', 'eval', 'test', 'export', 'predict'), \
-            "Trainer task should be 'train', 'val', 'eval', 'test', 'export' or 'predict'"
+    def __init__(self, cfg, task='train'):
 
         # Init
-        set_seed(cfg.get('seed', 2))
-        init_env(cfg)
+        set_seed(cfg.seed)
+        set_default(cfg)
         self.cfg = cfg
-        self.task = task
-        self.img_size = cfg.img_size
-        self.rank_size = cfg.rank_size
-        self.main_device = cfg.main_device
-        self.amp_level = cfg.get('ms_amp_level', 'O0')
-        self.input_dtype = ms.float32 if self.amp_level == "O0" else ms.float16
-        self.ms_jit = cfg.get('ms_jit', False)
-        self.is_parallel = cfg.is_parallel
-        self.run_eval = cfg.get('run_eval', False)
-        self.auto_accumulate = cfg.auto_accumulate
-        self.accumulate = cfg.accumulate
-        self.multi_scale = cfg.get('multi_scale', False)
-        self.overflow_still_update = cfg.get('overflow_still_update', True)
-        self.epochs = cfg.epochs
-        self.warmup_epochs = cfg.optimizer.warmup_epochs
-        self.min_warmup_step = cfg.optimizer.min_warmup_step
-        self.stride = cfg.network.stride
-        self.log_interval = cfg.get('log_interval', 1)
-        self.loss_item_name = cfg.loss.loss_item_name
+        self.main_device = (cfg.rank % cfg.rank_size == 0)
+        self.input_dtype = ms.float32 if self.cfg.ms_amp_level == "O0" else ms.float16
 
         # Create Network
+        cfg.network.recompute = cfg.recompute
+        cfg.network.recompute_layers = cfg.recompute_layers
         self.network = create_model(model_name=cfg.network.model_name,
                                     model_cfg=cfg.network,
                                     num_classes=cfg.data.nc,
@@ -71,33 +51,66 @@ class Enginer:
             self.ema = None
         self.load_pretrain() # load pretrain
         self.freeze_layers() # freeze Layers
-        ms.amp.auto_mixed_precision(self.network, amp_level=self.amp_level)
+        ms.amp.auto_mixed_precision(self.network, amp_level=self.cfg.ms_amp_level)
         if self.ema:
-            ms.amp.auto_mixed_precision(self.ema.ema, amp_level=self.amp_level)
+            ms.amp.auto_mixed_precision(self.ema.ema, amp_level=self.cfg.ms_amp_level)
 
         if task == 'train':
             # Create Dataset
-            self.dataloader, self.dataset = create_dataloader(data_config=cfg.data,
-                                                              task=task,
-                                                              per_batch_size=cfg.per_batch_size,
-                                                              rank=cfg.rank, rank_size=cfg.rank_size,
-                                                              shuffle=True, drop_remainder=True)
+            self.dataset = COCODataset(
+                dataset_dir=cfg.data.dataset_dir,
+                image_dir=cfg.data.train_img_dir,
+                anno_path=cfg.data.train_anno_path,
+                img_size=cfg.img_size,
+                transforms_dict=cfg.data.train_transforms,
+                is_training=True,
+                rect=cfg.rect,
+                batch_size=cfg.total_batch_size,
+                stride=max(cfg.network.stride),
+            )
+            self.dataloader = create_loader(
+                dataset=self.dataset,
+                batch_collate_fn=self.dataset.train_collate_fn,
+                dataset_column_names=self.dataset.dataset_column_names,
+                batch_size=cfg.per_batch_size,
+                epoch_size=1,
+                rank=cfg.rank,
+                rank_size=cfg.rank_size,
+                shuffle=True,
+                drop_remainder=True,
+                num_parallel_workers=cfg.data.num_parallel_workers,
+                python_multiprocessing=True
+            )
             self.steps_per_epoch = self.dataloader.get_dataset_size()
-            if self.run_eval:
-                self.eval_dataloader, self.eval_dataset = create_dataloader(data_config=cfg.data,
-                                                                            task='eval',
-                                                                            per_batch_size=cfg.per_batch_size * 2,
-                                                                            rank=0, rank_size=1,
-                                                                            shuffle=False, drop_remainder=False)
+
+            if self.cfg.run_eval:
+                self.eval_dataset = COCODataset(
+                    dataset_dir=cfg.data.dataset_dir,
+                    image_dir=cfg.data.val_img_dir,
+                    anno_path=cfg.data.val_anno_path,
+                    img_size=cfg.img_size,
+                    transforms_dict=cfg.data.test_transforms,
+                    is_training=False, rect=False, batch_size=cfg.per_batch_size * 2,
+                    stride=max(cfg.network.stride),
+                )
+                self.eval_dataloader = create_loader(
+                    dataset=self.eval_dataset,
+                    batch_collate_fn=self.eval_dataset.test_collate_fn,
+                    dataset_column_names=self.eval_dataset.dataset_column_names,
+                    batch_size=cfg.per_batch_size * 2,
+                    epoch_size=1, rank=0, rank_size=1, shuffle=False, drop_remainder=False,
+                    num_parallel_workers=cfg.data.num_parallel_workers,
+                    python_multiprocessing=True
+                )
 
             # Create Loss
             self.loss = create_loss(
                 **cfg.loss,
-                anchors=cfg.network.get('anchors', None),
-                stride=cfg.network.get('stride', None),
-                nc=cfg.data.get('nc', None)
+                anchors=cfg.network.anchors,
+                stride=cfg.network.stride,
+                nc=cfg.data.nc
             )
-            ms.amp.auto_mixed_precision(self.loss, amp_level=self.amp_level)
+            ms.amp.auto_mixed_precision(self.loss, amp_level=self.cfg.ms_amp_level)
 
             # Create Optimizer
             cfg.optimizer.steps_per_epoch = self.steps_per_epoch
@@ -110,84 +123,71 @@ class Enginer:
             self.reducer = self._get_gradreducer()
             self.scaler = self._get_loss_scaler()
             self.train_step_fn = self._get_train_step_fn(network=self.network, loss_fn=self.loss, optimizer=self.optimizer,
-                                                         rank_size=self.rank_size, scaler=self.scaler, reducer=self.reducer,
-                                                         overflow_still_update=self.overflow_still_update,
-                                                         ms_jit=self.ms_jit)
+                                                         rank_size=self.cfg.rank_size, scaler=self.scaler, reducer=self.reducer,
+                                                         overflow_still_update=self.cfg.overflow_still_update,
+                                                         ms_jit=self.cfg.ms_jit)
             self.accumulate_grads_fn = self.get_accumulate_grads_fn()
             self.network.set_train(True)
             self.optimizer.set_train(True)
 
         elif task in ('val', 'eval', 'test'):
-            self.dataloader, self.dataset = create_dataloader(data_config=cfg.data,
-                                                              task=task,
-                                                              per_batch_size=cfg.per_batch_size,
-                                                              rank=0, rank_size=1,
-                                                              shuffle=False, drop_remainder=False)
-            self.network.set_train(False)
 
-        elif task == 'detect':
-            self.network.set_train(False)
-
-            # Data preprocess
-            if 'detect' in cfg and 'single_img_transforms' in cfg.detect:
-                from mindyolo.data import create_transforms
-                self.transform_ops = create_transforms(cfg.detect.single_img_transforms)
+            if task in ('val', 'eval'):
+                image_dir = cfg.data.val_img_dir
+                anno_path = cfg.data.val_anno_path
             else:
-                logger.warning("Detect: single_img_transforms is not set, the default method is currently used.")
-                from mindyolo.data import create_transforms
-                from mindyolo.data import Resize, LetterBox, NormalizeImage, TransposeImage
-                self.transform_ops = [
-                    Resize(target_size=cfg.img_size, keep_ratio=True),
-                    LetterBox(target_size=cfg.img_size),
-                    NormalizeImage(is_scale=True, norm_type='none'),
-                    TransposeImage(bgr2rgb=True, hwc2chw=True)
-                ]
+                image_dir = cfg.data.test_img_dir
+                anno_path = cfg.data.test_anno_path
 
-        elif task == 'export':
+            self.dataset = COCODataset(
+                dataset_dir=cfg.data.dataset_dir,
+                image_dir=image_dir,
+                anno_path=anno_path,
+                img_size=cfg.img_size,
+                transforms_dict=cfg.data.test_transforms,
+                is_training=False, rect=False,
+                batch_size=cfg.per_batch_size * 2,
+                stride=max(cfg.network.stride),
+            )
+            self.dataloader = create_loader(
+                dataset=self.dataset,
+                batch_collate_fn=self.dataset.test_collate_fn,
+                dataset_column_names=self.dataset.dataset_column_names,
+                batch_size=cfg.per_batch_size * 2,
+                epoch_size=1, rank=0, rank_size=1, shuffle=False, drop_remainder=False,
+                num_parallel_workers=cfg.data.num_parallel_workers,
+                python_multiprocessing=True
+            )
+            self.network.set_train(False)
 
-            pass
-
-        else:
-            raise NotImplementedError
-
-    def run(self, *args):
-
-        task = self.task
-
-        if task == 'train':
-            self.train()
-
-        elif task in ('val', 'eval', 'test'):
-            self.eval()
-
-        elif task == 'export':
-            self.export()
-
-        elif task == 'detect':
-            assert len(args) == 1, f"The detect task needs to provide image input, but got: {args}"
-            return self.detect(*args)
+        elif task in ('infer', 'detect', 'export', '310'):
+            self.network.set_train(False)
 
         else:
             raise NotImplementedError
-
-        return 1
 
     def train(self):
         self.global_step = 0
-        self.accumulate_cur_step = 0
-        self.accumulate_grads = None
-        self.warmup_steps = max(round(self.warmup_epochs * self.steps_per_epoch), self.min_warmup_step)
+        self.warmup_steps = max(round(self.cfg.optimizer.warmup_epochs * self.steps_per_epoch),
+                                self.cfg.optimizer.min_warmup_step)
         ckpt_save_dir = self.cfg.ckpt_save_dir
         keep_checkpoint_max = self.cfg.keep_checkpoint_max
         enable_modelarts = self.cfg.enable_modelarts
         sync_lock_dir = self.cfg.sync_lock_dir
+
+        # grad accumulate
+        self.accumulate_cur_step = 0
+        self.accumulate_grads = None
+        self.auto_accumulate = self.cfg.auto_accumulate
+        self.accumulate = self.cfg.accumulate
+
         model_name = os.path.basename(self.cfg.config)[:-5]  # delete ".yaml"
         manager = CheckpointManager(ckpt_save_policy='latest_k')
         manager_ema = CheckpointManager(ckpt_save_policy='latest_k') if self.ema else None
-        manager_best = CheckpointManager(ckpt_save_policy='top_k') if self.run_eval else None
+        manager_best = CheckpointManager(ckpt_save_policy='top_k') if self.cfg.run_eval else None
         ckpt_filelist_best = []
 
-        self.dataloader = self.dataloader.repeat(self.epochs)
+        self.dataloader = self.dataloader.repeat(self.cfg.epochs)
         loader = self.dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
         s_step_time = time.time()
         s_epoch_time = time.time()
@@ -199,18 +199,17 @@ class Enginer:
             if self.global_step < self.warmup_steps:
                 xp, fp = [0, self.warmup_steps], [1, self.cfg.nbs / self.cfg.total_batch_size]
                 self.accumulate = max(1, np.interp(self.global_step, xp,
-                                                   fp).round()) if self.auto_accumulate else self.accumulate
+                                                   fp).round()) if self.cfg.auto_accumulate else self.accumulate
                 if self.warmup_momentum and isinstance(self.optimizer, (nn.SGD, nn.Momentum)):
                     dtype = self.optimizer.momentum.dtype
                     self.optimizer.momentum = Tensor(self.warmup_momentum[i], dtype)
 
-            imgs, batch_idx, gt_class, gt_bbox = data["image"], data['batch_idx'], data["gt_class"], data["gt_bbox"]
-            labels = np.concatenate((batch_idx, gt_class, gt_bbox), -1)  # (bs, N, 6)
+            imgs, labels = data['image'], data['labels']
             imgs, labels = Tensor(imgs, self.input_dtype), Tensor(labels, self.input_dtype)
             size = None
-            if self.multi_scale:
-                gs = max(int(np.array(self.stride).max()), 32)
-                sz = random.randrange(self.img_size * 0.5, self.img_size * 1.5 + gs) // gs * gs  # size
+            if self.cfg.multi_scale:
+                gs = max(int(np.array(self.cfg.network.stride).max()), 32)
+                sz = random.randrange(self.cfg.img_size * 0.5, self.cfg.img_size * 1.5 + gs) // gs * gs  # size
                 sf = sz / max(imgs.shape[2:])  # scale factor
                 if sf != 1:
                     size = tuple(
@@ -219,13 +218,13 @@ class Enginer:
             self.train_step(imgs, labels, size, cur_step=cur_step, cur_epoch=cur_epoch)
 
             # train log
-            if cur_step % self.log_interval == 0:
-                logger.info(f"Epoch {self.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step}, "
-                            f"step time: {(time.time() - s_step_time) * 1000 / self.log_interval:.2f} ms")
+            if cur_step % self.cfg.log_interval == 0:
+                logger.info(f"Epoch {self.cfg.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step}, "
+                            f"step time: {(time.time() - s_step_time) * 1000 / self.cfg.log_interval:.2f} ms")
                 s_step_time = time.time()
 
             # run eval per epoch on main device
-            if self.run_eval and (i + 1) % self.steps_per_epoch == 0:
+            if self.cfg.run_eval and (i + 1) % self.steps_per_epoch == 0:
                 s_eval_time = time.time()
                 sync_lock = os.path.join(sync_lock_dir, "/run_eval_sync.lock" + str(cur_epoch))
                 # single device run eval only
@@ -241,7 +240,7 @@ class Enginer:
                                                                  f"_acc{accuracy:.2f}.ckpt")
                     ckpt_filelist_best = manager_best.save_ckpoint(eval_network, num_ckpt=keep_checkpoint_max,
                                                                    metric=accuracy, save_path=save_path_best)
-                    logger.info(f"Epoch {self.epochs}/{cur_epoch}, eval accuracy: {accuracy:.2f}, "
+                    logger.info(f"Epoch {self.cfg.epochs}/{cur_epoch}, eval accuracy: {accuracy:.2f}, "
                                 f"run_eval time: {(time.time() - s_eval_time):.2f} s.")
                     try:
                         os.mknod(sync_lock)
@@ -271,7 +270,7 @@ class Enginer:
                     if self.ema:
                         sync_data(save_path_ema, self.cfg.train_url + "/weights/" + save_path_ema.split("/")[-1])
 
-                logger.info(f"Epoch {self.epochs}/{cur_epoch}, epoch time: {(time.time() - s_epoch_time) / 60:.2f} min.")
+                logger.info(f"Epoch {self.cfg.epochs}/{cur_epoch}, epoch time: {(time.time() - s_epoch_time) / 60:.2f} min.")
                 s_epoch_time = time.time()
 
         if enable_modelarts and ckpt_filelist_best:
@@ -287,14 +286,14 @@ class Enginer:
                 self.ema.update()
             self.scaler.adjust(grads_finite)
             if not grads_finite:
-                if self.overflow_still_update:
+                if self.cfg.overflow_still_update:
                     logger.warning(f"overflow, still update, loss scale adjust to {self.scaler.scale_value.asnumpy()}")
                 else:
                     logger.warning(f"overflow, drop step, loss scale adjust to {self.scaler.scale_value.asnumpy()}")
         else:
             loss, loss_item, grads, grads_finite = self.train_step_fn(imgs, labels, size, False)
             self.scaler.adjust(grads_finite)
-            if grads_finite or self.overflow_still_update:
+            if grads_finite or self.cfg.overflow_still_update:
                 self.accumulate_cur_step += 1
                 if self.accumulate_grads:
                     self.accumulate_grads = self.accumulate_grads_fn(self.accumulate_grads, grads) # update self.accumulate_grads
@@ -305,7 +304,7 @@ class Enginer:
                     self.optimizer(self.accumulate_grads)
                     if self.ema:
                         self.ema.update()
-                    logger.info(f"Epoch {self.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step}, accumulate: {self.accumulate}, "
+                    logger.info(f"Epoch {self.cfg.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step}, accumulate: {self.accumulate}, "
                                 f"optimizer an accumulate step success.")
                     from mindyolo.utils.all_finite import all_finite
                     if not all_finite(self.accumulate_grads):
@@ -313,18 +312,19 @@ class Enginer:
                     # reset accumulate
                     self.accumulate_grads, self.accumulate_cur_step = None, 0
             else:
-                logger.warning(f"Epoch {self.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step}, accumulate: {self.accumulate}, "
+                logger.warning(f"Epoch {self.cfg.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step}, accumulate: {self.accumulate}, "
                                f"this step grad overflow, drop. Loss scale adjust to {self.scaler.scale_value.asnumpy()}")
 
         # train log
-        if cur_step % self.log_interval == 0:
+        if cur_step % self.cfg.log_interval == 0:
             size = size if size else imgs.shape[2:]
-            log_string = f"Epoch {self.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step}, imgsize {size}"
+            log_string = f"Epoch {self.cfg.epochs}/{cur_epoch}, Step {self.steps_per_epoch}/{cur_step}, imgsize {size}"
             # print loss
-            if len(self.loss_item_name) < len(loss_item):
-                self.loss_item_name += [f'loss_item{i}' for i in range(len(loss_item) - len(self.loss_item_name))]
+            _loss_item_name = self.cfg.loss.loss_item_name
+            if len(_loss_item_name) < len(loss_item):
+                _loss_item_name += [f'loss_item{i}' for i in range(len(loss_item) - len(_loss_item_name))]
             for i in range(len(loss_item)):
-                log_string += f", {self.loss_item_name[i]}: {loss_item[i].asnumpy():.4f}"
+                log_string += f", {_loss_item_name[i]}: {loss_item[i].asnumpy():.4f}"
             # print lr
             if self.optimizer.dynamic_lr:
                 if self.optimizer.is_group_lr:
@@ -344,7 +344,7 @@ class Enginer:
         dataloader = dataloader if dataloader else self.dataloader
         loader = dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
         anno_json_path = os.path.join(self.cfg.data.dataset_dir, self.cfg.data.val_anno_path)
-        coco91class = coco80_to_coco91_class()
+        coco91class = COCO80_TO_COCO91_CLASS
         is_coco_dataset = ('coco' in self.cfg.data.dataset_name)
 
         step_num = dataloader.get_dataset_size()
@@ -354,27 +354,22 @@ class Enginer:
         result_dicts = []
 
         for i, data in enumerate(loader):
-            imgs, batch_idx, gt_class, gt_bbox, paths, ori_shape, pad, ratio = \
-                data['image'], data['batch_idx'], data['gt_class'], data['gt_bbox'],\
-                data['im_file'], data['ori_shape'], data['pad'], data['ratio']
+            imgs, _, paths, ori_shape, pad, hw_scale = data['image'], data['labels'], data['img_files'], \
+                                                       data['hw_ori'], data['pad'], data['hw_scale']
+            nb, _, height, width = imgs.shape
             imgs_tensor = Tensor(imgs, self.input_dtype)
-            nb, _, height, width = imgs.shape  # batch size, channels, height, width
-            targets = np.concatenate((batch_idx, gt_class, gt_bbox), -1)  # (bs, N, 6)
-            targets = targets.reshape((-1, 6))
-            targets = targets[targets[:, 1] >= 0]
 
             # Run infer
             _t = time.time()
-            out = model(imgs_tensor)  # inference and training outputs
-            out = out[0] if isinstance(out, (tuple, list)) else out
+            out, _ = model(imgs_tensor)  # inference and training outputs
+            # out = out[0] if isinstance(out, (tuple, list)) else out
             infer_times += time.time() - _t
 
             # Run NMS
-            targets[:, 2:] *= np.array([width, height, width, height], targets.dtype)  # to pixels
             t = time.time()
             out = out.asnumpy()
             out = non_max_suppression(out, conf_thres=self.cfg.conf_thres, iou_thres=self.cfg.iou_thres,
-                                       multi_label=True, time_limit=self.cfg.nms_time_limit)
+                                      multi_label=True, time_limit=self.cfg.nms_time_limit)
             nms_times += time.time() - t
 
             # Statistics pred
@@ -386,7 +381,7 @@ class Enginer:
 
                 # Predictions
                 predn = np.copy(pred)
-                scale_coords(imgs[si].shape[1:], predn[:, :4], ori_shape[si])  # native-space pred
+                scale_coords(imgs[si].shape[1:], predn[:, :4], ori_shape[si], ratio=hw_scale[si], pad=pad[si])  # native-space pred
 
                 image_id = int(path.stem) if path.stem.isnumeric() else path.stem
                 box = xyxy2xywh(predn[:, :4])  # xywh
@@ -404,7 +399,7 @@ class Enginer:
             pred = anno.loadRes(result_dicts)  # init predictions api
             eval = COCOeval(anno, pred, 'bbox')
             if is_coco_dataset:
-                eval.params.imgIds = [int(Path(img_rec['im_file']).stem) for img_rec in dataset.imgs_records] # image IDs to evaluate
+                eval.params.imgIds = [int(Path(im_file).stem) for im_file in dataset.img_files]
             eval.evaluate()
             eval.accumulate()
             eval.summarize()
@@ -427,15 +422,26 @@ class Enginer:
             pass
         else:
             raise ValueError("Detect: input image not available.")
-        coco91class = coco80_to_coco91_class()
+        coco91class = COCO80_TO_COCO91_CLASS
         is_coco_dataset = ('coco' in self.cfg.data.dataset_name)
 
-        im_file, ori_shape, pad, ratio, gt_bbox, gt_class = \
-            '', img.shape[:2], np.array([0., 0.]), np.array([1., 1.]), np.zeros((0, 4)), np.zeros((0, 1))
-        for op in self.transform_ops:
-            img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class = \
-                op(img, im_file, ori_shape, pad, ratio, gt_bbox, gt_class)
-
+        # Resize
+        h_ori, w_ori = img.shape[:2]  # orig hw
+        r = self.cfg.img_size / max(h_ori, w_ori)  # resize image to img_size
+        if r != 1:  # always resize down, only resize up if training with augmentation
+            interp = cv2.INTER_AREA if r < 1 and not self.augment else cv2.INTER_LINEAR
+            img = cv2.resize(img, (int(w_ori * r), int(h_ori * r)), interpolation=interp)
+        h, w = img.shape[:2]
+        if h < self.cfg.img_size or w < self.cfg.img_size:
+            _stride = self.cfg.network.stride
+            new_h, new_w = math.ceil(h / _stride) * _stride, math.ceil(w / _stride) * _stride
+            dh, dw = (new_h - h) / 2, (new_w - w) / 2
+            top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
+            left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+            img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(114, 114, 114))  # add border
+        # Transpose and Norm
+        img = img[:, :, ::-1].transpose(2, 0, 1) / 255.
+        # To Tensor
         imgs_tensor = Tensor(img[None], self.input_dtype)
 
         # Run infer
@@ -451,16 +457,14 @@ class Enginer:
                                   multi_label=True, time_limit=self.cfg.nms_time_limit)
         nms_times = time.time() - t
 
-        # Statistics pred
-        result_dicts = []
-
+        total_category_ids, total_bboxes, total_scores = [], [], []
         for si, pred in enumerate(out):
             if len(pred) == 0:
                 continue
 
             # Predictions
             predn = np.copy(pred)
-            scale_coords(img.shape[1:], predn[:, :4], ori_shape[si])  # native-space pred
+            scale_coords(img.shape[1:], predn[:, :4], (h_ori, w_ori))  # native-space pred
 
             box = xyxy2xywh(predn[:, :4])  # xywh
             box[:, :2] -= box[:, 2:] / 2  # xy center to top-left corner
@@ -469,24 +473,28 @@ class Enginer:
                 category_ids.append(coco91class[int(p[5])] if is_coco_dataset else int(p[5]))
                 bboxes.append([round(x, 3) for x in b])
                 scores.append(round(p[4], 5))
-            result_dict = {
-                'category_id': category_ids,
-                'bbox': bboxes,
-                'score': scores
-            }
-            result_dicts.append(result_dict)
+
+            total_category_ids.extend(category_ids)
+            total_bboxes.extend(bboxes)
+            total_scores.extend(scores)
+
+        result_dict = {
+            'category_id': total_category_ids,
+            'bbox': total_bboxes,
+            'score': total_scores
+        }
 
         t = tuple(x * 1E3 for x in (infer_times, nms_times, infer_times + nms_times)) + \
-            (self.img_size, self.img_size, 1)  # tuple
-        logger.info(f"Predict result is: {result_dicts}")
+            (self.cfg.img_size, self.cfg.img_size, 1)  # tuple
+        logger.info(f"Predict result is: {result_dict}")
         logger.info(f"Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g;" % t)
         logger.info(f"Detect a image success.")
 
-        return result_dicts
+        return result_dict
 
     def export(self):
         from mindspore import export
-        input_arr = Tensor(np.ones([self.cfg.per_batch_size, 3, self.img_size, self.img_size]), ms.float32)
+        input_arr = Tensor(np.ones([self.cfg.per_batch_size, 3, self.cfg.img_size, self.cfg.img_size]), ms.float32)
         file_name = os.path.basename(self.cfg.config)[:-5]  # delete ".yaml"
         export(self.network, input_arr, file_name=file_name, file_format=self.cfg.file_format)
 
@@ -564,7 +572,7 @@ class Enginer:
         return train_step_func if not ms_jit else jit_warpper
 
     def _get_gradreducer(self):
-        if self.is_parallel:
+        if self.cfg.is_parallel:
             mean = context.get_auto_parallel_context("gradients_mean")
             degree = context.get_auto_parallel_context("device_num")
             grad_reducer = nn.DistributedGradReducer(self.optimizer.parameters, mean, degree)
@@ -577,12 +585,12 @@ class Enginer:
         ms_loss_scaler = self.cfg.ms_loss_scaler
         if ms_loss_scaler == 'dynamic':
             from mindspore.amp import DynamicLossScaler
-            loss_scaler = DynamicLossScaler(scale_value=self.cfg.get('ms_loss_scaler_value', 2 ** 16),
-                                            scale_factor=self.cfg.get('scale_factor', 2),
-                                            scale_window=self.cfg.get('scale_window', 2000))
+            loss_scaler = DynamicLossScaler(scale_value=self.cfg.ms_loss_scaler_value,
+                                            scale_factor=self.cfg.scale_factor,
+                                            scale_window=self.cfg.scale_window)
         elif ms_loss_scaler == 'static':
             from mindspore.amp import StaticLossScaler
-            loss_scaler = StaticLossScaler(self.cfg.get('ms_loss_scaler_value', 2 ** 10))
+            loss_scaler = StaticLossScaler(self.cfg.ms_loss_scaler_value)
         elif ms_loss_scaler in ('none', 'None'):
             from mindspore.amp import StaticLossScaler
             loss_scaler = StaticLossScaler(1.0)
