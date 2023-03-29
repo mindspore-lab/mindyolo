@@ -7,33 +7,34 @@ optimizer:
   warmup_epochs: 3  # warmup epochs (fractions ok)
   warmup_momentum: 0.8  # warmup initial momentum
   warmup_bias_lr: 0.1  # warmup initial bias lr
-  min_warmup_step: 1000 # minimum warmup step
-  group_param: yolov7 # group param strategy
+  min_warmup_step: 100 # minimum warmup step
+  group_param: yolov5 # group param strategy
   gp_weight_decay: 0.0005  # group param weight decay 5e-4
   start_factor: 1.0
-  end_factor: 0.2  # final OneCycleLR learning rate (lr0 * lrf)
+  end_factor: 0.01
 
 loss:
-  name: YOLOv7AuxLoss
-  loss_item_name: ['loss', 'lbox', 'lobj', 'lcls'] # branch name returned by loss
+  name: YOLOv5Loss
   box: 0.05  # box loss gain
-  cls: 0.3  # cls loss gain
+  cls: 0.5  # cls loss gain
   cls_pw: 1.0  # cls BCELoss positive_weight
-  obj: 0.7  # obj loss gain (scale with pixels)
+  obj: 1.0  # obj loss gain (scale with pixels)
   obj_pw: 1.0  # obj BCELoss positive_weight
-  fl_gamma: 0.0  # focal loss gamma (efficientDet default gamma=1.5)
   anchor_t: 4.0  # anchor-multiple threshold
+  fl_gamma: 0.0  # focal loss gamma (efficientDet default gamma=1.5)
+  # iou_t: 0.20  # IoU training threshold
   label_smoothing: 0.0 # label smoothing epsilon
+  loss_item_name: ['loss', 'lbox', 'lobj', 'lcls'] # branch name returned by loss
 
 data:
   num_parallel_workers: 4
 
   train_transforms:
-    - {func_name: mosaic, prob: 1.0, mosaic9_prob: 0.2, translate: 0.2, scale: 0.9}
-    - {func_name: mixup, prob: 0.15, alpha: 8.0, beta: 8.0, needed_mosaic: True}
-    - {func_name: hsv_augment, prob: 1.0, hgain: 0.015, sgain: 0.7, vgain: 0.4}
-    - {func_name: pastein, prob: 0.15, num_sample: 30}
+    - {func_name: mosaic, prob: 1.0, mosaic9_prob: 0.0, translate: 0.1, scale: 0.5}
+    - {func_name: mixup, prob: 0.0, alpha: 32.0, beta: 32.0, needed_mosaic: True}
     - {func_name: label_norm, xyxy2xywh_: True}
+    - {func_name: albumentations}
+    - {func_name: hsv_augment, prob: 1.0, hgain: 0.015, sgain: 0.7, vgain: 0.4}
     - {func_name: fliplr, prob: 0.5}
     - {func_name: label_pad, padding_size: 160, padding_value: -1}
     - {func_name: image_norm, scale: 255.}

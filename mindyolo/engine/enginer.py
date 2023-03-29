@@ -58,13 +58,13 @@ class Enginer:
         if task == 'train':
             # Create Dataset
             self.dataset = COCODataset(
-                dataset_dir=cfg.data.dataset_dir,
-                image_dir=cfg.data.train_img_dir,
-                anno_path=cfg.data.train_anno_path,
+                dataset_path=cfg.data.train_set,
                 img_size=cfg.img_size,
                 transforms_dict=cfg.data.train_transforms,
                 is_training=True,
+                augment=True,
                 rect=cfg.rect,
+                single_cls=cfg.single_cls,
                 batch_size=cfg.total_batch_size,
                 stride=max(cfg.network.stride),
             )
@@ -85,13 +85,11 @@ class Enginer:
 
             if self.cfg.run_eval:
                 self.eval_dataset = COCODataset(
-                    dataset_dir=cfg.data.dataset_dir,
-                    image_dir=cfg.data.val_img_dir,
-                    anno_path=cfg.data.val_anno_path,
+                    dataset_path=cfg.data.val_set,
                     img_size=cfg.img_size,
                     transforms_dict=cfg.data.test_transforms,
-                    is_training=False, rect=False, batch_size=cfg.per_batch_size * 2,
-                    stride=max(cfg.network.stride),
+                    is_training=False, augment=False, rect=cfg.rect, single_cls=cfg.single_cls,
+                    batch_size=cfg.per_batch_size * 2, stride=max(cfg.network.stride),
                 )
                 self.eval_dataloader = create_loader(
                     dataset=self.eval_dataset,
@@ -110,7 +108,7 @@ class Enginer:
                 stride=cfg.network.stride,
                 nc=cfg.data.nc
             )
-            ms.amp.auto_mixed_precision(self.loss, amp_level=self.cfg.ms_amp_level)
+            ms.amp.auto_mixed_precision(self.loss, amp_level='O0' if self.cfg.keep_loss_fp32 else self.cfg.ms_amp_level)
 
             # Create Optimizer
             cfg.optimizer.steps_per_epoch = self.steps_per_epoch
@@ -133,21 +131,16 @@ class Enginer:
         elif task in ('val', 'eval', 'test'):
 
             if task in ('val', 'eval'):
-                image_dir = cfg.data.val_img_dir
-                anno_path = cfg.data.val_anno_path
+                dataset_path = cfg.data.val_set
             else:
-                image_dir = cfg.data.test_img_dir
-                anno_path = cfg.data.test_anno_path
+                dataset_path = cfg.data.test_set
 
             self.dataset = COCODataset(
-                dataset_dir=cfg.data.dataset_dir,
-                image_dir=image_dir,
-                anno_path=anno_path,
+                dataset_path=dataset_path,
                 img_size=cfg.img_size,
                 transforms_dict=cfg.data.test_transforms,
-                is_training=False, rect=False,
-                batch_size=cfg.per_batch_size * 2,
-                stride=max(cfg.network.stride),
+                is_training=False, augment=False, rect=cfg.rect, single_cls=cfg.single_cls,
+                batch_size=cfg.per_batch_size * 2, stride=max(cfg.network.stride),
             )
             self.dataloader = create_loader(
                 dataset=self.dataset,
@@ -188,7 +181,7 @@ class Enginer:
         ckpt_filelist_best = []
 
         self.dataloader = self.dataloader.repeat(self.cfg.epochs)
-        loader = self.dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
+        loader = self.dataloader.create_dict_iterator(output_numpy=False, num_epochs=1)
         s_step_time = time.time()
         s_epoch_time = time.time()
         for i, data in enumerate(loader):
@@ -205,7 +198,7 @@ class Enginer:
                     self.optimizer.momentum = Tensor(self.warmup_momentum[i], dtype)
 
             imgs, labels = data['image'], data['labels']
-            imgs, labels = Tensor(imgs, self.input_dtype), Tensor(labels, self.input_dtype)
+            # imgs, labels = Tensor(imgs, self.input_dtype), Tensor(labels, self.input_dtype)
             size = None
             if self.cfg.multi_scale:
                 gs = max(int(np.array(self.cfg.network.stride).max()), 32)
@@ -343,7 +336,9 @@ class Enginer:
         dataset = dataset if dataset else self.dataset
         dataloader = dataloader if dataloader else self.dataloader
         loader = dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
-        anno_json_path = os.path.join(self.cfg.data.dataset_dir, self.cfg.data.val_anno_path)
+        # anno_json_path = os.path.join(self.cfg.data.dataset_dir, self.cfg.data.val_anno_path)
+        dataset_dir = self.cfg.data.val_set[:-len(self.cfg.data.val_set.split('/')[-1])]
+        anno_json_path = os.path.join(dataset_dir, 'annotations/instances_val2017.json')
         coco91class = COCO80_TO_COCO91_CLASS
         is_coco_dataset = ('coco' in self.cfg.data.dataset_name)
 

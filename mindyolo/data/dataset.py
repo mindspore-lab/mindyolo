@@ -1,228 +1,156 @@
 import os
 import cv2
 import random
+import glob
+import hashlib
 import numpy as np
+from pathlib import Path
+from tqdm import tqdm
+from PIL import Image, ExifTags
 
 from mindyolo.utils import logger
 from .copypaste import copy_paste
 from .perspective import random_perspective
+from .albumentations import Albumentations
 
 __all__ = ["COCODataset"]
 
 
+# Get orientation exif tag
+for orientation in ExifTags.TAGS.keys():
+    if ExifTags.TAGS[orientation] == 'Orientation':
+        break
+
+
 class COCODataset:
     """
-    Load the COCO dataset, parse the labels of each image to form a list of dictionaries,
-    apply multi_images fusion data enhancement in __getitem__()
-    COCO dataset download URL: http://cocodataset.org
+    Load the COCO dataset (yolo format coco labels)
 
     Args:
-        dataset_dir (str): root directory for dataset.
-        image_dir (str): directory for images.
-        anno_path (str): annotation file path.
+        dataset_path (str): dataset label directory for dataset.
         for example:
             COCO_ROOT
+                ├── train2017.txt
                 ├── annotations
                 │     └── instances_train2017.json
-                └── train2017
-                      ├── 000000000001.jpg
-                      └── 000000000002.jpg
-            dataset_dir (str): ./COCO_ROOT
-            image_dir (str): ./train2017
-            anno_path (str): ./annotations/instances_train2017.json
-
-        sample_num (int): number of samples to load, -1 means all.
-        load_crowd (bool): whether to load crowded ground-truth.
-            False as default
-        allow_empty (bool): whether to load empty entry. False as default
-        transforms (list): A list of multi_images data enhancements
+                ├── images
+                │     └── train2017
+                │             ├── 000000000001.jpg
+                │             └── 000000000002.jpg
+                └── labels
+                      └── train2017
+                              ├── 000000000001.txt
+                              └── 000000000002.txt
+            dataset_path (str): ./coco/train2017.txt
+        transforms (list): A list of images data enhancements
             that apply data enhancements on data set objects in order.
     """
 
     def __init__(self,
-                 dataset_dir='',
-                 image_dir='',
-                 anno_path='',
+                 dataset_path='',
                  img_size=640,
-                 sample_num=-1,
-                 load_crowd=False,
-                 allow_empty=True,
                  transforms_dict=None,
-                 is_training=True,
+                 is_training=False,
+                 augment=False,
                  rect=False,
+                 single_cls=False,
                  batch_size=32,
                  stride=32,
                  pad=0.0
                  ):
+        self.cache_version = 0.1
+        self.path = dataset_path
+        self.img_formats = ['bmp', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'dng', 'webp', 'mpo']  # acceptable image suffixes
+        self.help_url = 'https://github.com/ultralytics/yolov5/wiki/Train-Custom-Data'
 
-        # 1. Set Dir
-        self.dataset_dir = dataset_dir
-        self.anno_path = anno_path
-        self.image_dir = image_dir
         self.img_size = img_size
-        self.sample_num = sample_num
-        self.load_crowd = load_crowd
-        self.allow_empty = allow_empty
+        self.augment = augment
+        self.rect = rect
+        self.stride = stride
         self.transforms_dict = transforms_dict
         self.is_training = is_training
-        self.rect = rect
-        self.load_image_only = False
         if is_training:
             self.dataset_column_names = ['image', 'labels', 'img_files']
         else:
             self.dataset_column_names = ['image', 'labels', 'img_files', 'hw_ori', 'hw_scale', 'pad']
-        anno_path = os.path.join(self.dataset_dir, self.anno_path)
-        image_dir = os.path.join(self.dataset_dir, self.image_dir)
 
-        # 2. COCO Init
-        assert anno_path.endswith('.json'), \
-            'invalid coco annotation file: ' + anno_path
-        from pycocotools.coco import COCO
-        coco = COCO(anno_path)
-        img_ids = coco.getImgIds()
-        img_ids.sort()
-        ct = 0
-        nf, nm, ne = 0, 0, 0
-        cat_ids = coco.getCatIds()
-        self.catid2clsid = dict({catid: i for i, catid in enumerate(cat_ids)})
-        self.cname2cid = dict({
-            coco.loadCats(catid)[0]['name']: clsid
-            for catid, clsid in self.catid2clsid.items()
-        })
-        if 'annotations' not in coco.dataset:
-            raise ValueError('Annotation file: {} does not contains ground truth '
-                             'and load image information only.'.format(anno_path))
-
-        # 3. Parse Dataset
-        self.img_files, self.labels, self.segments, self.img_shapes = [], [], [], []
-        for img_id in img_ids:
-
-            # img file
-            img_anno = coco.loadImgs([img_id])[0]
-            im_fname = img_anno['file_name']
-            im_path = os.path.join(image_dir, im_fname) if image_dir else im_fname
-            if not os.path.exists(im_path):
-                logger.warning('Illegal image file: {}, and it will be '
-                               'ignored'.format(im_path))
-                continue
-            nf += 1
-
-            # img size
-            im_w = float(img_anno['width'])
-            im_h = float(img_anno['height'])
-            if im_w < 10 or im_h < 10:
-                logger.warning('Illegal width: {} or height: {} in annotation, '
-                               'and im_id: {} will be ignored'.format(im_w, im_h, img_id))
-                nm += 1
-                continue
-
-            # classes/labels/segment
-            ins_anno_ids = coco.getAnnIds(
-                imgIds=[img_id], iscrowd=None if self.load_crowd else False)
-            instances = coco.loadAnns(ins_anno_ids)
-
-            bboxes, classes, labels, segments = [], [], [], []
-
-            has_segmentation = False
-            for i, inst in enumerate(instances):
-                # check gt bbox
-                if inst.get('ignore', False):
-                    continue
-                if 'bbox' not in inst.keys():
-                    continue
+        try:
+            f = []  # image files
+            for p in self.path if isinstance(self.path, list) else [self.path]:
+                p = Path(p)  # os-agnostic
+                if p.is_dir():  # dir
+                    f += glob.glob(str(p / '**' / '*.*'), recursive=True)
+                elif p.is_file():  # file
+                    with open(p, 'r') as t:
+                        t = t.read().strip().splitlines()
+                        parent = str(p.parent) + os.sep
+                        f += [x.replace('./', parent) if x.startswith('./') else x for x in t]  # local to global path
                 else:
-                    if not any(np.array(inst['bbox'])):
-                        continue
+                    raise Exception(f'{p} does not exist')
+            self.img_files = sorted([x.replace('/', os.sep) for x in f if x.split('.')[-1].lower() in self.img_formats])
+            assert self.img_files, f'No images found'
+        except Exception as e:
+            raise Exception(f'Error loading data from {self.path}: {e}\nSee {self.help_url}')
 
-                x1, y1, box_w, box_h = inst['bbox']
-                xc, yc = x1 + box_w / 2, y1 + box_h / 2
-                eps = 1e-5
-                if inst['area'] > 0 and box_w > eps and box_h > eps:
-                    if 'segmentation' in inst and inst['iscrowd'] == 1:
-                        segment = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-                    elif 'segmentation' in inst and inst['segmentation']:
-                        if not np.array(inst['segmentation']).size > 0 and not self.allow_empty:
-                            logger.warning(
-                                'Found an invalid segment in annotations, drop: im_id: {}, '
-                                'area: {} x1: {}, y1: {}, w: {}, h: {}.'.format(
-                                    img_id, float(inst['area']), x1, y1, box_w, box_h))
-                            continue
-                        else:
-                            segment = inst['segmentation'][0]
-
-                        has_segmentation = True
-                    else:
-                        logger.warning(
-                            'Found an invalid segment in annotations, drop: im_id: {}, '
-                            'area: {} x1: {}, y1: {}, w: {}, h: {}.'.format(
-                                img_id, float(inst['area']), x1, y1, box_w, box_h))
-                        continue
-
-                    bboxes.append(np.array([xc / im_w, yc / im_h, box_w / im_w, box_h / im_h], np.float32))  # box, xywh
-                    catid = inst['category_id']
-                    classes.append(np.array([self.catid2clsid[catid],], np.int32))
-
-                    _segment = np.array(segment, np.float32).reshape((-1, 2))
-                    _segment[:, 0] /= im_w
-                    _segment[:, 1] /= im_h
-                    segments.append(_segment)
-
-                else:
-                    logger.warning(
-                        'Found an invalid bbox in annotations, drop: im_id: {}, '
-                        'area: {} x1: {}, y1: {}, w: {}, h: {}.'.format(
-                            img_id, float(inst['area']), x1, y1, box_w, box_h))
-
-            if has_segmentation and not segments and not self.allow_empty:
-                continue
-
-            num_bbox = len(bboxes)
-            if num_bbox == 0:
-                ne += 1
-                if not self.allow_empty:
-                    continue
-                bboxes = np.zeros((0, 4), dtype=np.float32)
-                classes = np.zeros((0, 1), dtype=np.int32)
-                labels = np.concatenate((classes.reshape(-1, 1), bboxes), 1)
-                segments = []
+        # Check cache
+        self.label_files = self._img2label_paths(self.img_files)  # labels
+        cache_path = (p if p.is_file() else Path(self.label_files[0]).parent).with_suffix('.cache.npy')  # cached labels
+        if cache_path.is_file():
+            cache, exists = np.load(cache_path, allow_pickle=True).item(), True  # load dict
+            if cache['version'] == self.cache_version and \
+                    cache['hash'] == self._get_hash(self.label_files + self.img_files):
+                logger.info(f'Dataset Cache file hash/version check success.')
+                logger.info(f'Load dataset cache from [{cache_path}] success.')
             else:
-                # list -> numpy
-                bboxes = np.stack(bboxes, 0)
-                classes = np.stack(classes, 0)
-                labels = np.concatenate((classes.reshape(-1, 1), bboxes), 1)
-                # segments = [np.array(x, dtype=np.float32).reshape(-1, 2) for x in segments]
-                segments = segments
-                assert len(segments) == len(labels)
+                logger.info(f'Dataset cache file hash/version check fail.')
+                logger.info(f'Datset caching now...')
+                cache, exists = self.cache_labels(cache_path), False  # cache
+                logger.info(f'Dataset caching success.')
+        else:
+            logger.info(f'No dataset cache available, caching now...')
+            cache, exists = self.cache_labels(cache_path), False  # cache
+            logger.info(f'Dataset caching success.')
 
-            self.img_files.append(im_path)
-            self.img_shapes.append(np.array([im_w, im_h])) # (width, height)
-            self.labels.append(labels)
-            self.segments.append(segments)
+        # Display cache
+        nf, nm, ne, nc, n = cache.pop('results')  # found, missing, empty, corrupted, total
+        if exists:
+            d = f"Scanning '{cache_path}' images and labels... {nf} found, {nm} missing, {ne} empty, {nc} corrupted"
+            tqdm(None, desc=d, total=n, initial=n)  # display cache results
+        assert nf > 0 or not augment, f'No labels in {cache_path}. Can not train without labels. See {self.help_url}'
 
-            ct += 1
-            if self.sample_num > 0 and ct >= self.sample_num:
-                break
+        # Read cache
+        cache.pop('hash')  # remove hash
+        cache.pop('version')  # remove version
+        labels, shapes, self.segments = zip(*cache.values())
+        self.labels = list(labels)
+        self.img_shapes = np.array(shapes, dtype=np.float64)
+        self.img_files = list(cache.keys())  # update
+        self.label_files = self._img2label_paths(cache.keys())  # update
+        if single_cls:
+            for x in self.labels:
+                x[:, 0] = 0
 
-        n = len(self.labels)
-        self.imgs, self.img_hw_ori = [None, ] * n, [None, ] * n
-        self.indices = range(n)
+        n = len(labels)  # number of images
+        bi = np.floor(np.arange(n) / batch_size).astype(np.int)  # batch index
+        nb = bi[-1] + 1  # number of batches
+        self.batch = bi  # batch index of image
 
-        # 4. Set Rectangular Eval/Train
+        # Cache images into memory for faster training (WARNING: large datasets may exceed system RAM)
+        self.imgs, self.img_hw_ori, self.indices = [None, ] * n, [None, ] * n, range(n)
+
+        # Rectangular Train/Test
         if self.rect:
             # Sort by aspect ratio
-            s = np.array(self.img_shapes)  # wh
+            s = self.img_shapes  # wh
             ar = s[:, 1] / s[:, 0]  # aspect ratio
             irect = ar.argsort()
             self.img_files = [self.img_files[i] for i in irect]
+            self.label_files = [self.label_files[i] for i in irect]
             self.labels = [self.labels[i] for i in irect]
-            self.segments = [self.segments[i] for i in irect]
-            self.img_shapes = [self.img_shapes[i] for i in irect]  # wh
+            self.img_shapes = s[irect]  # wh
             ar = ar[irect]
 
             # Set training image shapes
-            bi = np.floor(np.arange(n) / batch_size).astype(np.int)  # batch index
-            nb = bi[-1] + 1  # number of batches
-            self.batch = bi  # batch index of image
             shapes = [[1, 1]] * nb
             for i in range(nb):
                 ari = ar[bi == i]
@@ -234,8 +162,65 @@ class COCODataset:
 
             self.batch_shapes = np.ceil(np.array(shapes) * img_size / stride + pad).astype(np.int) * stride
 
-        assert ct > 0, 'Not found any coco record in %s' % (anno_path)
-        logger.info(f"COCO Scanning images and labels... {nf} found, {nm} missing, {ne} empty, {ct} used.")
+    def cache_labels(self, path=Path('./labels.cache')):
+        # Get orientation exif tag
+        for orientation in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[orientation] == 'Orientation':
+                break
+
+        # Cache dataset labels, check images and read shapes
+        x = {}  # dict
+        nm, nf, ne, nc = 0, 0, 0, 0  # number missing, found, empty, duplicate
+        pbar = tqdm(zip(self.img_files, self.label_files), desc='Scanning images', total=len(self.img_files))
+        for i, (im_file, lb_file) in enumerate(pbar):
+            try:
+                # verify images
+                im = Image.open(im_file)
+                im.verify()  # PIL verify
+                shape = self._exif_size(im)  # image size
+                segments = []  # instance segments
+                assert (shape[0] > 9) & (shape[1] > 9), f'image size {shape} <10 pixels'
+                assert im.format.lower() in self.img_formats, f'invalid image format {im.format}'
+
+                # verify labels
+                if os.path.isfile(lb_file):
+                    nf += 1  # label found
+                    with open(lb_file, 'r') as f:
+                        l = [x.split() for x in f.read().strip().splitlines()]
+                        if any([len(x) > 8 for x in l]):  # is segment
+                            classes = np.array([x[0] for x in l], dtype=np.float32)
+                            segments = [np.array(x[1:], dtype=np.float32).reshape(-1, 2) for x in l]  # (cls, xy1...)
+                            l = np.concatenate((classes.reshape(-1, 1), self._segments2boxes(segments)), 1)  # (cls, xywh)
+                        l = np.array(l, dtype=np.float32)
+                    if len(l):
+                        assert l.shape[1] == 5, 'labels require 5 columns each'
+                        assert (l >= 0).all(), 'negative labels'
+                        assert (l[:, 1:] <= 1).all(), 'non-normalized or out of bounds coordinate labels'
+                        assert np.unique(l, axis=0).shape[0] == l.shape[0], 'duplicate labels'
+                    else:
+                        ne += 1  # label empty
+                        l = np.zeros((0, 5), dtype=np.float32)
+                else:
+                    nm += 1  # label missing
+                    l = np.zeros((0, 5), dtype=np.float32)
+                x[im_file] = [l, shape, segments]
+            except Exception as e:
+                nc += 1
+                print(f'WARNING: Ignoring corrupted image and/or label {im_file}: {e}')
+
+            pbar.desc = f"Scanning '{path.parent / path.stem}' images and labels... " \
+                        f"{nf} found, {nm} missing, {ne} empty, {nc} corrupted"
+        pbar.close()
+
+        if nf == 0:
+            print(f'WARNING: No labels found in {path}. See {self.help_url}')
+
+        x['hash'] = self._get_hash(self.label_files + self.img_files)
+        x['results'] = nf, nm, ne, nc, i + 1
+        x['version'] = self.cache_version  # cache version
+        np.save(path, x)  # save for next time
+        logger.info(f'New cache created: {path}')
+        return x
 
     def __getitem__(self, index):
 
@@ -251,6 +236,10 @@ class COCODataset:
                     labels = self.labels[index].copy()
                     new_shape = self.img_size if not self.rect else self.batch_shapes[self.batch[index]]
                     image, labels, hw_ori, hw_scale, pad = self.letterbox(image, labels, hw_ori, new_shape, **_trans)
+                elif func_name == 'albumentations':
+                    if getattr(self, 'albumentations', None) is None:
+                        self.albumentations = Albumentations(size=self.img_size)
+                    image, labels = self.albumentations(image, labels, **_trans)
                 else:
                     image, labels = getattr(self, func_name)(image, labels, **_trans)
 
@@ -683,6 +672,40 @@ class COCODataset:
                 sample_images.append(mask[box[1]:box[3], box[0]:box[2], :])
 
         return sample_labels, sample_images, sample_masks
+
+    def _img2label_paths(self, img_paths):
+        # Define label paths as a function of image paths
+        sa, sb = os.sep + 'images' + os.sep, os.sep + 'labels' + os.sep  # /images/, /labels/ substrings
+        return ['txt'.join(x.replace(sa, sb, 1).rsplit(x.split('.')[-1], 1)) for x in img_paths]
+
+    def _get_hash(self, paths):
+        # Returns a single hash value of a list of paths (files or dirs)
+        size = sum(os.path.getsize(p) for p in paths if os.path.exists(p))  # sizes
+        h = hashlib.md5(str(size).encode())  # hash sizes
+        h.update(''.join(paths).encode())  # hash paths
+        return h.hexdigest()  # return hash
+
+    def _exif_size(self, img):
+        # Returns exif-corrected PIL size
+        s = img.size  # (width, height)
+        try:
+            rotation = dict(img._getexif().items())[orientation]
+            if rotation == 6:  # rotation 270
+                s = (s[1], s[0])
+            elif rotation == 8:  # rotation 90
+                s = (s[1], s[0])
+        except:
+            pass
+
+        return s
+
+    def _segments2boxes(self, segments):
+        # Convert segment labels to box labels, i.e. (cls, xy1, xy2, ...) to (cls, xywh)
+        boxes = []
+        for s in segments:
+            x, y = s.T  # segment xy
+            boxes.append([x.min(), y.min(), x.max(), y.max()])  # cls, xyxy
+        return xyxy2xywh(np.array(boxes))  # cls, xywh
 
     @staticmethod
     def train_collate_fn(imgs, labels, path, batch_info):

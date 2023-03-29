@@ -1,6 +1,7 @@
-if [ $# != 4 ]
+if [ $# != 4 ] && [ $# != 5 ]
 then
     echo "Usage: bash run_test.sh [CONFIG_PATH] [DEVICE_TRAGET] [DEVICE_ID|CUDA_VISIBLE_DEVICES] [WEIGHT]"
+    echo "Usage: bash run_test.sh [CONFIG_PATH] [DEVICE_TRAGET] [DEVICE_ID|CUDA_VISIBLE_DEVICES] [WEIGHT] [RECT]"
 exit 1
 fi
 
@@ -20,6 +21,11 @@ DEVICE_NUM=1
 PARALLEL=0
 if [ $DEVICE_NUM -gt 1 ]; then
     PARALLEL=1
+fi
+
+RECT=False
+if [ $# == 5 ]; then
+    RECT=$5
 fi
 
 if [ $DEVICE_TRAGET == 'Ascend' ]; then
@@ -57,4 +63,5 @@ fi
 python ./test.py \
     --config=$CONFIG_PATH \
     --device_target=$DEVICE_TRAGET \
-    --weight=$WEIGHT  > log_test_$DEVICE_ID.txt 2>&1 &
+    --weight=$WEIGHT \
+    --rect=$RECT  > log_test_$DEVICE_ID.txt 2>&1 &

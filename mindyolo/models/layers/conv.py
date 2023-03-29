@@ -1,4 +1,3 @@
-import math
 from mindspore import nn, ops
 
 from .common import Identity
@@ -36,7 +35,7 @@ class ConvNormAct(nn.Cell):
                 If 'act' is nn.Cell, use the object of this cell as the activation function. Default: True.
             sync_bn (bool): Whether the BN layer use nn.SyncBatchNorm. Default: False.
         """
-    def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True, sync_bn=False):  # ch_in, ch_out, kernel, stride, padding, groups
+    def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True, momentum=0.97, eps=1e-3, sync_bn=False):  # ch_in, ch_out, kernel, stride, padding, groups
         super(ConvNormAct, self).__init__()
         self.conv = nn.Conv2d(c1, c2, k, s,
                               pad_mode="pad",
@@ -46,9 +45,9 @@ class ConvNormAct(nn.Cell):
                               has_bias=False)
 
         if sync_bn:
-            self.bn = nn.SyncBatchNorm(c2, momentum=(1 - 0.03), eps=1e-3)
+            self.bn = nn.SyncBatchNorm(c2, momentum=momentum, eps=eps)
         else:
-            self.bn = nn.BatchNorm2d(c2, momentum=(1 - 0.03), eps=1e-3)
+            self.bn = nn.BatchNorm2d(c2, momentum=momentum, eps=eps)
         self.act = nn.SiLU() if act is True else (act if isinstance(act, nn.Cell) else Identity)
 
     def construct(self, x):
@@ -84,7 +83,7 @@ class RepConv(nn.Cell):
         sync_bn (bool): Whether the BN layer use nn.SyncBatchNorm. Default: False.
     """
 
-    def __init__(self, c1, c2, k=3, s=1, p=None, g=1, act=True, sync_bn=False):
+    def __init__(self, c1, c2, k=3, s=1, p=None, g=1, act=True, momentum=0.97, eps=1e-3, sync_bn=False):
         super(RepConv, self).__init__()
 
         self.groups = g
@@ -110,7 +109,7 @@ class RepConv(nn.Cell):
                       padding=autopad(k, p),
                       group=g,
                       has_bias=False),
-            BatchNorm(num_features=c2, momentum=(1 - 0.03), eps=1e-3),
+            BatchNorm(num_features=c2, momentum=momentum, eps=eps),
         ])
         self.rbr_1x1 = nn.SequentialCell(
             nn.Conv2d(c1, c2, 1, s,
@@ -118,7 +117,7 @@ class RepConv(nn.Cell):
                       padding=padding_11,
                       group=g,
                       has_bias=False),
-            BatchNorm(num_features=c2, momentum=(1 - 0.03), eps=1e-3),
+            BatchNorm(num_features=c2, momentum=momentum, eps=eps),
         )
 
     def construct(self, inputs):
@@ -133,14 +132,15 @@ class RepConv(nn.Cell):
         # TODO: The reparameterization function will be developed in subsequent versions
         pass
 
+
 class DownC(nn.Cell):
     # Spatial pyramid pooling layer used in YOLOv3-SPP
-    def __init__(self, c1, c2, n=1, k=2):
+    def __init__(self, c1, c2, n=1, k=2, momentum=0.97, eps=1e-3, sync_bn=False):
         super(DownC, self).__init__()
         c_ = c1  # hidden channels
-        self.cv1 = ConvNormAct(c1, c_, 1, 1)
-        self.cv2 = ConvNormAct(c_, c2//2, 3, k)
-        self.cv3 = ConvNormAct(c1, c2//2, 1, 1)
+        self.cv1 = ConvNormAct(c1, c_, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.cv2 = ConvNormAct(c_, c2//2, 3, k, momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.cv3 = ConvNormAct(c1, c2//2, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
         self.mp = nn.MaxPool2d(kernel_size=k, stride=k)
 
     def construct(self, x):

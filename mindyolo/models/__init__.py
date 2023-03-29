@@ -1,10 +1,11 @@
-from . import heads, layers, losses, yolov7, initializer, model_factory
+from . import heads, layers, losses, yolov7, yolov5, initializer, model_factory
 
 __all__ = []
 __all__.extend(heads.__all__)
 __all__.extend(layers.__all__)
 __all__.extend(losses.__all__)
 __all__.extend(yolov7.__all__)
+__all__.extend(yolov5.__all__)
 __all__.extend(initializer.__all__)
 __all__.extend(model_factory.__all__)
 
@@ -14,5 +15,6 @@ from .heads import *
 from .layers import *
 from .losses import *
 from .yolov7 import *
+from .yolov5 import *
 from .initializer import *
 from .model_factory import *

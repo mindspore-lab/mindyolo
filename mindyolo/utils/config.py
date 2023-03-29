@@ -66,7 +66,8 @@ def get_args_train(parents=None):
     parser.add_argument('--log_level', type=str, default='INFO', help='save dir')
     parser.add_argument('--is_parallel', type=ast.literal_eval, default=False, help='Distribute train or not')
     parser.add_argument('--ms_mode', type=int, default=0, help='Running in GRAPH_MODE(0) or PYNATIVE_MODE(1) (default=0)')
-    parser.add_argument('--ms_amp_level', type=str, default='O0', help='amp level, O0/O1/O2')
+    parser.add_argument('--ms_amp_level', type=str, default='O0', help='amp level, O0/O1/O2/O3')
+    parser.add_argument('--keep_loss_fp32', type=ast.literal_eval, default=True, help='Whether to maintain loss using fp32/O0-level calculation')
     parser.add_argument('--ms_loss_scaler', type=str, default='static', help='train loss scaler, static/dynamic/none')
     parser.add_argument('--ms_loss_scaler_value', type=float, default=1024.0, help='static loss scale value')
     parser.add_argument('--ms_grad_sens', type=float, default=1024.0, help='gard sens')
@@ -85,13 +86,13 @@ def get_args_train(parents=None):
     parser.add_argument('--accumulate', type=int, default=1,
                         help='grad accumulate step, recommended when batch-size is less than 64')
     parser.add_argument('--auto_accumulate', type=ast.literal_eval, default=False, help='auto accumulate')
-    parser.add_argument('--log_interval', type=int, default=1, help='log interval')
+    parser.add_argument('--log_interval', type=int, default=100, help='log interval')
     parser.add_argument('--multi_scale', type=ast.literal_eval, default=False, help='vary img-size +/- 50%')
     parser.add_argument('--single_cls', type=ast.literal_eval, default=False,
                         help='train multi-class data as single-class')
     parser.add_argument('--sync_bn', type=ast.literal_eval, default=False,
                         help='use SyncBatchNorm, only available in DDP mode')
-    parser.add_argument('--keep_checkpoint_max', type=int, default=10)
+    parser.add_argument('--keep_checkpoint_max', type=int, default=100)
     parser.add_argument('--run_eval', type=ast.literal_eval, default=False,
                         help='Whether to run eval during training')
     parser.add_argument('--rect', type=ast.literal_eval, default=False, help='rectangular training')
@@ -126,7 +127,7 @@ def get_args_test(parents=None):
     parser.add_argument('--single_cls', type=ast.literal_eval, default=False,
                         help='train multi-class data as single-class')
     parser.add_argument('--rect', type=ast.literal_eval, default=False, help='rectangular training')
-    parser.add_argument('--nms_time_limit', type=float, default=20.0, help='time limit for NMS')
+    parser.add_argument('--nms_time_limit', type=float, default=60.0, help='time limit for NMS')
     parser.add_argument('--recompute', type=ast.literal_eval, default=False, help='Recompute')
     parser.add_argument('--recompute_layers', type=int, default=0)
     parser.add_argument('--conf_thres', type=float, default=0.001, help='object confidence threshold')
@@ -150,7 +151,7 @@ def get_args_test(parents=None):
                         help='Whether to run eval during training')
     parser.add_argument('--multi_scale', type=ast.literal_eval, default=False, help='vary img-size +/- 50%')
     parser.add_argument('--overflow_still_update', type=ast.literal_eval, default=False, help='overflow still update')
-    parser.add_argument('--log_interval', type=int, default=1, help='log interval')
+    parser.add_argument('--log_interval', type=int, default=100, help='log interval')
     parser.add_argument('--freeze', type=list, default=[],
                         help='Freeze layers: backbone of yolov7=50, first3=0 1 2')
 
@@ -198,7 +199,7 @@ def get_args_infer(parents=None):
                         help='Whether to run eval during training')
     parser.add_argument('--multi_scale', type=ast.literal_eval, default=False, help='vary img-size +/- 50%')
     parser.add_argument('--overflow_still_update', type=ast.literal_eval, default=False, help='overflow still update')
-    parser.add_argument('--log_interval', type=int, default=1, help='log interval')
+    parser.add_argument('--log_interval', type=int, default=100, help='log interval')
     parser.add_argument('--freeze', type=list, default=[],
                         help='Freeze layers: backbone of yolov7=50, first3=0 1 2')
     parser.add_argument('--log_level', type=str, default='INFO', help='save dir')
@@ -206,7 +207,7 @@ def get_args_infer(parents=None):
     parser.add_argument('--conf_thres', type=float, default=0.001, help='object confidence threshold')
     parser.add_argument('--iou_thres', type=float, default=0.65, help='IOU threshold for NMS')
     parser.add_argument('--rect', type=ast.literal_eval, default=False, help='rectangular training')
-    parser.add_argument('--nms_time_limit', type=float, default=20.0, help='time limit for NMS')
+    parser.add_argument('--nms_time_limit', type=float, default=60.0, help='time limit for NMS')
     parser.add_argument('--single_cls', type=ast.literal_eval, default=False,
                         help='train multi-class data as single-class')
 
