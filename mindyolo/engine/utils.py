@@ -80,6 +80,9 @@ def set_default(cfg):
         sync_data(cfg.save_dir, cfg.train_url)
         if cfg.ckpt_url:
             sync_data(cfg.ckpt_url, cfg.ckpt_dir)  # pretrain ckpt
-        cfg.data.dataset_dir = os.path.join(cfg.data_dir, cfg.data.dataset_dir)
-        cfg.weight = os.path.join(cfg.ckpt_dir, cfg.weight) if cfg.weight else ''
+        # cfg.data.dataset_dir = os.path.join(cfg.data_dir, cfg.data.dataset_dir)
+        cfg.data.train_set = os.path.join(cfg.data_dir, cfg.data.train_set)
+        cfg.data.val_set = os.path.join(cfg.data_dir, cfg.data.val_set)
+        cfg.data.test_set = os.path.join(cfg.data_dir, cfg.data.test_set)
+        cfg.weight = cfg.ckpt_dir if cfg.ckpt_dir else ''  # os.path.join(cfg.ckpt_dir, cfg.weight) if cfg.weight else ''
         cfg.ema_weight = os.path.join(cfg.ckpt_dir, cfg.ema_weight) if cfg.ema_weight else ''

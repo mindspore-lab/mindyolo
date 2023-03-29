@@ -76,7 +76,7 @@ if [ $PARALLEL == 1 ]; then
         python train.py \
             --config=$CONFIG_PATH \
             --device_target=$DEVICE_TRAGET \
-            --is_parallel=True > log.txt 2>&1 &
+            --is_parallel=True > log_train_parallel.txt 2>&1 &
     else
         cpus=`cat /proc/cpuinfo| grep "processor"| wc -l`
         avg=`expr $cpus \/ $RANK_SIZE`
@@ -112,5 +112,5 @@ else
     python train.py \
         --config=$CONFIG_PATH \
         --device_target=$DEVICE_TRAGET \
-        --is_parallel=False > log.txt 2>&1 &
+        --is_parallel=False > log_train_$DEVICE_ID.txt 2>&1 &
 fi

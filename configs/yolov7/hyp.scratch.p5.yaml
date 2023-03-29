@@ -24,8 +24,6 @@ loss:
   fl_gamma: 0.0  # focal loss gamma (efficientDet default gamma=1.5)
   anchor_t: 4.0  # anchor-multiple threshold
   label_smoothing: 0.0 # label smoothing epsilon
-  loss_ota: 1 # use ComputeLossOTA, use 0 for faster training
-  use_aux: 0 # not use aux loss on p5 train
 
 data:
   num_parallel_workers: 4

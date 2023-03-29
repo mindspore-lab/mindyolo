@@ -3,13 +3,9 @@
 data:
   dataset_name: coco
 
-  dataset_dir: ./coco2017
-  train_img_dir: train2017
-  train_anno_path: annotations/instances_train2017.json
-  val_img_dir: val2017
-  val_anno_path: annotations/instances_val2017.json
-  test_img_dir: test2017
-  test_anno_path: annotations/instances_test2017.json
+  train_set: ./coco/train2017.txt  # 118287 images
+  val_set: ./coco/val2017.txt  # 5000 images
+  test_set: ./coco/test-dev2017.txt  # 20288 of 40670 images, submit to https://competitions.codalab.org/competitions/20794
 
   nc: 80
 

@@ -1,0 +1,66 @@
+from mindspore import nn, ops
+
+from .conv import ConvNormAct
+
+
+class Bottleneck(nn.Cell):
+    # Standard bottleneck
+    def __init__(self, c1, c2, shortcut=True, g1=1, g2=1, k1=1, k2=1, e=0.5, momentum=0.97, eps=1e-3, sync_bn=False):  # ch_in, ch_out, shortcut, groups, kernels, expand
+        super().__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = ConvNormAct(c1, c_, k=k1, s=1, g=g1, momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.cv2 = ConvNormAct(c_, c2, k=k2, s=1, g=g2, momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.add = shortcut and c1 == c2
+
+    def construct(self, x):
+        if self.add:
+            out = x + self.cv2(self.cv1(x))
+        else:
+            out = self.cv2(self.cv1(x))
+        return out
+
+
+class C3(nn.Cell):
+    # CSP Bottleneck with 3 convolutions
+    def __init__(self, c1, c2, n=1, shortcut=True, e=0.5, momentum=0.97, eps=1e-3, sync_bn=False):
+        super(C3, self).__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.conv1 = ConvNormAct(c1, c_, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.conv2 = ConvNormAct(c1, c_, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.conv3 = ConvNormAct(2 * c_, c2, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)  # act=FReLU(c2)
+        self.m = nn.SequentialCell(
+            [Bottleneck(c_, c_, shortcut, k2=3, e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn) for _ in range(n)])
+        self.concat = ops.Concat(axis=1)
+
+    def construct(self, x):
+        c1 = self.conv1(x)
+        c2 = self.m(c1)
+        c3 = self.conv2(x)
+        c4 = self.concat((c2, c3))
+        c5 = self.conv3(c4)
+
+        return c5
+
+
+class C2f(nn.Cell):
+    # CSP Bottleneck with 2 convolutions
+    def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5, momentum=0.97, eps=1e-3, sync_bn=False):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super().__init__()
+        _c = int(c2 * e)  # hidden channels
+        self.cv1 = ConvNormAct(c1, 2 * _c, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.cv2 = ConvNormAct((2 + n) * _c, c2, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)  # optional act=FReLU(c2)
+        self.m = nn.CellList([
+            Bottleneck(_c, _c, shortcut, g2=g, k1=3, k2=3, e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn) for _ in range(n)
+        ])
+
+    def construct(self, x):
+        y = ()
+        x = self.cv1(x)
+        x_tuple = ops.split(x, axis=1, output_num=2)
+        y += x_tuple
+        for i in range(len(self.m)):
+            m = self.m[i]
+            out = m(y[-1])
+            y += (out,)
+
+        return self.cv2(ops.concat(y, axis=1))

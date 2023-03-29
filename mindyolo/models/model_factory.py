@@ -79,23 +79,6 @@ class Model(nn.Cell):
             y += (x if iol in self.save else None,)  # save output
         return x
 
-    def scale_img(self, img, ratio=1.0, same_shape=False, gs=32):  # img(16,3,256,416)
-        # scales img(bs,3,y,x) by ratio constrained to gs-multiple
-        if ratio == 1.0:
-            return img
-        else:
-            h, w = img.shape[2:]
-            s = (int(h * ratio), int(w * ratio))  # new size
-            img = ops.ResizeBilinear(size=s, align_corners=False)(img)
-            if not same_shape:  # pad/crop img
-                h, w = self._get_h_w_list(ratio, gs, (h, w))
-
-            # img = F.pad(img, [0, w - s[1], 0, h - s[0]], value=0.447)  # value = imagenet mean
-            img = ops.pad(img, ((0, 0), (0, 0), (0, w - s[1]), (0, h - s[0])))
-            img[:, :, -(w - s[1]):, :] = 0.447
-            img[:, :, :, -(h - s[0]):] = 0.447
-            return img
-
     @staticmethod
     @ops.constexpr
     def _get_h_w_list(ratio, gs, hw):
@@ -123,15 +106,15 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
                 pass
 
         n = max(round(n * gd), 1) if n > 1 else n  # depth gain
-        if m in (nn.Conv2d, ConvNormAct, RepConv, DownC, SPPCSPC):
+        if m in (nn.Conv2d, ConvNormAct, RepConv, DownC, SPPCSPC, SPPF, C3, C2f, Bottleneck):
             c1, c2 = ch[f], args[0]
             if c2 != no:  # if not output
                 c2 = math.ceil(c2 * gw / 8) * 8
 
             args = [c1, c2, *args[1:]]
-            if m in (ConvNormAct, RepConv):
+            if m in (ConvNormAct, RepConv, DownC, SPPCSPC, SPPF, C3, C2f, Bottleneck):
                 kwargs["sync_bn"] = sync_bn
-            if m in (DownC, SPPCSPC,):
+            if m in (DownC, SPPCSPC, C3, C2f):
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m in (nn.BatchNorm2d, nn.SyncBatchNorm):
@@ -140,7 +123,7 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
             c2 = sum([ch[x] for x in f])
         elif m is Shortcut:
             c2 = ch[f[0]]
-        elif m in (YOLOv7Head, YOLOv7AuxHead):
+        elif m in (YOLOv7Head, YOLOv7AuxHead, YOLOv5Head):
             args.append([ch[x] for x in f])
             if isinstance(args[1], int):  # number of anchors
                 args[1] = [list(range(args[1] * 2))] * len(f)
