@@ -123,7 +123,7 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
             c2 = sum([ch[x] for x in f])
         elif m is Shortcut:
             c2 = ch[f[0]]
-        elif m in (YOLOv7Head, YOLOv7AuxHead, YOLOv5Head):
+        elif m in (YOLOv7Head, YOLOv7AuxHead, YOLOv5Head, YOLOv3Head):
             args.append([ch[x] for x in f])
             if isinstance(args[1], int):  # number of anchors
                 args[1] = [list(range(args[1] * 2))] * len(f)
