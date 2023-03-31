@@ -1,7 +1,6 @@
 import argparse
 import ast
 import os
-import sys
 import time
 from pathlib import Path
 
@@ -10,14 +9,10 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
 from infer_engine import *
-
-sys.path.append("..")
 from mindyolo.data import COCO80_TO_COCO91_CLASS
 from mindyolo.data import COCODataset, create_loader
 from mindyolo.utils import logger
-# from mindyolo.utils.config import parse_args
 from mindyolo.utils.metrics import non_max_suppression, scale_coords, xyxy2xywh
-import pdb
 
 
 def Detect(nc=80, anchor=(), stride=()):
@@ -48,7 +43,6 @@ def Detect(nc=80, anchor=(), stride=()):
 
 def infer(cfg):
     # Create Network
-    pdb.set_trace()
     network = MindXModel("./models/yolov5s.om")
     detect = Detect(nc=80, anchor=cfg.anchors, stride=cfg.stride)
 
@@ -57,21 +51,24 @@ def infer(cfg):
         img_size=cfg.img_size,
         transforms_dict=cfg.test_transforms,
         is_training=False, augment=False, rect=cfg.rect, single_cls=cfg.single_cls,
-        batch_size=cfg.batch_size, stride=max(cfg.stride),
+        batch_size=cfg.per_batch_size, stride=max(cfg.network.stride),
     )
     dataloader = create_loader(
         dataset=dataset,
         batch_collate_fn=dataset.test_collate_fn,
         dataset_column_names=dataset.dataset_column_names,
-        batch_size=cfg.batch_size,
+        batch_size=cfg.per_batch_size,
         epoch_size=1, rank=0, rank_size=1, shuffle=False, drop_remainder=False,
+        num_parallel_workers=cfg.data.num_parallel_workers,
         python_multiprocessing=True
     )
 
     loader = dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
-    dataset_dir = cfg.val_set[:-len(cfg.val_set.split('/')[-1])]
+    # anno_json_path = os.path.join(self.cfg.data.dataset_dir, self.cfg.data.val_anno_path)
+    dataset_dir = cfg.data.val_set[:-len(cfg.data.val_set.split('/')[-1])]
     anno_json_path = os.path.join(dataset_dir, 'annotations/instances_val2017.json')
     coco91class = COCO80_TO_COCO91_CLASS
+    is_coco_dataset = ('coco' in cfg.data.dataset_name)
 
     step_num = dataloader.get_dataset_size()
     sample_num = 0
@@ -156,7 +153,16 @@ def parse_args():
 
     parser.add_argument('--nc', type=int, default=80)
     parser.add_argument('--val_set', type=str, default='./coco/val2017.txt')
-    parser.add_argument('--test_transforms', type=list, default=[])
+    parser.add_argument('--test_transforms', type=list, default=[{'func_name': 'letterbox', 'scaleup': False},
+                                                                 {'func_name': 'label_norm', 'xyxy2xywh_': True},
+                                                                 {'func_name': 'label_pad', 'padding_size': 160,
+                                                                  'padding_value': -1},
+                                                                 {'func_name': 'image_norm', 'scale': 255.},
+                                                                 {'func_name': 'image_transpose', 'bgr2rgb': True,
+                                                                  'hwc2chw': True}])
+    parser.add_argument('--conf_thres', type=float, default=0.001)
+    parser.add_argument('--iou_thres', type=float, default=0.05)
+    parser.add_argument('--nms_time_limit', type=float, default=20.0)
 
     return parser.parse_args()
 
