@@ -51,24 +51,22 @@ def infer(cfg):
         img_size=cfg.img_size,
         transforms_dict=cfg.test_transforms,
         is_training=False, augment=False, rect=cfg.rect, single_cls=cfg.single_cls,
-        batch_size=cfg.per_batch_size, stride=max(cfg.network.stride),
+        batch_size=cfg.batch_size, stride=max(cfg.stride),
     )
     dataloader = create_loader(
         dataset=dataset,
         batch_collate_fn=dataset.test_collate_fn,
         dataset_column_names=dataset.dataset_column_names,
-        batch_size=cfg.per_batch_size,
+        batch_size=cfg.batch_size,
         epoch_size=1, rank=0, rank_size=1, shuffle=False, drop_remainder=False,
-        num_parallel_workers=cfg.data.num_parallel_workers,
+        num_parallel_workers=cfg.num_parallel_workers,
         python_multiprocessing=True
     )
 
     loader = dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
-    # anno_json_path = os.path.join(self.cfg.data.dataset_dir, self.cfg.data.val_anno_path)
-    dataset_dir = cfg.data.val_set[:-len(cfg.data.val_set.split('/')[-1])]
+    dataset_dir = cfg.val_set[:-len(cfg.val_set.split('/')[-1])]
     anno_json_path = os.path.join(dataset_dir, 'annotations/instances_val2017.json')
     coco91class = COCO80_TO_COCO91_CLASS
-    is_coco_dataset = ('coco' in cfg.data.dataset_name)
 
     step_num = dataloader.get_dataset_size()
     sample_num = 0
@@ -143,7 +141,7 @@ def parse_args():
     parser.add_argument('--rect', type=ast.literal_eval, default=False, help='rectangular training')
     parser.add_argument('--single_cls', type=ast.literal_eval, default=False,
                         help='train multi-class data as single-class')
-    parser.add_argument('--batch_size', type=int, default=32, help='size of each image batch')
+    parser.add_argument('--batch_size', type=int, default=1, help='size of each image batch')
 
     parser.add_argument('--stride', type=list, default=[8, 16, 32])
     parser.add_argument('--anchors', type=list,
