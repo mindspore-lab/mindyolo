@@ -1,4 +1,7 @@
+import argparse
+import ast
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -7,14 +10,17 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
 from infer_engine import *
+
+sys.path.append("..")
 from mindyolo.data import COCO80_TO_COCO91_CLASS
 from mindyolo.data import COCODataset, create_loader
 from mindyolo.utils import logger
-from mindyolo.utils.config import parse_args
+# from mindyolo.utils.config import parse_args
 from mindyolo.utils.metrics import non_max_suppression, scale_coords, xyxy2xywh
+import pdb
 
 
-def detect(nc=80, anchor=(), stride=()):
+def Detect(nc=80, anchor=(), stride=()):
     no = nc + 5
     nl = len(anchor)
     na = len(anchor[0]) // 2
@@ -42,32 +48,30 @@ def detect(nc=80, anchor=(), stride=()):
 
 def infer(cfg):
     # Create Network
+    pdb.set_trace()
     network = MindXModel("./models/yolov5s.om")
-    de = detect(nc=80, anchor=cfg.network.anchors, stride=cfg.network.stride)
+    detect = Detect(nc=80, anchor=cfg.anchors, stride=cfg.stride)
 
     dataset = COCODataset(
-        dataset_path=cfg.data.val_set,
+        dataset_path=cfg.val_set,
         img_size=cfg.img_size,
-        transforms_dict=cfg.data.test_transforms,
+        transforms_dict=cfg.test_transforms,
         is_training=False, augment=False, rect=cfg.rect, single_cls=cfg.single_cls,
-        batch_size=cfg.per_batch_size, stride=max(cfg.network.stride),
+        batch_size=cfg.batch_size, stride=max(cfg.stride),
     )
     dataloader = create_loader(
         dataset=dataset,
         batch_collate_fn=dataset.test_collate_fn,
         dataset_column_names=dataset.dataset_column_names,
-        batch_size=cfg.per_batch_size,
+        batch_size=cfg.batch_size,
         epoch_size=1, rank=0, rank_size=1, shuffle=False, drop_remainder=False,
-        num_parallel_workers=cfg.data.num_parallel_workers,
         python_multiprocessing=True
     )
 
     loader = dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
-    # anno_json_path = os.path.join(self.cfg.data.dataset_dir, self.cfg.data.val_anno_path)
-    dataset_dir = cfg.data.val_set[:-len(cfg.data.val_set.split('/')[-1])]
+    dataset_dir = cfg.val_set[:-len(cfg.val_set.split('/')[-1])]
     anno_json_path = os.path.join(dataset_dir, 'annotations/instances_val2017.json')
     coco91class = COCO80_TO_COCO91_CLASS
-    is_coco_dataset = ('coco' in cfg.data.dataset_name)
 
     step_num = dataloader.get_dataset_size()
     sample_num = 0
@@ -82,7 +86,7 @@ def infer(cfg):
         # Run infer
         _t = time.time()
         out = network.infer(imgs)  # inference and training outputs
-        out, _ = de(out)
+        out, _ = detect(out)
         infer_times += time.time() - _t
 
         # Run NMS
@@ -108,7 +112,7 @@ def infer(cfg):
             box[:, :2] -= box[:, 2:] / 2  # xy center to top-left corner
             for p, b in zip(pred.tolist(), box.tolist()):
                 result_dicts.append({'image_id': image_id,
-                                     'category_id': coco91class[int(p[5])] if is_coco_dataset else int(p[5]),
+                                     'category_id': coco91class[int(p[5])],
                                      'bbox': [round(x, 3) for x in b],
                                      'score': round(p[4], 5)})
         print(f"Sample {step_num}/{i + 1}, time cost: {(time.time() - _t) * 1000:.2f} ms.")
@@ -118,8 +122,8 @@ def infer(cfg):
         anno = COCO(anno_json_path)  # init annotations api
         pred = anno.loadRes(result_dicts)  # init predictions api
         eval = COCOeval(anno, pred, 'bbox')
-        if is_coco_dataset:
-            eval.params.imgIds = [int(Path(im_file).stem) for im_file in dataset.img_files]
+
+        eval.params.imgIds = [int(Path(im_file).stem) for im_file in dataset.img_files]
         eval.evaluate()
         eval.accumulate()
         eval.summarize()
@@ -129,12 +133,34 @@ def infer(cfg):
         raise e
 
     t = tuple(x / sample_num * 1E3 for x in (infer_times, nms_times, infer_times + nms_times)) + \
-        (height, width, cfg.per_batch_size)  # tuple
+        (height, width, cfg.batch_size)  # tuple
     logger.info(f'Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g;' % t)
 
     return map, map50
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Config', add_help=False)
+
+    parser.add_argument('--img_size', type=int, default=640, help='inference size (pixels)')
+    parser.add_argument('--rect', type=ast.literal_eval, default=False, help='rectangular training')
+    parser.add_argument('--single_cls', type=ast.literal_eval, default=False,
+                        help='train multi-class data as single-class')
+    parser.add_argument('--batch_size', type=int, default=32, help='size of each image batch')
+
+    parser.add_argument('--stride', type=list, default=[8, 16, 32])
+    parser.add_argument('--anchors', type=list,
+                        default=[[10, 13, 16, 30, 33, 23], [30, 61, 62, 45, 59, 119], [116, 90, 156, 198, 373, 326]])
+    parser.add_argument('--model_type', type=str, default="MindX", help='model type MindX/Lite')
+    parser.add_argument('--model_path', type=str, default="./models/yolov5s.om", help='model weight path')
+
+    parser.add_argument('--nc', type=int, default=80)
+    parser.add_argument('--val_set', type=str, default='./coco/val2017.txt')
+    parser.add_argument('--test_transforms', type=list, default=[])
+
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    args = parse_args('val')
+    args = parse_args()
     infer(args)
