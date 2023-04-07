@@ -1,7 +1,6 @@
-import random, os, yaml, glob, re
+import random, os, yaml
 import numpy as np
 from datetime import datetime
-from pathlib import Path
 
 import mindspore as ms
 from mindspore import context
@@ -84,5 +83,5 @@ def set_default(cfg):
         cfg.data.train_set = os.path.join(cfg.data_dir, cfg.data.train_set)
         cfg.data.val_set = os.path.join(cfg.data_dir, cfg.data.val_set)
         cfg.data.test_set = os.path.join(cfg.data_dir, cfg.data.test_set)
-        cfg.weight = cfg.ckpt_dir if cfg.ckpt_dir else ''  # os.path.join(cfg.ckpt_dir, cfg.weight) if cfg.weight else ''
+        cfg.weight = cfg.ckpt_dir if cfg.ckpt_dir else ''
         cfg.ema_weight = os.path.join(cfg.ckpt_dir, cfg.ema_weight) if cfg.ema_weight else ''

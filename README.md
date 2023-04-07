@@ -12,7 +12,7 @@
     </a>
 </p>
 
-MindYOLO is [MindSpore Lab](https://github.com/mindspore-lab)'s software system that implements state-of-the-art YOLO series algorithms, [model support list](./configs/README.md). It is written in Python and powered by the [MindSpore](https://mindspore.cn/) deep learning framework.
+MindYOLO is [MindSpore Lab](https://github.com/mindspore-lab)'s software system that implements state-of-the-art YOLO series algorithms, [support list and benchmark](MODEL_ZOO.md). It is written in Python and powered by the [MindSpore](https://mindspore.cn/) deep learning framework.
 
 The master branch works with **MindSpore 1.8.1**.
 
@@ -28,21 +28,39 @@ The master branch works with **MindSpore 1.8.1**.
 
 ## Benchmark and Model Zoo
 
+Seed [MODEL ZOO](MODEL_ZOO.md).
+
 <details open>
 <summary><b>Supported Algorithms</b></summary>
 
 - [x] [YOLOv7](configs/yolov7)
 - [x] [YOLOv5](configs/yolov5)
 - [x] [YOLOv3](configs/yolov3)
-- [ ] [YOLOv6](configs/yolov6)
 - [ ] [YOLOv8](configs/yolov6)
+- [ ] [YOLOv6](configs/yolov6)
+- [ ] [YOLOv4](configs/yolov6)
 - [ ] [YOLOX](configs/yolox)
 
 </details>
 
 ## Installation
 
-To be supplemented.
+### Dependency
+
+- mindspore >= 1.8.1
+- numpy >= 1.17.0
+- pyyaml >= 5.3
+- openmpi 4.0.3 (for distributed mode)
+
+To install the dependency, please run
+```shell
+pip install -r requirements.txt
+```
+
+MindSpore can be easily installed by following the official [instructions](https://www.mindspore.cn/install) where you can select your hardware platform for the best fit. To run in distributed mode, [openmpi](https://www.open-mpi.org/software/ompi/v4.0/) is required to install.
+
+The following instructions assume the desired dependency is fulfilled.
+
 
 ## Getting Started
 
@@ -56,6 +74,8 @@ To be supplemented.
 ### How to Contribute
 
 We appreciate all contributions including issues and PRs to make MindYOLO better. 
+
+Please refer to [CONTRIBUTING.md](CONTRIBUTING.md) for the contributing guideline.
 
 ### License
 
