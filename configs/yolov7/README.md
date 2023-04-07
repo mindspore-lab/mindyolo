@@ -13,11 +13,11 @@ YOLOv7 surpasses all known object detectors in both speed and accuracy in the ra
 
 <div align="center">
 
-| Name   | Scale | Arch | Context  | ImageSize | Dataset      | Box mAP (%) | Params | FLOPs  | Recipe                                                                                        | Download                                                                                            |
-|--------|-------|------|----------|-----------|--------------|-------------|--------|--------|-----------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| YOLOv7 | Tiny  | P5   | D910x8-G | 640       | MS COCO 2017 | 37.5        | 6.2M   | 13.8G  | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov7/yolov7-tiny.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7-Tiny_300e_mAP375.ckpt)      |
-| YOLOv7 | L     | P5   | D910x8-G | 640       | MS COCO 2017 | 50.8        | 36.9M  | 104.7G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov7/yolov7.yaml)      | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7-L_300e_mAP508.ckpt)         |
-| YOLOv7 | X     | P5   | D910x8-G | 640       | MS COCO 2017 | 52.4        | 71.3M  | 189.9G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov7/yolov7-x.yaml)    | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7-X_300e_mAP524.ckpt)         |
+| Name   | Scale | Arch | Context  | ImageSize | Dataset      | Box mAP (%) | Params | FLOPs  | Recipe                                                                                        | Download                                                                                                |
+|--------|-------|------|----------|-----------|--------------|-------------|--------|--------|-----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| YOLOv7 | Tiny  | P5   | D910x8-G | 640       | MS COCO 2017 | 37.5        | 6.2M   | 13.8G  | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov7/yolov7-tiny.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7-tiny_300e_mAP375-d8972c94.ckpt) |
+| YOLOv7 | L     | P5   | D910x8-G | 640       | MS COCO 2017 | 50.8        | 36.9M  | 104.7G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov7/yolov7.yaml)      | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7_300e_mAP508-734ac919.ckpt)      |
+| YOLOv7 | X     | P5   | D910x8-G | 640       | MS COCO 2017 | 52.4        | 71.3M  | 189.9G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov7/yolov7-x.yaml)    | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7-x_300e_mAP524-e2f58741.ckpt)    |
 
 </div>
 <br>
