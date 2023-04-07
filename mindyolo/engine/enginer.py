@@ -278,7 +278,7 @@ class Enginer:
             if self.ema:
                 self.ema.update()
             self.scaler.adjust(grads_finite)
-            if not grads_finite:
+            if not grads_finite and (cur_step % self.cfg.log_interval == 0):
                 if self.cfg.overflow_still_update:
                     logger.warning(f"overflow, still update, loss scale adjust to {self.scaler.scale_value.asnumpy()}")
                 else:
@@ -409,14 +409,12 @@ class Enginer:
 
         return map, map50
 
-    def detect(self, img):
-        if isinstance(img, str) and os.path.isfile(img):
+    def detect(self, img_path):
+        if isinstance(img_path, str) and os.path.isfile(img_path):
             import cv2
-            img = cv2.imread(img)
-        elif isinstance(img, np.ndarray):
-            pass
+            img = cv2.imread(img_path)
         else:
-            raise ValueError("Detect: input image not available.")
+            raise ValueError("Detect: input image file not available.")
         coco91class = COCO80_TO_COCO91_CLASS
         is_coco_dataset = ('coco' in self.cfg.data.dataset_name)
 
@@ -428,7 +426,7 @@ class Enginer:
             img = cv2.resize(img, (int(w_ori * r), int(h_ori * r)), interpolation=interp)
         h, w = img.shape[:2]
         if h < self.cfg.img_size or w < self.cfg.img_size:
-            _stride = self.cfg.network.stride
+            _stride = max(max(self.cfg.network.stride), 32)
             new_h, new_w = math.ceil(h / _stride) * _stride, math.ceil(w / _stride) * _stride
             dh, dw = (new_h - h) / 2, (new_w - w) / 2
             top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
@@ -452,6 +450,7 @@ class Enginer:
                                   multi_label=True, time_limit=self.cfg.nms_time_limit)
         nms_times = time.time() - t
 
+        result_dict = {'category_id': [], 'bbox': [], 'score': []}
         total_category_ids, total_bboxes, total_scores = [], [], []
         for si, pred in enumerate(out):
             if len(pred) == 0:
@@ -473,11 +472,9 @@ class Enginer:
             total_bboxes.extend(bboxes)
             total_scores.extend(scores)
 
-        result_dict = {
-            'category_id': total_category_ids,
-            'bbox': total_bboxes,
-            'score': total_scores
-        }
+        result_dict['category_id'].extend(total_category_ids)
+        result_dict['bbox'].extend(total_bboxes)
+        result_dict['score'].extend(total_scores)
 
         t = tuple(x * 1E3 for x in (infer_times, nms_times, infer_times + nms_times)) + \
             (self.cfg.img_size, self.cfg.img_size, 1)  # tuple

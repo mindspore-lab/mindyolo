@@ -204,7 +204,7 @@ def get_args_infer(parents=None):
                         help='Freeze layers: backbone of yolov7=50, first3=0 1 2')
     parser.add_argument('--log_level', type=str, default='INFO', help='save dir')
     # test
-    parser.add_argument('--conf_thres', type=float, default=0.001, help='object confidence threshold')
+    parser.add_argument('--conf_thres', type=float, default=0.25, help='object confidence threshold')
     parser.add_argument('--iou_thres', type=float, default=0.65, help='IOU threshold for NMS')
     parser.add_argument('--rect', type=ast.literal_eval, default=False, help='rectangular training')
     parser.add_argument('--nms_time_limit', type=float, default=60.0, help='time limit for NMS')

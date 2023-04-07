@@ -1,0 +1,10 @@
+# MindYOLO requirements
+# Usage: pip install -r requirements.txt
+
+# Base
+opencv-python>=4.7.0.68
+opencv-python-headless>=4.7.0.68
+
+# Extras
+albumentations>=1.0.3
+pycocotools>=2.0.2
