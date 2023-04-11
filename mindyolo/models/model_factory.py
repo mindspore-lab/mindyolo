@@ -6,6 +6,8 @@ from .registry import is_model, model_entrypoint
 from .layers import *
 from .heads import *
 
+from mindyolo.utils import logger
+
 __all__ = [
     'create_model',
     'build_model_from_cfg'
@@ -31,6 +33,7 @@ def create_model(
     if os.path.exists(checkpoint_path):
         checkpoint_param = load_checkpoint(checkpoint_path)
         load_param_into_net(model, checkpoint_param)
+        logger.info(f'create model load checkpoint from [{checkpoint_path}] success.')
 
     return model
 

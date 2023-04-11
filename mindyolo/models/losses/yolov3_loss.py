@@ -63,6 +63,8 @@ class YOLOv3Loss(nn.Cell):
             [0, -1],  # j,k,l,m
         ], dtype=ms.float32)
 
+        self.loss_item_name = ['loss', 'lbox', 'lobj', 'lcls']  # branch name returned by lossitem for print
+
     def construct(self, p, targets, imgs):
         lcls, lbox, lobj = 0., 0., 0.
         tcls, tbox, indices, anchors, tmasks = self.build_targets(p, targets)  # class, box, (image, anchor, gridj, gridi), anchors, mask
