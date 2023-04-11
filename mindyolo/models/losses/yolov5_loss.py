@@ -64,6 +64,8 @@ class YOLOv5Loss(nn.Cell):
             # [1, 1], [1, -1], [-1, 1], [-1, -1],  # jk,jm,lk,lm
         ], dtype=ms.float32)
 
+        self.loss_item_name = ['loss', 'lbox', 'lobj', 'lcls']  # branch name returned by loss for print
+
     def scatter_index_tensor(self, x, index):
         x_tmp = ops.transpose(x.reshape((-1, x.shape[-1])), (1, 0))
         res = x_tmp[index].reshape(x.shape[:-1])

@@ -51,17 +51,3 @@ class EMA(nn.Cell):
         success = self.hyper_map(ops.assign, self.ema_weight, self.weight)
         updates = ops.depend(updates, success)
         return updates
-
-    def load_param_from_dict(self, ckpt):
-        if isinstance(ckpt, str) and ckpt.endswith("ckpt"):
-            param_dict_ema = ms.load_checkpoint(ckpt)
-        elif isinstance(ckpt, dict):
-            param_dict_ema = ckpt
-        else:
-            raise NotImplementedError(f"input ckpt type not support, {ckpt}")
-
-        for w in self.ema_weight:
-            if w.name in param_dict_ema:
-                ops.assign(w, param_dict_ema[w.name])
-            else:
-                print(f"EMA.load_param_from_dict: [{w.name}] not load.")

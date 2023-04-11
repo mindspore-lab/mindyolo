@@ -15,7 +15,6 @@ optimizer:
 
 loss:
   name: YOLOv7AuxLoss
-  loss_item_name: ['loss', 'lbox', 'lobj', 'lcls'] # branch name returned by loss
   box: 0.05  # box loss gain
   cls: 0.3  # cls loss gain
   cls_pw: 1.0  # cls BCELoss positive_weight

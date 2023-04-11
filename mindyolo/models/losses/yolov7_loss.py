@@ -64,6 +64,8 @@ class YOLOv7Loss(nn.Cell):
             [0, -1],  # j,k,l,m
         ], dtype=ms.float32)
 
+        self.loss_item_name = ['loss', 'lbox', 'lobj', 'lcls']  # branch name returned by lossitem for print
+
     def construct(self, p, targets, imgs):
         lcls, lbox, lobj = 0., 0., 0.
         bs, as_, gjs, gis, targets, anchors, tmasks = self.build_targets(p, targets, imgs) # bs: (nl, bs*5*na*gt_max)
@@ -393,6 +395,8 @@ class YOLOv7AuxLoss(nn.Cell):
             [0, -1],  # j,k,l,m
             # [1, 1], [1, -1], [-1, 1], [-1, -1],  # jk,jm,lk,lm
         ], dtype=ms.float32)
+
+        self.loss_item_name = ['loss', 'lbox', 'lobj', 'lcls']  # branch name returned by loss for print
 
     def construct(self, p, targets, imgs):
         lcls, lbox, lobj = 0., 0., 0.

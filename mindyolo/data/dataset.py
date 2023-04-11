@@ -162,6 +162,8 @@ class COCODataset:
 
             self.batch_shapes = np.ceil(np.array(shapes) * img_size / stride + pad).astype(np.int) * stride
 
+        self.imgIds = [int(Path(im_file).stem) for im_file in self.img_files]
+
     def cache_labels(self, path=Path('./labels.cache')):
         # Get orientation exif tag
         for orientation in ExifTags.TAGS.keys():
