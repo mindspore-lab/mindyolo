@@ -43,7 +43,12 @@ def Detect(nc=80, anchor=(), stride=()):
 
 def infer(cfg):
     # Create Network
-    network = MindXModel("./models/yolov5s.om")
+    if cfg.model_type is "MindX":
+        network = MindXModel("./models/yolov5s.om")
+    elif cfg.model_type is "Lite":
+        network = LiteModel(cfg.model_path)
+    else:
+        raise TypeError("the type only supposed MindX/Lite")
     detect = Detect(nc=80, anchor=cfg.anchors, stride=cfg.stride)
 
     dataset = COCODataset(
@@ -163,7 +168,6 @@ def parse_args():
     parser.add_argument('--nms_time_limit', type=float, default=20.0)
 
     return parser.parse_args()
-
 
 if __name__ == '__main__':
     args = parse_args()
