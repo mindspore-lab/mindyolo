@@ -1,8 +1,3 @@
-import os
-import math
-from copy import deepcopy
-from mindspore import nn, ops, load_checkpoint, load_param_into_net
-
 from mindyolo.models.registry import is_model, model_entrypoint
 
 __all__ = ['create_loss']

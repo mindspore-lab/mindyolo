@@ -24,7 +24,6 @@ loss:
   fl_gamma: 0.0  # focal loss gamma (efficientDet default gamma=1.5)
   # iou_t: 0.20  # IoU training threshold
   label_smoothing: 0.0 # label smoothing epsilon
-  loss_item_name: ['loss', 'lbox', 'lobj', 'lcls'] # branch name returned by loss
 
 data:
   num_parallel_workers: 4
