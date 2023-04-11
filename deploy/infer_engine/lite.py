@@ -1,11 +1,15 @@
 import numpy as np
+
 from .model_base import ModelBase
 
+
 class LiteModel(ModelBase):
-    def __init__(self, model_path, device_id = 0):
+    def __init__(self, model_path, device_id=0):
         super().__init__()
         self.model_path = model_path
         self.device_id = device_id
+
+        self._init_model()
 
     def _init_model(self):
         import mindspore_lite as mslite
@@ -15,7 +19,7 @@ class LiteModel(ModelBase):
         context.ascend.device_id = self.device_id
 
         self.model = mslite.Model()
-        self.model.build_from_from_file(self.model_path, mslite.ModelType.MINDIR, context)
+        self.model.build_from_file(self.model_path, mslite.ModelType.MINDIR, context)
 
     def infer(self, input):
         inputs = self.model.get_inputs()
