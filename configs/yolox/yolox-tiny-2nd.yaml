@@ -1,0 +1,25 @@
+__BASE__: [
+  '../coco.yaml',
+  './hyp.scratch.yaml',
+  './yolox-s-2nd.yaml'
+]
+
+# difference with 2nd training of s
+# 1. img_size
+# 2. depth and width
+
+weight: ./runs/2023.05.17-09:29:38/weights/yolox-tiny-285_1848.ckpt
+ema_weight: ./runs/2023.05.17-09:29:38/weights/EMA_yolox-tiny-285_1848.ckpt
+
+optimizer:
+  checkpoint_path: ./runs/2023.05.17-09:29:38/weights/optim_yolox-tiny.ckpt
+
+img_size: 416
+
+loss:
+  input_size: [ 416, 416 ]
+
+network:
+  depth_multiple: 0.33
+  width_multiple: 0.375
+  input_size: [ 416, 416 ]

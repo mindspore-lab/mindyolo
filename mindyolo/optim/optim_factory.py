@@ -55,7 +55,7 @@ def create_optimizer(
         raise ValueError(f'Invalid optimizer: {optim}')
 
     if checkpoint_path.endswith('.ckpt') and os.path.isfile(checkpoint_path):
-        param_dict = load_checkpoint(checkpoint_path)
+        param_dict = load_checkpoint(checkpoint_path, filter_prefix='learning_rate')
         load_param_into_net(optimizer, param_dict)
 
     return optimizer

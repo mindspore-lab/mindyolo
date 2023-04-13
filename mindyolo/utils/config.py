@@ -31,10 +31,6 @@ def parse_args(parser):
     # defaults will have been overridden if config file specified.
     args = parser.parse_args(remaining)
 
-    print("parse_args:")
-    pprint(args)
-    print("Please check the above information for the configurations", flush=True)
-
     return args
 
 
@@ -115,6 +111,7 @@ class Config(dict):
         super(Config, self).__init__()
         for k, v in cfg_dict.items():
             setattr(self, k, Config(v) if isinstance(v, dict) else v)
+        self.__dict__.update(cfg_dict)
 
     def __setattr__(self, name, value):
         self[name] = value
@@ -126,7 +123,26 @@ class Config(dict):
             raise AttributeError(name)
 
     def __str__(self):
-        return pformat(self.__dict__)
+        return config_format_func(self)
 
     def __repr__(self):
         return self.__str__()
+
+def config_format_func(config, prefix=''):
+    """
+    Args:
+        config: dict-like object
+    Returns:
+        formatted str
+    """
+    msg = ''
+    if prefix:
+        prefix += '.'
+
+    for k, v in config.__dict__.items():
+        if isinstance(v, dict):
+            msg += config_format_func(v, prefix=str(k))
+        else:
+
+            msg += format(prefix + str(k), '<40') + format(str(v), '<') + '\n'
+    return msg

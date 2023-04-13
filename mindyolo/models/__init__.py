@@ -23,5 +23,6 @@ from .yolov7 import *
 from .yolov5 import *
 from .yolov4 import *
 from .yolov3 import *
+from .yolox import *
 from .initializer import *
 from .model_factory import *

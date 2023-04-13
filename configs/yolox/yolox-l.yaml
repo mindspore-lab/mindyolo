@@ -1,0 +1,9 @@
+__BASE__: [
+  '../coco.yaml',
+  './hyp.scratch.yaml',
+  './yolox-s.yaml'
+]
+
+network:
+  depth_multiple: 1.0
+  width_multiple: 1.0
