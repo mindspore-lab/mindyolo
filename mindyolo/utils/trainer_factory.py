@@ -4,7 +4,7 @@ import time
 from typing import Union
 
 import mindspore as ms
-from mindspore import nn, ops, Tensor
+from mindspore import nn, ops, Tensor, SummaryRecord
 
 from mindyolo.utils import logger
 from mindyolo.utils.checkpoint_manager import CheckpointManager
@@ -14,6 +14,7 @@ __all__ = [
     "create_trainer",
 ]
 
+
 def create_trainer(
     model_name: str,
     train_step_fn: types.FunctionType,
@@ -22,22 +23,25 @@ def create_trainer(
     ema: nn.Cell,
     optimizer: nn.Cell,
     dataloader: ms.dataset.Dataset,
+    summary
 ):
     return Trainer(
         model_name=model_name, train_step_fn=train_step_fn, scaler=scaler,
-        dataloader=dataloader,
-        network=network, ema=ema, optimizer=optimizer
+        dataloader=dataloader, network=network, ema=ema, optimizer=optimizer,
+        summary=summary
     )
 
 
 class Trainer:
-    def __init__(self, model_name, train_step_fn, scaler, network, ema, optimizer, dataloader):
+    def __init__(self, model_name, train_step_fn, scaler, network, ema, optimizer, dataloader, summary):
+        self.summary_record = None
+        self.summary = summary
         self.model_name = model_name
         self.train_step_fn = train_step_fn
         self.scaler = scaler
         self.dataloader = dataloader
-        self.network = network      # for save checkpoint
-        self.ema = ema              # for save checkpoint
+        self.network = network  # for save checkpoint
+        self.ema = ema  # for save checkpoint
         self.optimizer = optimizer  # for save checkpoint
         self.global_step = 0
         self.steps_per_epoch = self.dataloader.get_dataset_size()
@@ -69,8 +73,11 @@ class Trainer:
         # Directories settings
         ckpt_save_dir = os.path.join(save_dir, 'weights')
         sync_lock_dir = os.path.join(save_dir, 'sync_locks') if not enable_modelarts else '/tmp/sync_locks'
+        if self.summary:
+            summary_dir = os.path.join(save_dir, 'summary')
+            self.summary_record = SummaryRecord(summary_dir)
         if main_device:
-            os.makedirs(ckpt_save_dir, exist_ok=True)   # save checkpoint path
+            os.makedirs(ckpt_save_dir, exist_ok=True)  # save checkpoint path
             os.makedirs(sync_lock_dir, exist_ok=False)  # sync_lock for run_eval
 
         # Grad Accumulate
@@ -120,8 +127,9 @@ class Trainer:
                     accuracy = accuracy[0] if isinstance(accuracy, (list, tuple)) else accuracy
                     eval_network.set_train(_train_status)
 
-                    save_path_best = os.path.join(ckpt_save_dir, f"best/{self.model_name}-{cur_epoch}_{self.steps_per_epoch}"
-                                                                 f"_acc{accuracy:.2f}.ckpt")
+                    save_path_best = os.path.join(ckpt_save_dir,
+                                                  f"best/{self.model_name}-{cur_epoch}_{self.steps_per_epoch}"
+                                                  f"_acc{accuracy:.2f}.ckpt")
                     ckpt_filelist_best = manager_best.save_ckpoint(eval_network, num_ckpt=keep_checkpoint_max,
                                                                    metric=accuracy, save_path=save_path_best)
                     logger.info(f"Epoch {epochs}/{cur_epoch}, eval accuracy: {accuracy:.2f}, "
@@ -161,7 +169,12 @@ class Trainer:
         if enable_modelarts and ckpt_filelist_best:
             for p in ckpt_filelist_best:
                 sync_data(p, train_url + '/weights/best/' + p.split("/")[-1])
-
+        if enable_modelarts and self.summary:
+            for p in os.listdir(summary_dir):
+                summary_file_path = os.path.join(summary_dir, p)
+                sync_data(summary_file_path, train_url + "/summary/" + summary_file_path.split("/")[-1])
+        if self.summary:
+            self.summary_record.close()
         logger.info("End Train.")
 
     def train_step(self, imgs, labels, cur_step=0, cur_epoch=0):
@@ -181,7 +194,8 @@ class Trainer:
             if grads_finite or self.overflow_still_update:
                 self.accumulate_cur_step += 1
                 if self.accumulate_grads:
-                    self.accumulate_grads = self.accumulate_grads_fn(self.accumulate_grads, grads) # update self.accumulate_grads
+                    self.accumulate_grads = self.accumulate_grads_fn(self.accumulate_grads,
+                                                                     grads)  # update self.accumulate_grads
                 else:
                     self.accumulate_grads = grads
 
@@ -209,6 +223,8 @@ class Trainer:
                 self.loss_item_name += [f'loss_item{i}' for i in range(len(loss_item) - len(self.loss_item_name))]
             for i in range(len(loss_item)):
                 log_string += f", {self.loss_item_name[i]}: {loss_item[i].asnumpy():.4f}"
+                if self.summary:
+                    self.summary_record.add_value("scalar", f"{self.loss_item_name[i]}", Tensor(loss_item[i].asnumpy()))
             # print lr
             if self.optimizer.dynamic_lr:
                 if self.optimizer.is_group_lr:
@@ -220,6 +236,10 @@ class Trainer:
                 cur_lr = self.optimizer.learning_rate.asnumpy().item()
             log_string += f", cur_lr: {cur_lr}"
             logger.info(log_string)
+            if self.summary:
+                self.summary_record.add_value("scalar", f"cur_lr", Tensor(cur_lr))
+                self.summary_record.record(int(cur_step))
+                self.summary_record.flush()
 
     def _get_accumulate_grads_fn(self):
         hyper_map = ops.HyperMap()

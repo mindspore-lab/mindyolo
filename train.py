@@ -25,14 +25,17 @@ def get_parser_train(parents=None):
     parser.add_argument('--device_per_servers', type=int, default=8, help='device number on a server')
     parser.add_argument('--log_level', type=str, default='INFO', help='save dir')
     parser.add_argument('--is_parallel', type=ast.literal_eval, default=False, help='Distribute train or not')
-    parser.add_argument('--ms_mode', type=int, default=0, help='Running in GRAPH_MODE(0) or PYNATIVE_MODE(1) (default=0)')
+    parser.add_argument('--ms_mode', type=int, default=0,
+                        help='Running in GRAPH_MODE(0) or PYNATIVE_MODE(1) (default=0)')
     parser.add_argument('--ms_amp_level', type=str, default='O0', help='amp level, O0/O1/O2/O3')
-    parser.add_argument('--keep_loss_fp32', type=ast.literal_eval, default=True, help='Whether to maintain loss using fp32/O0-level calculation')
+    parser.add_argument('--keep_loss_fp32', type=ast.literal_eval, default=True,
+                        help='Whether to maintain loss using fp32/O0-level calculation')
     parser.add_argument('--ms_loss_scaler', type=str, default='static', help='train loss scaler, static/dynamic/none')
     parser.add_argument('--ms_loss_scaler_value', type=float, default=1024.0, help='static loss scale value')
     parser.add_argument('--ms_grad_sens', type=float, default=1024.0, help='gard sens')
     parser.add_argument('--ms_jit', type=ast.literal_eval, default=True, help='use jit or not')
-    parser.add_argument('--ms_enable_graph_kernel', type=ast.literal_eval, default=False, help='use enable_graph_kernel or not')
+    parser.add_argument('--ms_enable_graph_kernel', type=ast.literal_eval, default=False,
+                        help='use enable_graph_kernel or not')
     parser.add_argument('--overflow_still_update', type=ast.literal_eval, default=True, help='overflow still update')
     parser.add_argument('--ema', type=ast.literal_eval, default=True, help='ema')
     parser.add_argument('--weight', type=str, default='', help='initial weight path')
@@ -59,6 +62,7 @@ def get_parser_train(parents=None):
     parser.add_argument('--recompute', type=ast.literal_eval, default=False, help='Recompute')
     parser.add_argument('--recompute_layers', type=int, default=0)
     parser.add_argument('--seed', type=int, default=2, help='set global seed')
+    parser.add_argument('--summary', type=ast.literal_eval, default=True, help='collect train loss scaler or not')
 
     # args for ModelArts
     parser.add_argument('--enable_modelarts', type=ast.literal_eval, default=False, help='enable modelarts')
@@ -201,6 +205,7 @@ def train(args):
         train_step_fn=train_step_fn, scaler=scaler,
         dataloader=dataloader,
         network=network, ema=ema, optimizer=optimizer,
+        summary=args.summary
     )
     trainer.train(
         epochs=args.epochs,
