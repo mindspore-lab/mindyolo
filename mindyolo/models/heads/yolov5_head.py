@@ -51,7 +51,13 @@ class YOLOv5Head(nn.Cell):
 
     @staticmethod
     def _make_grid(nx=20, ny=20, dtype=ms.float32):
-        xv, yv = ops.meshgrid((mnp.arange(nx), mnp.arange(ny)))
+        # meshgrid is not supported on a specific model of machine
+        # an alternative solution is adopted, which will be updated later
+        x = mnp.arange(nx).astype(ms.int32)
+        y = mnp.arange(ny).astype(ms.int32)
+        xv = ops.tile(x.reshape(1, nx), (ny, 1))
+        yv = ops.tile(y.reshape(ny, 1), (1, nx))
+        #xv, yv = ops.meshgrid((mnp.arange(nx), mnp.arange(ny)))
         return ops.cast(ops.stack((xv, yv), 2).view((1, 1, ny, nx, 2)), dtype)
 
     def convert(self, z):

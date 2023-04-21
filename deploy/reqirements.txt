@@ -1,0 +1,5 @@
+tqdm
+cv2
+pycocotools
+pyyaml
+numpy==1.20
