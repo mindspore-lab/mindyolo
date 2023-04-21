@@ -175,8 +175,6 @@ def main(args):
     set_default_test(args)
 
     # Create Network
-    args.network.recompute = args.recompute
-    args.network.recompute_layers = args.recompute_layers
     network = create_model(
         model_name=args.network.model_name,
         model_cfg=args.network,

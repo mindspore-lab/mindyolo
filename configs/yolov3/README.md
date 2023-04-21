@@ -15,7 +15,7 @@ We present some updates to YOLO! We made a bunch of little design changes to mak
 
 | Name   | Scale     | Context  | ImageSize | Dataset      | Box mAP (%) | Params  | FLOPs  | Recipe                                                                                        | Download                                                                                                      |
 |--------|-----------|----------|-----------|--------------|-------------|---------|--------|-----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| YOLOv3 | Darknet53 | D910x8-G | 640       | MS COCO 2017 | 43.8        | 61.9M   | 156.4G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov3/yolov3.yaml)      | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov3/yolov3-darknet53_300e_mAP438-4cddcb38.ckpt)  |
+| YOLOv3 | Darknet53 | D910x8-G | 640       | MS COCO 2017 | 45.5        | 61.9M   | 156.4G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov3/yolov3.yaml)      | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov3/yolov3-darknet53_300e_mAP455-adfb27af.ckpt)  |
 
 </div>
 <br>

@@ -9,7 +9,7 @@ from .spp import *
 from .upsample import *
 
 __all__ = ['Swish',
-           'Shortcut', 'Concat', 'ReOrg', 'Identity',
+           'Shortcut', 'Concat', 'ReOrg', 'Identity', 'DFL',
            'ConvNormAct', 'RepConv', 'DownC',
            'Bottleneck', 'C3', 'C2f',
            'ImplicitA', 'ImplicitM',

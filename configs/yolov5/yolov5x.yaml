@@ -3,16 +3,10 @@ __BASE__: [
   './hyp.scratch-high.yaml',
 ]
 
-per_batch_size: 32  # 32 * 8 = 256
+per_batch_size: 16  # 16 * 8 = 128
 img_size: 640
-sync_bn: False
-recompute: True
-recompute_layers: 1
-
-# backbone/head calculate using fp16, loss fp32
-ms_amp_level: O3
-keep_loss_fp32: True
-
+sync_bn: True
+ms_amp_level: O0
 
 network:
   model_name: yolov5

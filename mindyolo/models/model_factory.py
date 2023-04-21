@@ -93,7 +93,8 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
     if _SYNC_BN:
         print('Parse model with Sync BN.')
     print('\n%3s%18s%3s%10s  %-40s%-30s' % ('', 'from', 'n', 'params', 'module', 'arguments'))
-    anchors, stride, gd, gw = d.anchors, d.stride, d.depth_multiple, d.width_multiple
+    anchors, reg_max = d.get('anchors', 1), d.get('reg_max', 16)
+    stride, gd, gw = d.stride, d.depth_multiple, d.width_multiple
     na = (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors  # number of anchors
     no = na * (nc + 5)  # number of outputs = anchors * (classes + 5)
 
@@ -130,6 +131,8 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
             args.append([ch[x] for x in f])
             if isinstance(args[1], int):  # number of anchors
                 args[1] = [list(range(args[1] * 2))] * len(f)
+        elif m in (YOLOv8Head,):  # head of anchor free
+            args.append([ch[x] for x in f])
         elif m is ReOrg:
             c2 = ch[f] * 4
         else:

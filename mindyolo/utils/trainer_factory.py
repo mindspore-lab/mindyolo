@@ -22,26 +22,28 @@ def create_trainer(
     network: nn.Cell,
     ema: nn.Cell,
     optimizer: nn.Cell,
+    dataset,
     dataloader: ms.dataset.Dataset,
     summary
 ):
     return Trainer(
         model_name=model_name, train_step_fn=train_step_fn, scaler=scaler,
-        dataloader=dataloader, network=network, ema=ema, optimizer=optimizer,
+        dataset=dataset, dataloader=dataloader, network=network, ema=ema, optimizer=optimizer,
         summary=summary
     )
 
 
 class Trainer:
-    def __init__(self, model_name, train_step_fn, scaler, network, ema, optimizer, dataloader, summary):
+    def __init__(self, model_name, train_step_fn, scaler, network, ema, optimizer, dataset, dataloader, summary):
         self.summary_record = None
         self.summary = summary
         self.model_name = model_name
         self.train_step_fn = train_step_fn
         self.scaler = scaler
+        self.dataset = dataset
         self.dataloader = dataloader
-        self.network = network  # for save checkpoint
-        self.ema = ema  # for save checkpoint
+        self.network = network      # for save checkpoint
+        self.ema = ema              # for save checkpoint and ema
         self.optimizer = optimizer  # for save checkpoint
         self.global_step = 0
         self.steps_per_epoch = self.dataloader.get_dataset_size()
@@ -54,6 +56,8 @@ class Trainer:
             warmup_momentum: Union[list, None] = None,
             accumulate: int = 1,
             overflow_still_update: bool = False,
+            train_transforms_stage: int = 1,
+            train_transforms: dict = None,
             keep_checkpoint_max: int = 10,
             log_interval: int = 1,
             loss_item_name: list = [],
@@ -63,14 +67,14 @@ class Trainer:
             run_eval: bool = False,
             test_fn: types.FunctionType = None,
     ):
-        # Set Attr
+        # Attr
         self.epochs = epochs
         self.main_device = main_device
         self.log_interval = log_interval
         self.overflow_still_update = overflow_still_update
         self.loss_item_name = loss_item_name
 
-        # Directories settings
+        # Directories
         ckpt_save_dir = os.path.join(save_dir, 'weights')
         sync_lock_dir = os.path.join(save_dir, 'sync_locks') if not enable_modelarts else '/tmp/sync_locks'
         if self.summary:
@@ -86,10 +90,18 @@ class Trainer:
         self.accumulate = accumulate
         self.accumulate_grads_fn = self._get_accumulate_grads_fn()
 
+        # Set Checkpoint Manager
         manager = CheckpointManager(ckpt_save_policy='latest_k')
         manager_ema = CheckpointManager(ckpt_save_policy='latest_k') if self.ema else None
         manager_best = CheckpointManager(ckpt_save_policy='top_k') if run_eval else None
         ckpt_filelist_best = []
+
+        # Multi train transforms stage
+        if train_transforms_stage > 1:
+            assert isinstance(train_transforms, dict)
+            assert 'stage_epochs' in train_transforms and 'trans_list' in train_transforms
+            assert len(train_transforms['stage_epochs']) == len(train_transforms['trans_list'])
+            cur_transforms_stage = 0
 
         self.dataloader = self.dataloader.repeat(epochs)
         loader = self.dataloader.create_dict_iterator(output_numpy=False, num_epochs=1)
@@ -166,6 +178,14 @@ class Trainer:
                     f"Epoch {epochs}/{cur_epoch}, epoch time: {(time.time() - s_epoch_time) / 60:.2f} min.")
                 s_epoch_time = time.time()
 
+            # change dataset train transform per epoch
+            if train_transforms_stage > 1 and (i + 1) % self.steps_per_epoch == 0:
+                _cur_stage = self._get_transform_stage(cur_epoch + 1, train_transforms['stage_epochs'])
+                if cur_transforms_stage != _cur_stage:
+                    cur_transforms_stage = _cur_stage
+                    self.dataset.transforms_dict = train_transforms['trans_list'][cur_transforms_stage]
+                    logger.info(f"Data transforms stage change to {cur_transforms_stage}, "
+                                f"data transforms change to {self.dataset.transforms_dict}.")
         if enable_modelarts and ckpt_filelist_best:
             for p in ckpt_filelist_best:
                 sync_data(p, train_url + '/weights/best/' + p.split("/")[-1])
@@ -253,3 +273,12 @@ class Trainer:
             return success
 
         return accumulate_grads_fn
+
+    def _get_transform_stage(self, cur_epoch, stage_epochs=[]):
+        _cur_stage = 0
+        for _i in range(len(stage_epochs)):
+            if cur_epoch <= stage_epochs[_i]:
+                _cur_stage = _i
+            else:
+                break
+        return _cur_stage
