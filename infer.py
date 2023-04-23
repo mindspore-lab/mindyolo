@@ -28,13 +28,14 @@ def get_parser_infer(parents=None):
                         help='use enable_graph_kernel or not')
     parser.add_argument('--weight', type=str, default='yolov7_300.ckpt', help='model.ckpt path(s)')
     parser.add_argument('--img_size', type=int, default=640, help='inference size (pixels)')
-    parser.add_argument('--seed', type=int, default=2, help='set global seed')
-
-    parser.add_argument('--save_dir', type=str, default='./runs_infer', help='save dir')
-    parser.add_argument('--log_level', type=str, default='INFO', help='save dir')
+    parser.add_argument('--single_cls', type=ast.literal_eval, default=False,
+                        help='train multi-class data as single-class')
+    parser.add_argument('--nms_time_limit', type=float, default=60.0, help='time limit for NMS')
     parser.add_argument('--conf_thres', type=float, default=0.25, help='object confidence threshold')
     parser.add_argument('--iou_thres', type=float, default=0.65, help='IOU threshold for NMS')
-    parser.add_argument('--nms_time_limit', type=float, default=60.0, help='time limit for NMS')
+    parser.add_argument('--seed', type=int, default=2, help='set global seed')
+    parser.add_argument('--log_level', type=str, default='INFO', help='save dir')
+    parser.add_argument('--save_dir', type=str, default='./runs_infer', help='save dir')
 
     parser.add_argument("--image_path", type=str, help="path to image")
     parser.add_argument("--save_result", type=ast.literal_eval, default=True, help="whether save the inference result")

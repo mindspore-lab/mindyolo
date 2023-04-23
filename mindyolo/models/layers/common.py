@@ -1,4 +1,8 @@
-from mindspore import nn, ops
+import numpy as np
+
+import mindspore as ms
+from mindspore import nn, ops, Tensor
+
 
 class Shortcut(nn.Cell):
     """
@@ -42,3 +46,26 @@ class ReOrg(nn.Cell):
 class Identity(nn.Cell):
     def construct(self, x):
         return x
+
+
+class DFL(nn.Cell):
+    # Integral module of Distribution Focal Loss (DFL) proposed in Generalized Focal Loss https://ieeexplore.ieee.org/document/9792391
+    def __init__(self, c1=16):
+        super().__init__()
+        self.conv = nn.Conv2d(c1, 1, 1, has_bias=False)
+        self.conv.weight.requires_grad = False
+        self.c1 = c1
+        self.softmax = ops.Softmax(axis=1)
+
+    def construct(self, x):
+        b, c, a = x.shape  # batch, channels, anchors
+        x = self.softmax(x.view(b, 4, self.c1, a).swapaxes(2, 1))
+        x = self.conv(x)
+        x = x.view(b, 4, a)
+        return x
+
+    def initialize_conv_weight(self):
+        self.conv.weight = ops.assign(
+            self.conv.weight,
+            Tensor(np.arange(self.c1).reshape((1, self.c1, 1, 1)), dtype=ms.float32)
+        )

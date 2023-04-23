@@ -57,6 +57,8 @@ def get_parser_train(parents=None):
     parser.add_argument('--keep_checkpoint_max', type=int, default=100)
     parser.add_argument('--run_eval', type=ast.literal_eval, default=False,
                         help='Whether to run eval during training')
+    parser.add_argument('--conf_thres', type=float, default=0.001, help='object confidence threshold for run_eval')
+    parser.add_argument('--iou_thres', type=float, default=0.65, help='IOU threshold for NMS for run_eval')
     parser.add_argument('--rect', type=ast.literal_eval, default=False, help='rectangular training')
     parser.add_argument('--nms_time_limit', type=float, default=20.0, help='time limit for NMS')
     parser.add_argument('--recompute', type=ast.literal_eval, default=False, help='Recompute')
@@ -107,10 +109,13 @@ def train(args):
         ms.amp.auto_mixed_precision(ema.ema, amp_level=args.ms_amp_level)
 
     # Create Dataloader
+    transform = args.data.train_transforms
+    train_transform_stage = 1 if not isinstance(transform, dict) else len(transform['trans_list'])
+    cur_transform = transform if train_transform_stage == 1 else transform['trans_list'][0]
     dataset = COCODataset(
         dataset_path=args.data.train_set,
         img_size=args.img_size,
-        transforms_dict=args.data.train_transforms,
+        transforms_dict=cur_transform,
         is_training=True,
         augment=True,
         rect=args.rect,
@@ -156,7 +161,7 @@ def train(args):
     # Create Loss
     loss_fn = create_loss(
         **args.loss,
-        anchors=args.network.anchors,
+        anchors=args.network.get('anchors', 1),
         stride=args.network.stride,
         nc=args.data.nc
     )
@@ -203,7 +208,7 @@ def train(args):
     trainer = create_trainer(
         model_name=model_name,
         train_step_fn=train_step_fn, scaler=scaler,
-        dataloader=dataloader,
+        dataset=dataset, dataloader=dataloader,
         network=network, ema=ema, optimizer=optimizer,
         summary=args.summary
     )

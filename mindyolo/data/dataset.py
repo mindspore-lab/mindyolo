@@ -549,6 +549,20 @@ class COCODataset:
 
         return image, labels
 
+    def random_perspective(self,
+                           image, labels, segments=(),
+                           degrees=10, translate=.1, scale=.1, shear=10,
+                           perspective=0.0, border=(0, 0)):
+
+        image, labels = random_perspective(image, labels, segments,
+                                           degrees=degrees,
+                                           translate=translate,
+                                           scale=scale,
+                                           shear=shear,
+                                           perspective=perspective,
+                                           border=border)
+        return image, labels
+
     def hsv_augment(self, image, labels, hgain=0.5, sgain=0.5, vgain=0.5):
         r = np.random.uniform(-1, 1, 3) * [hgain, sgain, vgain] + 1  # random gains
         hue, sat, val = cv2.split(cv2.cvtColor(image, cv2.COLOR_BGR2HSV))
