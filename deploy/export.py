@@ -1,10 +1,17 @@
+
+"""MindYolo Export Script. Transform MindSpore weight format"""
+
+
 import os
+import ast
 import argparse
 import numpy as np
 
 import mindspore as ms
 from mindspore import context, Tensor, export
 
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from mindyolo.models import create_model
 from mindyolo.utils import logger
 from mindyolo.utils.config import parse_args
@@ -23,6 +30,9 @@ def get_parser_export(parents=None):
     parser.add_argument('--log_level', type=str, default='INFO', help='save dir')
     parser.add_argument('--nms_time_limit', type=float, default=60.0, help='time limit for NMS')
     parser.add_argument('--file_format', type=str, default='MINDIR', help='treat as single-class dataset')
+    parser.add_argument('--save_dir', type=str, default='./export', help='save dir')
+    parser.add_argument('--single_cls', type=ast.literal_eval, default=False,
+                        help='train multi-class data as single-class')
 
     return parser
 
@@ -53,7 +63,6 @@ def export_weight(args):
         model_name=args.network.model_name,
         model_cfg=args.network,
         num_classes=args.data.nc,
-        sync_bn=args.sync_bn,
         checkpoint_path=args.weight
     )
     network.set_train(False)

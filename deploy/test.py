@@ -1,3 +1,5 @@
+"""MindYolo Evaluation Script of COCO dataset"""
+
 import argparse
 import ast
 import os
@@ -8,14 +10,14 @@ import numpy as np
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
-from infer_engine import *
 from mindyolo.data import COCO80_TO_COCO91_CLASS
 from mindyolo.data import COCODataset, create_loader
 from mindyolo.utils import logger
+from mindyolo.utils.config import parse_args
 from mindyolo.utils.metrics import non_max_suppression, scale_coords, xyxy2xywh
 
 
-def Detect(nc=80, anchor=(), stride=()):
+def Head(nc=80, anchor=(), stride=()):
     no = nc + 5
     nl = len(anchor)
     na = len(anchor[0]) // 2
@@ -41,35 +43,37 @@ def Detect(nc=80, anchor=(), stride=()):
     return forward
 
 
-def infer(cfg):
+def infer(args):
     # Create Network
-    if cfg.model_type is "MindX":
-        network = MindXModel(cfg.model_path)
-    elif cfg.model_type is "Lite":
-        network = LiteModel(cfg.model_path)
+    if args.model_type == "MindX":
+        from infer_engine.mindx import MindXModel
+        network = MindXModel(args.model_path)
+    elif args.model_type == "Lite":
+        from infer_engine.lite import LiteModel
+        network = LiteModel(args.model_path)
     else:
         raise TypeError("the type only supposed MindX/Lite")
-    detect = Detect(nc=80, anchor=cfg.anchors, stride=cfg.stride)
+    head = Head(nc=80, anchor=args.network.anchors, stride=args.network.stride)
 
     dataset = COCODataset(
-        dataset_path=cfg.val_set,
-        img_size=cfg.img_size,
-        transforms_dict=cfg.test_transforms,
-        is_training=False, augment=False, rect=cfg.rect, single_cls=cfg.single_cls,
-        batch_size=cfg.batch_size, stride=max(cfg.stride),
+        dataset_path=args.val_set,
+        img_size=args.img_size,
+        transforms_dict=args.test_transforms,
+        is_training=False, augment=False, rect=args.rect, single_cls=args.single_cls,
+        batch_size=args.batch_size, stride=max(args.network.stride),
     )
     dataloader = create_loader(
         dataset=dataset,
         batch_collate_fn=dataset.test_collate_fn,
         dataset_column_names=dataset.dataset_column_names,
-        batch_size=cfg.batch_size,
+        batch_size=args.batch_size,
         epoch_size=1, rank=0, rank_size=1, shuffle=False, drop_remainder=False,
-        num_parallel_workers=cfg.num_parallel_workers,
+        num_parallel_workers=2,
         python_multiprocessing=True
     )
 
     loader = dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
-    dataset_dir = cfg.val_set[:-len(cfg.val_set.split('/')[-1])]
+    dataset_dir = args.val_set[:-len(args.val_set.split('/')[-1])]
     anno_json_path = os.path.join(dataset_dir, 'annotations/instances_val2017.json')
     coco91class = COCO80_TO_COCO91_CLASS
 
@@ -82,18 +86,21 @@ def infer(cfg):
         imgs, _, paths, ori_shape, pad, hw_scale = data['image'], data['labels'], data['img_files'], \
             data['hw_ori'], data['pad'], data['hw_scale']
         nb, _, height, width = imgs.shape
+        #print(f"Sample {step_num}/{i + 1}, nms time cost: {(time.time() - t) * 1000:.2f} ms.")
 
         # Run infer
         _t = time.time()
         out = network.infer(imgs)  # inference and training outputs
-        out, _ = detect(out)
+        out, _ = head(out)
         infer_times += time.time() - _t
+        #print(f"Sample {step_num}/{i + 1}, network time cost: {(time.time() - _t) * 1000:.2f} ms.")
 
         # Run NMS
         t = time.time()
-        out = non_max_suppression(out, conf_thres=cfg.conf_thres, iou_thres=cfg.iou_thres,
-                                  multi_label=True, time_limit=cfg.nms_time_limit)
+        out = non_max_suppression(out, conf_thres=args.conf_thres, iou_thres=args.iou_thres,
+                                  multi_label=True, time_limit=args.nms_time_limit)
         nms_times += time.time() - t
+        #print(f"Sample {step_num}/{i + 1}, nms time cost: {(time.time() - t) * 1000:.2f} ms.")
 
         # Statistics pred
         for si, pred in enumerate(out):
@@ -133,14 +140,15 @@ def infer(cfg):
         raise e
 
     t = tuple(x / sample_num * 1E3 for x in (infer_times, nms_times, infer_times + nms_times)) + \
-        (height, width, cfg.batch_size)  # tuple
-    logger.info(f'Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g;' % t)
+        (height, width, args.batch_size)  # tuple
+    # logger.info(f'Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g;' % t)
+    print(f'Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g;' % t)
 
     return map, map50
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Config', add_help=False)
+def get_parser_test(parents=None):
+    parser = argparse.ArgumentParser(description='Test', parents=[parents] if parents else [])
 
     parser.add_argument('--img_size', type=int, default=640, help='inference size (pixels)')
     parser.add_argument('--rect', type=ast.literal_eval, default=False, help='rectangular training')
@@ -148,10 +156,7 @@ def parse_args():
                         help='train multi-class data as single-class')
     parser.add_argument('--batch_size', type=int, default=1, help='size of each image batch')
 
-    parser.add_argument('--stride', type=list, default=[8, 16, 32])
-    parser.add_argument('--anchors', type=list,
-                        default=[[10, 13, 16, 30, 33, 23], [30, 61, 62, 45, 59, 119], [116, 90, 156, 198, 373, 326]])
-    parser.add_argument('--model_type', type=str, default="MindX", help='model type MindX/Lite')
+    parser.add_argument('--model_type', type=str, default="Lite", help='model type MindX/Lite')
     parser.add_argument('--model_path', type=str, default="./models/yolov5s.om", help='model weight path')
 
     parser.add_argument('--nc', type=int, default=80)
@@ -167,9 +172,10 @@ def parse_args():
     parser.add_argument('--iou_thres', type=float, default=0.65)
     parser.add_argument('--nms_time_limit', type=float, default=20.0)
 
-    return parser.parse_args()
+    return parser
 
 
 if __name__ == '__main__':
-    args = parse_args()
+    parser = get_parser_test()
+    args = parse_args(parser)
     infer(args)

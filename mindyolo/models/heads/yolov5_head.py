@@ -10,7 +10,6 @@ class YOLOv5Head(nn.Cell):
     def __init__(self, nc=80, anchors=(), stride=(), ch=()):  # detection layer
         super(YOLOv5Head, self).__init__()
         self.stride = stride
-        self.is_export = False
 
         self.nc = nc  # number of classes
         self.no = nc + 5  # number of outputs per anchor
@@ -30,9 +29,6 @@ class YOLOv5Head(nn.Cell):
         outs = ()
         for i in range(self.nl):
             out = self.m[i](x[i])  # conv
-            if self.is_export:
-                outs += (out,)
-                continue
             bs, _, ny, nx = out.shape  # (bs,255,20,20)
             out = ops.Transpose()(out.view(bs, self.na, self.no, ny, nx), (0, 1, 3, 4, 2))  # (bs,3,20,20,85)
             out = out
@@ -51,7 +47,13 @@ class YOLOv5Head(nn.Cell):
 
     @staticmethod
     def _make_grid(nx=20, ny=20, dtype=ms.float32):
-        xv, yv = ops.meshgrid((mnp.arange(nx), mnp.arange(ny)))
+        # meshgrid is not supported on a specific model of machine
+        # an alternative solution is adopted, which will be updated later
+        x = mnp.arange(nx).astype(ms.int32)
+        y = mnp.arange(ny).astype(ms.int32)
+        xv = ops.tile(x.reshape(1, nx), (ny, 1))
+        yv = ops.tile(y.reshape(ny, 1), (1, nx))
+        #xv, yv = ops.meshgrid((mnp.arange(nx), mnp.arange(ny)))
         return ops.cast(ops.stack((xv, yv), 2).view((1, 1, ny, nx, 2)), dtype)
 
     def convert(self, z):
