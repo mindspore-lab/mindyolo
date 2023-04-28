@@ -1,3 +1,5 @@
+"""Inference Model Base"""
+
 from abc import ABCMeta, abstractmethod
 from typing import List
 

@@ -1,3 +1,5 @@
+"""MindX SDK Inference"""
+
 import numpy as np
 
 from .model_base import ModelBase
