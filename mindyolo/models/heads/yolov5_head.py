@@ -43,7 +43,7 @@ class YOLOv5Head(nn.Cell):
                 z += (y.view(bs, -1, self.no),)
 
         # return outs
-        return outs if self.training or self.is_export else (ops.concat(z, 1), outs)
+        return outs if self.training else (ops.concat(z, 1), outs)
 
     @staticmethod
     def _make_grid(nx=20, ny=20, dtype=ms.float32):

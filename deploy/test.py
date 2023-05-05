@@ -17,32 +17,6 @@ from mindyolo.utils.config import parse_args
 from mindyolo.utils.metrics import non_max_suppression, scale_coords, xyxy2xywh
 
 
-def Head(nc=80, anchor=(), stride=()):
-    no = nc + 5
-    nl = len(anchor)
-    na = len(anchor[0]) // 2
-    anchor_grid = np.array(anchor).reshape(nl, 1, -1, 1, 1, 2)
-
-    def forward(x):
-        z = ()
-        outs = ()
-        for i in range(len(x)):
-            out = x[i]
-            bs, _, ny, nx = out.shape
-            out = out.reshape(bs, na, no, ny, nx).transpose(0, 1, 3, 4, 2)
-            outs += (out,)
-
-            xv, yv = np.meshgrid(np.arange(nx), np.arange(ny))
-            grid = np.stack((xv, yv), 2).reshape((1, 1, ny, nx, 2))
-            y = 1 / (1 + np.exp(-out))
-            y[..., 0:2] = (y[..., 0:2] * 2. - 0.5 + grid) * stride[i]
-            y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * anchor_grid[i]
-            z += (y.reshape(bs, -1, no),)
-        return np.concatenate(z, 1), outs
-
-    return forward
-
-
 def infer(args):
     # Create Network
     if args.model_type == "MindX":
@@ -53,7 +27,6 @@ def infer(args):
         network = LiteModel(args.model_path)
     else:
         raise TypeError("the type only supposed MindX/Lite")
-    head = Head(nc=80, anchor=args.network.anchors, stride=args.network.stride)
 
     dataset = COCODataset(
         dataset_path=args.val_set,
@@ -90,8 +63,7 @@ def infer(args):
 
         # Run infer
         _t = time.time()
-        out = network.infer(imgs)  # inference and training outputs
-        out, _ = head(out)
+        out = network.infer(imgs)[0]  # inference and training outputs
         infer_times += time.time() - _t
         #print(f"Sample {step_num}/{i + 1}, network time cost: {(time.time() - _t) * 1000:.2f} ms.")
 
