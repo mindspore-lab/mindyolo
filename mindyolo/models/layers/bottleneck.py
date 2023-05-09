@@ -5,7 +5,7 @@ from .conv import ConvNormAct
 
 class Bottleneck(nn.Cell):
     # Standard bottleneck
-    def __init__(self, c1, c2, shortcut=True, k=(1, 3), g=(1, 1), e=0.5, momentum=0.97, eps=1e-3, sync_bn=False):  # ch_in, ch_out, shortcut, groups, kernels, expand
+    def __init__(self, c1, c2, shortcut=True, k=(1, 3), g=(1, 1), e=0.5, momentum=0.97, eps=1e-3, sync_bn=False):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
         self.conv1 = ConvNormAct(c1, c_, k[0], 1, g=g[0], momentum=momentum, eps=eps, sync_bn=sync_bn)
@@ -17,6 +17,17 @@ class Bottleneck(nn.Cell):
             out = x + self.conv2(self.conv1(x))
         else:
             out = self.conv2(self.conv1(x))
+        return out
+
+
+class Residualblock(nn.Cell):
+    def __init__(self, c1, c2, k=(1, 3), g=(1, 1), momentum=0.97, eps=1e-3, sync_bn=False):  # ch_in, ch_out, kernels, groups, expand
+        super().__init__()
+        self.conv1 = ConvNormAct(c1, c2, k[0], 1, g=g[0], momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.conv2 = ConvNormAct(c2, c2, k[1], 1, g=g[1], momentum=momentum, eps=eps, sync_bn=sync_bn)
+
+    def construct(self, x):
+        out = x + self.conv2(self.conv1(x))
         return out
 
 

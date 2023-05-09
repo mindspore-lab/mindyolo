@@ -15,5 +15,5 @@ __all__ = ['Swish',
            'ImplicitA', 'ImplicitM',
            'MP', 'SP', 'MaxPool2d',
            'SPPCSPC', 'SPPF',
-           'Upsample',
+           'Upsample', 'Residualblock'
            ]

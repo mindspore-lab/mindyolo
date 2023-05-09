@@ -115,7 +115,7 @@ class YOLOv3Loss(nn.Cell):
 
         loss = lbox + lobj + lcls
 
-        return loss * bs, ops.stop_gradient(ops.stack((loss * bs * 8, lbox, lobj, lcls)))
+        return loss * bs, ops.stop_gradient(ops.stack((loss, lbox, lobj, lcls)))
 
     def build_targets(self, p, targets):
         # Build targets for compute_loss(), input targets(image,class,x,y,w,h)
