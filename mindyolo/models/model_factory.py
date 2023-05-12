@@ -30,10 +30,12 @@ def create_model(
     create_fn = model_entrypoint(model_name)
     model = create_fn(**model_args, **kwargs)
 
-    if os.path.exists(checkpoint_path):
+    if checkpoint_path:
+        assert os.path.isfile(checkpoint_path) and checkpoint_path.endswith('.ckpt'), \
+            f"[{checkpoint_path}] not a ckpt file."
         checkpoint_param = load_checkpoint(checkpoint_path)
         load_param_into_net(model, checkpoint_param)
-        logger.info(f'create model load checkpoint from [{checkpoint_path}] success.')
+        logger.info(f'Load checkpoint from [{checkpoint_path}] success.')
 
     return model
 
@@ -54,8 +56,8 @@ class Model(nn.Cell):
         if hasattr(model_cfg, 'recompute') and model_cfg.recompute and model_cfg.recompute_layers > 0:
             for i in range(model_cfg.recompute_layers):
                 self.model[i].recompute()
-            print(f"Turn on recompute, and the results of the first {model_cfg.recompute_layers} layers "
-                  f"will be recomputed.")
+            logger.info(f"Turn on recompute, and the results of the first {model_cfg.recompute_layers} layers "
+                        f"will be recomputed.")
 
     def construct(self, x):
         y, dt = (), ()  # outputs
@@ -64,7 +66,6 @@ class Model(nn.Cell):
             iol, f, _, _ = self.layers_param[i]  # iol: index of layers
 
             if not (isinstance(f, int) and f == -1):  # if not from previous layer
-                # x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
                 if isinstance(f, int):
                     x = y[f]
                 else:
@@ -76,7 +77,6 @@ class Model(nn.Cell):
                             _x += (y[j],)
                     x = _x
 
-            # print("index m: ", iol) # print if debug on pynative mode, not available on graph mode.
             x = m(x)  # run
 
             y += (x if iol in self.save else None,)  # save output
@@ -91,8 +91,8 @@ class Model(nn.Cell):
 def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
     _SYNC_BN = sync_bn
     if _SYNC_BN:
-        print('Parse model with Sync BN.')
-    print('\n%3s%18s%3s%10s  %-40s%-30s' % ('', 'from', 'n', 'params', 'module', 'arguments'))
+        logger.info('Parse model with Sync BN.')
+    # logger.info('\n%3s%18s%3s%10s  %-40s%-30s' % ('', 'from', 'n', 'params', 'module', 'arguments'))  # print detail
     anchors, reg_max = d.get('anchors', 1), d.get('reg_max', 16)
     stride, gd, gw = d.stride, d.depth_multiple, d.width_multiple
     na = (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors  # number of anchors
@@ -144,7 +144,7 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
         np = sum([x.size for x in m_.get_parameters()])  # number params
         m_.i, m_.f, m_.type, m_.np = i, f, t, np  # attach index, 'from' index, type, number params
         layers_param.append((i, f, t, np))
-        print('%3s%18s%3s%10.0f  %-40s%-30s' % (i, f, n, np, t, args))  # print
+        # logger.info('%3s%18s%3s%10.0f  %-40s%-30s' % (i, f, n, np, t, args))  # print detail
         save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)  # append to savelist
         layers.append(m_)
         if i == 0:

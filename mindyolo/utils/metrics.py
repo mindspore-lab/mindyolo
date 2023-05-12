@@ -8,16 +8,29 @@ __all__ = [
 ]
 
 
-def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False, multi_label=False,
-                        time_limit=20.0):
+def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, conf_free=False, classes=None, agnostic=False,
+                        multi_label=False, time_limit=20.0):
     """Runs Non-Maximum Suppression (NMS) on inference results
 
+    Args:
+        prediction (ndarray): Prediction. If conf_free is False, prediction on (bs, N, 5+nc) ndarray each point,
+            the last dimension meaning [center_x, center_y, width, height, conf, cls0, ...]; If conf_free is True,
+            prediction on (bs, N, 4+nc) ndarray each point, the last dimension meaning [center_x, center_y, width, height, cls0, ...].
+        conf_free (bool): Whether the prediction result include conf.
+
     Returns:
-         list of detections, on (n,6) tensor per image [xyxy, conf, cls]
+         list of detections, on (n,6) ndarray per image, the last dimension meaning [xyxy, conf, cls].
     """
 
-    nc = prediction.shape[2] - 5  # number of classes
-    xc = prediction[..., 4] > conf_thres  # candidates
+    if not conf_free:
+        nc = prediction.shape[2] - 5  # number of classes
+        xc = prediction[..., 4] > conf_thres  # candidates
+    else:
+        nc = prediction.shape[2] - 4  # number of classes
+        xc = prediction[..., 4:].max(-1) > conf_thres  # candidates
+        prediction = np.concatenate((prediction[..., :4],
+                                     prediction[..., 4:].max(-1, keepdims=True),
+                                     prediction[..., 4:]), axis=-1)
 
     # Settings
     min_wh, max_wh = 2, 4096  # (pixels) minimum and maximum box width and height
@@ -40,12 +53,12 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
         if not x.shape[0]:
             continue
 
-        # Compute conf
-        if nc == 1:
-            x[:, 5:] = x[:, 4:5] # for models with one class, cls_loss is 0 and cls_conf is always 0.5,
-                                 # so there is no need to multiplicate.
-        else:
-            x[:, 5:] *= x[:, 4:5]  # conf = obj_conf * cls_conf
+        # Scale class with conf
+        if not conf_free:
+            if nc == 1:
+                x[:, 5:] = x[:, 4:5]  # signle cls no need to multiplicate.
+            else:
+                x[:, 5:] *= x[:, 4:5]  # conf = obj_conf * cls_conf
 
         # Box (center x, center y, width, height) to (x1, y1, x2, y2)
         box = xywh2xyxy(x[:, :4])

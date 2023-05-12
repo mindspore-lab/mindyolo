@@ -1,4 +1,6 @@
 epochs: 500  # total train epochs
+conf_free: True
+iou_thres: 0.7
 
 optimizer:
   optimizer: momentum
@@ -20,20 +22,14 @@ loss:
   box: 7.5  # box loss gain
   cls: 0.5  # cls loss gain
   dfl: 1.5  # dfl loss gain
-  reg_max: 4
-  # cls_pw: 1.0  # cls BCELoss positive_weight
-  # obj: 1.0  # obj loss gain (scale with pixels)
-  # obj_pw: 1.0  # obj BCELoss positive_weight
-  # fl_gamma: 0.0  # focal loss gamma (efficientDet default gamma=1.5)
-  # anchor_t: 4.0  # anchor-multiple threshold
-  # label_smoothing: 0.0 # label smoothing epsilon
+  reg_max: 16
 
 data:
   num_parallel_workers: 4
 
   # multi-stage data augment
   train_transforms: {
-    stage_epochs: [ 490, 500 ],
+    stage_epochs: [ 490, 10 ],
     trans_list: [
       [
         {func_name: mosaic, prob: 1.0, degrees: 0.0, translate: 0.1, scale: 0.5, shear: 0.0},

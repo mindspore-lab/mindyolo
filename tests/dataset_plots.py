@@ -9,9 +9,7 @@ if __name__ == '__main__':
     cfg = parse_args('eval')
 
     dataset = COCODataset(
-        dataset_dir=cfg.data.dataset_dir,
-        image_dir=cfg.data.val_img_dir,
-        anno_path=cfg.data.val_anno_path,
+        dataset_path=cfg.data.train_set,
         img_size=cfg.img_size,
         transforms_dict=cfg.data.test_transforms,
         is_training=False, rect=False,
