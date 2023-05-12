@@ -17,7 +17,7 @@ from mindyolo.utils.config import parse_args
 from mindyolo.utils.metrics import non_max_suppression, scale_coords, xyxy2xywh
 
 
-def infer(args):
+def test(args):
     # Create Network
     if args.model_type == "MindX":
         from infer_engine.mindx import MindXModel
@@ -69,7 +69,7 @@ def infer(args):
 
         # Run NMS
         t = time.time()
-        out = non_max_suppression(out, conf_thres=args.conf_thres, iou_thres=args.iou_thres,
+        out = non_max_suppression(out, conf_thres=args.conf_thres, iou_thres=args.iou_thres, conf_free=args.conf_free,
                                   multi_label=True, time_limit=args.nms_time_limit)
         nms_times += time.time() - t
         #print(f"Sample {step_num}/{i + 1}, nms time cost: {(time.time() - t) * 1000:.2f} ms.")
@@ -142,6 +142,7 @@ def get_parser_test(parents=None):
                                                                   'hwc2chw': True}])
     parser.add_argument('--conf_thres', type=float, default=0.001)
     parser.add_argument('--iou_thres', type=float, default=0.65)
+    parser.add_argument('--conf_free', type=ast.literal_eval, default=False, help='Whether the prediction result include conf')
     parser.add_argument('--nms_time_limit', type=float, default=20.0)
 
     return parser
@@ -150,4 +151,4 @@ def get_parser_test(parents=None):
 if __name__ == '__main__':
     parser = get_parser_test()
     args = parse_args(parser)
-    infer(args)
+    test(args)

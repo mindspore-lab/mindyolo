@@ -33,12 +33,12 @@ Seed [MODEL ZOO](MODEL_ZOO.md).
 <details open>
 <summary><b>Supported Algorithms</b></summary>
 
+- [x] [YOLOv8](configs/yolov8)
 - [x] [YOLOv7](configs/yolov7)
 - [x] [YOLOv5](configs/yolov5)
 - [x] [YOLOv3](configs/yolov3)
-- [ ] [YOLOv8](configs/yolov6)
+- [ ] [YOLOv4](configs/yolov4)
 - [ ] [YOLOv6](configs/yolov6)
-- [ ] [YOLOv4](configs/yolov6)
 - [ ] [YOLOX](configs/yolox)
 
 </details>
@@ -97,4 +97,3 @@ If you find this project useful in your research, please consider cite:
     year={2023}
 }
 ```
-

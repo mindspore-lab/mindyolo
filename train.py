@@ -36,6 +36,7 @@ def get_parser_train(parents=None):
     parser.add_argument('--ms_jit', type=ast.literal_eval, default=True, help='use jit or not')
     parser.add_argument('--ms_enable_graph_kernel', type=ast.literal_eval, default=False,
                         help='use enable_graph_kernel or not')
+    parser.add_argument('--ms_datasink', type=ast.literal_eval, default=False, help='Train with datasink.')
     parser.add_argument('--overflow_still_update', type=ast.literal_eval, default=True, help='overflow still update')
     parser.add_argument('--ema', type=ast.literal_eval, default=True, help='ema')
     parser.add_argument('--weight', type=str, default='', help='initial weight path')
@@ -59,6 +60,7 @@ def get_parser_train(parents=None):
                         help='Whether to run eval during training')
     parser.add_argument('--conf_thres', type=float, default=0.001, help='object confidence threshold for run_eval')
     parser.add_argument('--iou_thres', type=float, default=0.65, help='IOU threshold for NMS for run_eval')
+    parser.add_argument('--conf_free', type=ast.literal_eval, default=False, help='Whether the prediction result include conf')
     parser.add_argument('--rect', type=ast.literal_eval, default=False, help='rectangular training')
     parser.add_argument('--nms_time_limit', type=float, default=20.0, help='time limit for NMS')
     parser.add_argument('--recompute', type=ast.literal_eval, default=False, help='Recompute')
@@ -108,35 +110,41 @@ def train(args):
     if ema:
         ms.amp.auto_mixed_precision(ema.ema, amp_level=args.ms_amp_level)
 
-    # Create Dataloader
-    transform = args.data.train_transforms
-    train_transform_stage = 1 if not isinstance(transform, dict) else len(transform['trans_list'])
-    cur_transform = transform if train_transform_stage == 1 else transform['trans_list'][0]
-    dataset = COCODataset(
-        dataset_path=args.data.train_set,
-        img_size=args.img_size,
-        transforms_dict=cur_transform,
-        is_training=True,
-        augment=True,
-        rect=args.rect,
-        single_cls=args.single_cls,
-        batch_size=args.total_batch_size,
-        stride=max(args.network.stride),
-    )
-    dataloader = create_loader(
-        dataset=dataset,
-        batch_collate_fn=dataset.train_collate_fn,
-        dataset_column_names=dataset.dataset_column_names,
-        batch_size=args.per_batch_size,
-        epoch_size=1,
-        rank=args.rank,
-        rank_size=args.rank_size,
-        shuffle=True,
-        drop_remainder=True,
-        num_parallel_workers=args.data.num_parallel_workers,
-        python_multiprocessing=True
-    )
-    steps_per_epoch = dataloader.get_dataset_size()
+    # Create Dataloaders
+    transforms = args.data.train_transforms
+    stage_dataloaders = []
+    stage_epochs = [args.epochs,] if not isinstance(transforms, dict) else transforms['stage_epochs']
+    stage_transforms = [transforms,] if not isinstance(transforms, dict) else transforms['trans_list']
+    assert len(stage_epochs) == len(stage_transforms), "The length of transforms and stage_epochs is not equal."
+    assert sum(stage_epochs) == args.epochs, f"Stage epochs [{sum(stage_epochs)}] not equal args.epochs [{args.epochs}]"
+    for stage in range(len(stage_epochs)):
+        _dataset = COCODataset(
+            dataset_path=args.data.train_set,
+            img_size=args.img_size,
+            transforms_dict=stage_transforms[stage],
+            is_training=True,
+            augment=True,
+            rect=args.rect,
+            single_cls=args.single_cls,
+            batch_size=args.total_batch_size,
+            stride=max(args.network.stride),
+        )
+        _dataloader = create_loader(
+            dataset=_dataset,
+            batch_collate_fn=_dataset.train_collate_fn,
+            dataset_column_names=_dataset.dataset_column_names,
+            batch_size=args.per_batch_size,
+            epoch_size=stage_epochs[stage],
+            rank=args.rank,
+            rank_size=args.rank_size,
+            shuffle=True,
+            drop_remainder=True,
+            num_parallel_workers=args.data.num_parallel_workers,
+            python_multiprocessing=True
+        )
+        stage_dataloaders.append(_dataloader)
+    dataloader = stage_dataloaders[0] if len(stage_dataloaders) == 1 else ms.dataset.ConcatDataset(stage_dataloaders)
+    steps_per_epoch = dataloader.get_dataset_size() // args.epochs
 
     if args.run_eval:
         eval_dataset = COCODataset(
@@ -193,6 +201,7 @@ def train(args):
                                         'annotations/instances_val2017.json'),
             conf_thres=args.conf_thres,
             iou_thres=args.iou_thres,
+            conf_free=args.conf_free,
             nms_time_limit=args.nms_time_limit,
             is_coco_dataset=is_coco_dataset,
             imgIds=None if not is_coco_dataset else eval_dataset.imgIds,
@@ -208,26 +217,43 @@ def train(args):
     trainer = create_trainer(
         model_name=model_name,
         train_step_fn=train_step_fn, scaler=scaler,
-        dataset=dataset, dataloader=dataloader,
+        dataloader=dataloader, steps_per_epoch=steps_per_epoch,
         network=network, ema=ema, optimizer=optimizer,
         summary=args.summary
     )
-    trainer.train(
-        epochs=args.epochs,
-        main_device=main_device,
-        warmup_step=max(round(args.optimizer.warmup_epochs * steps_per_epoch), args.optimizer.min_warmup_step),
-        warmup_momentum=warmup_momentum,
-        accumulate=args.accumulate,
-        overflow_still_update=args.overflow_still_update,
-        keep_checkpoint_max=args.keep_checkpoint_max,
-        log_interval=args.log_interval,
-        loss_item_name=[] if not hasattr(loss_fn, 'loss_item_name') else loss_fn.loss_item_name,
-        save_dir=args.save_dir,
-        enable_modelarts=args.enable_modelarts,
-        train_url=args.train_url,
-        run_eval=args.run_eval,
-        test_fn=test_fn,
-    )
+    if not args.ms_datasink:
+        trainer.train(
+            epochs=args.epochs,
+            main_device=main_device,
+            warmup_step=max(round(args.optimizer.warmup_epochs * steps_per_epoch), args.optimizer.min_warmup_step),
+            warmup_momentum=warmup_momentum,
+            accumulate=args.accumulate,
+            overflow_still_update=args.overflow_still_update,
+            keep_checkpoint_max=args.keep_checkpoint_max,
+            log_interval=args.log_interval,
+            loss_item_name=[] if not hasattr(loss_fn, 'loss_item_name') else loss_fn.loss_item_name,
+            save_dir=args.save_dir,
+            enable_modelarts=args.enable_modelarts,
+            train_url=args.train_url,
+            run_eval=args.run_eval,
+            test_fn=test_fn,
+        )
+    else:
+        logger.warning("DataSink is an experimental interface under development.")
+        logger.warning("Train with data sink mode.")
+        trainer.train_with_datasink(
+            epochs=args.epochs,
+            main_device=main_device,
+            warmup_epoch=max(args.optimizer.warmup_epochs, args.optimizer.min_warmup_step // steps_per_epoch),
+            warmup_momentum=warmup_momentum,
+            keep_checkpoint_max=args.keep_checkpoint_max,
+            loss_item_name=[] if not hasattr(loss_fn, 'loss_item_name') else loss_fn.loss_item_name,
+            save_dir=args.save_dir,
+            enable_modelarts=args.enable_modelarts,
+            train_url=args.train_url,
+            run_eval=args.run_eval,
+            test_fn=test_fn,
+        )
     logger.info('Training completed.')
 
 

@@ -8,20 +8,16 @@ This document provides a brief intro of the usage of builtin command-line tools 
   [model zoo](MODEL_ZOO.md),
   for example, `./configs/yolov7/yolov7.yaml`.
 2. Download the corresponding pretrain checkpoint from the link in the [model zoo](MODEL_ZOO.md) of each model.
-3. We provide `infer.py` that is able to demo builtin configs. Run it with:
+3. We provide `demo/predict.py` that is able to demo builtin configs. Run it with:
 
 ```
-python infer.py \
-  --config ./configs/yolov7/yolov7.yaml \
-  --device_target=Ascend \
-  --weight=MODEL.WEIGHTS \
-  --image_path /PATH/TO/IMAGE.jpg
+python demo/predict.py --config ./configs/yolov7/yolov7.yaml --device_target=Ascend --weight=MODEL.WEIGHTS --image_path /PATH/TO/IMAGE.jpg
 ```
 
 The configs are made for training, therefore we need to specify `MODEL.WEIGHTS` to a model from model zoo for inference.
 This command will run the inference and show visualizations in an OpenCV window.
 
-For details of the command line arguments, see `infer.py -h` or look at its source code
+For details of the command line arguments, see `demo/predict.py -h` or look at its source code
 to understand its behavior. Some common arguments are:
 * To run on cpu, modify device_target to CPU.
 * The results will be saved in `./detect_results`
@@ -54,28 +50,19 @@ to understand its behavior. Some common arguments are:
   ```
   mpirun --allow-run-as-root -n 8 python train.py
   e.g.:
-  mpirun --allow-run-as-root -n 8 python train.py \
-     --config ./configs/yolov7/yolov7.yaml \
-     --device_target Ascend \
-     --is_parallel True > log.txt 2>&1 &
+  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml --device_target Ascend --is_parallel True > log.txt 2>&1 &
   tail -f ./log.txt
   ```
 
 * The configs are made for 8 NPU/GPU training.
 To train on 1 NPU/GPU, you may need to change some parameters, e.g.:
   ```
-  python train.py \
-      --config ./configs/yolov7/yolov7.yaml \
-      --device_target Ascend \
-      --per_batch_size 16
+  python train.py --config ./configs/yolov7/yolov7.yaml --device_target Ascend --per_batch_size 16
   ```
 
 * To evaluate a model's performance, use
   ```
-  python test.py \
-      --config ./configs/yolov7/yolov7.yaml \
-      --device_target Ascend \
-      --weight=MODEL.WEIGHTS
+  python test.py --config ./configs/yolov7/yolov7.yaml --device_target Ascend --weight=MODEL.WEIGHTS
   ```
 
 * For more options, see `train/test.py -h`.

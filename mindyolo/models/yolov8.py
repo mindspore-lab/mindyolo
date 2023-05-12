@@ -7,7 +7,6 @@ from .model_factory import build_model_from_cfg
 from .registry import register_model
 from .initializer import initialize_defult
 from .heads.yolov8_head import YOLOv8Head
-from .layers.common import DFL
 
 __all__ = [
     'YOLOv8',
@@ -52,8 +51,7 @@ class YOLOv8(nn.Cell):
         m = self.model.model[-1]
         if isinstance(m, YOLOv8Head):
             m.initialize_biases()
-        if isinstance(m, DFL):
-            m.initialize_conv_weight()
+            m.dfl.initialize_conv_weight()
 
 
 @register_model

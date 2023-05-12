@@ -36,6 +36,7 @@ def get_parser_test(parents=None):
     parser.add_argument('--nms_time_limit', type=float, default=60.0, help='time limit for NMS')
     parser.add_argument('--conf_thres', type=float, default=0.001, help='object confidence threshold')
     parser.add_argument('--iou_thres', type=float, default=0.65, help='IOU threshold for NMS')
+    parser.add_argument('--conf_free', type=ast.literal_eval, default=False, help='Whether the prediction result include conf')
     parser.add_argument('--seed', type=int, default=2, help='set global seed')
     parser.add_argument('--log_level', type=str, default='INFO', help='save dir')
     parser.add_argument('--save_dir', type=str, default='./runs_test', help='save dir')
@@ -94,6 +95,7 @@ def test(
         anno_json_path: str,
         conf_thres: float = 0.001,
         iou_thres: float = 0.65,
+        conf_free: bool = False,
         nms_time_limit: float = -1.,
         is_coco_dataset: bool = True,
         imgIds: list = [],
@@ -122,7 +124,7 @@ def test(
         # Run NMS
         t = time.time()
         out = out.asnumpy()
-        out = non_max_suppression(out, conf_thres=conf_thres, iou_thres=iou_thres,
+        out = non_max_suppression(out, conf_thres=conf_thres, iou_thres=iou_thres, conf_free=conf_free,
                                   multi_label=True, time_limit=nms_time_limit)
         nms_times += time.time() - t
 
@@ -213,6 +215,7 @@ def main(args):
                                     'annotations/instances_val2017.json'),
         conf_thres=args.conf_thres,
         iou_thres=args.iou_thres,
+        conf_free=args.conf_free,
         nms_time_limit=args.nms_time_limit,
         is_coco_dataset=is_coco_dataset,
         imgIds=None if not is_coco_dataset else dataset.imgIds,

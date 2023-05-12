@@ -102,7 +102,8 @@ class YOLOv8Loss(nn.Cell):
             # pred_dist = ops.softmax(pred_dist, axis=3) # ms version >= 1.9.0
             pred_dist = ops.Softmax(axis=3)(pred_dist) # ms version <= 1.8.1
             # (batch, anchors, 4, reg_max) @ (reg_max,) -> (batch, anchors, 4)
-            pred_dist = ops.matmul(pred_dist, self.proj.astype(pred_dist.dtype))
+            _dtype = pred_dist.dtype
+            pred_dist = ops.matmul(pred_dist.astype(ms.float16), self.proj.astype(ms.float16)).astype(_dtype)
         return self.dist2bbox(pred_dist, anchor_points, xywh=False)
 
     def preprocess(self, targets, scale_tensor):
@@ -289,11 +290,12 @@ class TaskAlignedAssigner(nn.Cell):
 
     def get_box_metrics(self, pd_scores, pd_bboxes, gt_labels, gt_bboxes):
         bs, n_gt, _ = gt_labels.shape
-        ind = ops.zeros((2, bs, n_gt), ms.int32)  # (2, b, n_gt)
-        ind[0, ...] = ops.tile(mnp.arange(bs).view(-1, 1), (1, n_gt)) # (b, n_gt)
-        ind[1, ...] = ops.cast(gt_labels, ms.int32).squeeze(-1) # (b, n_gt)
-        # get the scores of each grid for each gt cls
-        bbox_scores = pd_scores[ind[0], :, ind[1]]  # (b, N, 80) -> (b, n_gt, N)
+
+        ind0 = ops.tile(mnp.arange(bs, dtype=ms.int32).view(-1, 1), (1, n_gt)).view(-1, 1)  # (b*n_gt, 1)
+        ind1 = ops.cast(gt_labels, ms.int32).squeeze(-1).view(-1, 1)  # (b*n_gt, 1)
+        bbox_scores = ops.gather_nd(pd_scores.transpose((0, 2, 1)),
+                                    ops.concat((ind0, ind1), axis=1))  # (b, N, 80)->(b, 80, N)->(b*n_gt, N)
+        bbox_scores = bbox_scores.view(bs, n_gt, -1)
 
         # (b, n_gt, 1, 4), (b, 1, N, 4) -> (b, n_gt, N)
         overlaps = bbox_iou(gt_bboxes.expand_dims(2), pd_bboxes.expand_dims(1), xywh=False, CIoU=True).squeeze(3).clip(0, None)
@@ -341,10 +343,13 @@ class TaskAlignedAssigner(nn.Cell):
         """
         n_anchors = xy_centers.shape[0]
         bs, n_boxes, _ = gt_bboxes.shape
-        lt, rb = ops.split(gt_bboxes.view(-1, 1, 4), axis=2, output_num=2) # left-top, right-bottom
-        bbox_deltas = ops.concat((xy_centers[None] - lt, rb - xy_centers[None]), axis=2).view(bs, n_boxes, n_anchors, -1)
+        x, y = ops.split(xy_centers.view(1, -1, 2), axis=-1, output_num=2)  # (1, N, 2) -> (1, N, 1)
+        left, top, right, bottom = ops.split(gt_bboxes.view(-1, 1, 4), axis=-1, output_num=4)  # (bs, n_gt, 4)->(bs*n_gt, 1, 4)->(bs*n_gt, 1, 1)
+        select = ops.logical_and(
+            ops.logical_and((x - left) > eps, (y - top) > eps),
+            ops.logical_and((right - x) > eps, (bottom - y) > eps)
+        ).view(bs, n_boxes, n_anchors)  # (bs, n_gt, N)
 
-        select = bbox_deltas.min(3) > eps
         if mask_gt is not None:
             select = ops.cast(select, ms.float32) * ops.cast(mask_gt[..., None], ms.float32)
 
@@ -373,7 +378,7 @@ class TaskAlignedAssigner(nn.Cell):
                                       on_value=ops.ones(1, ms.int32),
                                       off_value=ops.zeros(1, ms.int32)) # (b, N, n_gt)
         is_max_overlaps = ops.cast(ops.transpose(is_max_overlaps, (0, 2, 1)), overlaps.dtype) # (b, N, n_gt) -> (b, n_gt, N)
-        mask_pos = mnp.where(mask_multi_gts, is_max_overlaps, mask_pos)
+        mask_pos = mnp.where(mask_multi_gts > 0, is_max_overlaps, mask_pos)
         fg_mask = mask_pos.sum(-2)
 
         # find each grid serve which gt(index)
@@ -384,10 +389,10 @@ class TaskAlignedAssigner(nn.Cell):
 def xywh2xyxy(x):
     # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
     y = ops.Identity()(x)
-    y[:, 0] = x[:, 0] - x[:, 2] / 2  # top left x
-    y[:, 1] = x[:, 1] - x[:, 3] / 2  # top left y
-    y[:, 2] = x[:, 0] + x[:, 2] / 2  # bottom right x
-    y[:, 3] = x[:, 1] + x[:, 3] / 2  # bottom right y
+    y[..., 0] = x[..., 0] - x[..., 2] / 2  # top left x
+    y[..., 1] = x[..., 1] - x[..., 3] / 2  # top left y
+    y[..., 2] = x[..., 0] + x[..., 2] / 2  # bottom right x
+    y[..., 3] = x[..., 1] + x[..., 3] / 2  # bottom right y
     return y
 
 
