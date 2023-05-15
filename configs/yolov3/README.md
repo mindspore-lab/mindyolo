@@ -34,6 +34,15 @@ Please refer to the [GETTING_STARTED](https://github.com/mindspore-lab/mindyolo/
 
 <details open>
 
+#### - Pretraining Model
+
+You can get the pre-training model from [here](https://pjreddie.com/media/files/darknet53.conv.74).
+
+To convert it to a loadable ckpt file for mindyolo, please put it in the root directory then run it
+```shell
+python mindyolo/utils/convert_weight_darknet53.py
+```
+
 #### - Distributed Training
 
 It is easy to reproduce the reported results with the pre-defined training recipe. For distributed training on multiple Ascend 910 devices, please run
