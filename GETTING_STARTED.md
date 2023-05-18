@@ -1,30 +1,32 @@
 ## Getting Started with MindYOLO
 
-This document provides a brief intro of the usage of builtin command-line tools in MindYOLO.
+This document provides a brief introduction to the usage of built-in command-line tools in MindYOLO.
 
 ### Inference Demo with Pre-trained Models
 
-1. Pick a model and its config file from
+1. Pick a model and its config file from the
   [model zoo](MODEL_ZOO.md),
-  for example, `./configs/yolov7/yolov7.yaml`.
-2. Download the corresponding pretrain checkpoint from the link in the [model zoo](MODEL_ZOO.md) of each model.
-3. We provide `demo/predict.py` that is able to demo builtin configs. Run it with:
+  such as, `./configs/yolov7/yolov7.yaml`.
+2. Download the corresponding pre-trained checkpoint from the [model zoo](MODEL_ZOO.md) of each model.
+3. To run YOLO object detection with the built-in configs, please run::
 
 ```
-python demo/predict.py --config ./configs/yolov7/yolov7.yaml --device_target=Ascend --weight=MODEL.WEIGHTS --image_path /PATH/TO/IMAGE.jpg
+# Run with Ascend (By default)
+python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_ckpt/WEIGHT.ckpt --image_path /path_to_image/IMAGE.jpg
+
+# Run with GPU
+python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_ckpt/WEIGHT.ckpt --image_path /path_to_image/IMAGE.jpg --device_target=GPU
 ```
 
-The configs are made for training, therefore we need to specify `MODEL.WEIGHTS` to a model from model zoo for inference.
-This command will run the inference and show visualizations in an OpenCV window.
 
-For details of the command line arguments, see `demo/predict.py -h` or look at its source code
-to understand its behavior. Some common arguments are:
+For details of the command line arguments, see `demo/predict.py -h` or look at its [source code](https://github.com/mindspore-lab/mindyolo/blob/master/deploy/predict.py)
+to understand their behavior. Some common arguments are:
 * To run on cpu, modify device_target to CPU.
 * The results will be saved in `./detect_results`
 
 ### Training & Evaluation in Command Line
 
-* Prepare your dataset in YOLO format. If train with COCO dataset, prepare it from yolov5 or darknet.
+* Prepare your dataset in YOLO format. If trained with COCO (YOLO format), prepare it from [yolov5](https://github.com/ultralytics/yolov5) or the darknet.
   
   <details onclose>
 
@@ -46,28 +48,24 @@ to understand its behavior. Some common arguments are:
   ```
   </details>
 
-* To train a model:
+* To train a model on 8 NPUs/GPUs:
   ```
-  mpirun --allow-run-as-root -n 8 python train.py
-  e.g.:
-  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml --device_target Ascend --is_parallel True > log.txt 2>&1 &
-  tail -f ./log.txt
+  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
   ```
 
-* The configs are made for 8 NPU/GPU training.
-To train on 1 NPU/GPU, you may need to change some parameters, e.g.:
+* To train a model on 1 NPU/GPU/CPU:
   ```
-  python train.py --config ./configs/yolov7/yolov7.yaml --device_target Ascend --per_batch_size 16
-  ```
-
-* To evaluate a model's performance, use
-  ```
-  python test.py --config ./configs/yolov7/yolov7.yaml --device_target Ascend --weight=MODEL.WEIGHTS
+  python train.py --config ./configs/yolov7/yolov7.yaml 
   ```
 
+* To evaluate a model's performance:
+  ```
+  python test.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_ckpt/WEIGHT.ckpt
+  ```
+*Notes: (1) The default hyper-parameter is used for 8-card training, and some parameters need to be adjusted in the case of a single card. (2) The default device is Ascend, and you can modify it by specifying 'device_target' as Ascend/GPU/CPU, as these are currently supported.*
 * For more options, see `train/test.py -h`.
 
 
-### Use MindYOLO APIs in Your Code
+### To use MindYOLO APIs in Your Code
 
 To be supplemented.
