@@ -93,27 +93,40 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
     if _SYNC_BN:
         logger.info('Parse model with Sync BN.')
     # logger.info('\n%3s%18s%3s%10s  %-40s%-30s' % ('', 'from', 'n', 'params', 'module', 'arguments'))  # print detail
-    anchors, reg_max = d.get('anchors', 1), d.get('reg_max', 16)
+    anchors, reg_max, max_channels = d.get('anchors', None), d.get('reg_max', None), d.get('max_channels', None)
     stride, gd, gw = d.stride, d.depth_multiple, d.width_multiple
-    na = (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors  # number of anchors
-    no = na * (nc + 5)  # number of outputs = anchors * (classes + 5)
+    nc, na = nc, (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors  # number of classes, number of anchors
 
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
     layers_param = []
     for i, (f, n, m, args) in enumerate(d.backbone + d.head):  # from, number, module, args
         kwargs = {}
         m = eval(m) if isinstance(m, str) else m  # eval strings
+
+        _args = []
         for j, a in enumerate(args):
-            try:
-                args[j] = eval(a) if isinstance(a, str) else a  # eval strings
-            except:
-                pass
+            if isinstance(a, str) and '=' in a:
+                _index = a.find('=')
+                k, v = a[:_index], a[_index + 1:]
+                try:
+                    v = eval(v)
+                except:
+                    logger.warning(f"Parse Model, args: {k}={v}, keep str type")
+                kwargs[k] = v
+            else:
+                try:
+                    a = eval(a) if isinstance(a, str) else a
+                except:
+                    logger.warning(f"Parse Model, args: {a}, keep str type")
+                _args += [a, ]
+        args = _args
 
         n = max(round(n * gd), 1) if n > 1 else n  # depth gain
         if m in (nn.Conv2d, ConvNormAct, RepConv, DownC, SPPCSPC, SPPF, C3, C2f, Bottleneck, Residualblock):
             c1, c2 = ch[f], args[0]
-            if c2 != no:  # if not output
-                c2 = math.ceil(c2 * gw / 8) * 8
+            if max_channels:
+                c2 = min(c2, max_channels)
+            c2 = math.ceil(c2 * gw / 8) * 8
 
             args = [c1, c2, *args[1:]]
             if m in (ConvNormAct, RepConv, DownC, SPPCSPC, SPPF, C3, C2f, Bottleneck, Residualblock):
