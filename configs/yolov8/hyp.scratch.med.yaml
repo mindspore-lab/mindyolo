@@ -12,7 +12,7 @@ optimizer:
   warmup_momentum: 0.8  # warmup initial momentum
   warmup_bias_lr: 0.1  # warmup initial bias lr
   min_warmup_step: 1000  # minimum warmup step
-  group_param: yolov7  # group param strategy
+  group_param: yolov8  # group param strategy
   gp_weight_decay: 0.0005  # group param weight decay 5e-4
   start_factor: 1.0
   end_factor: 0.01
@@ -32,8 +32,8 @@ data:
     stage_epochs: [ 490, 10 ],
     trans_list: [
       [
-        {func_name: mosaic, prob: 1.0, degrees: 0.0, translate: 0.1, scale: 0.5, shear: 0.0},
-        {func_name: mixup, prob: 0.0, alpha: 32.0, beta: 32.0, needed_mosaic: True},
+        {func_name: mosaic, prob: 1.0, degrees: 0.0, translate: 0.1, scale: 0.9, shear: 0.0, copy_paste_prob: 0.1},
+        {func_name: mixup, prob: 0.1, alpha: 32.0, beta: 32.0, needed_mosaic: True},
         {func_name: label_norm, xyxy2xywh_: True},
         {func_name: albumentations},
         {func_name: hsv_augment, prob: 1.0, hgain: 0.015, sgain: 0.7, vgain: 0.4},
@@ -44,7 +44,7 @@ data:
       ],
       [
         {func_name: letterbox, scaleup: True},
-        {func_name: random_perspective, prob: 1.0, degrees: 0.0, translate: 0.1, scale: 0.5, shear: 0.0},
+        {func_name: random_perspective, prob: 1.0, degrees: 0.0, translate: 0.1, scale: 0.9, shear: 0.0},
         {func_name: label_norm, xyxy2xywh_: True},
         {func_name: albumentations},
         {func_name: hsv_augment, prob: 1.0, hgain: 0.015, sgain: 0.7, vgain: 0.4},

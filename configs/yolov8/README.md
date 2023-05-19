@@ -11,9 +11,10 @@ Ultralytics YOLOv8, developed by Ultralytics, is a cutting-edge, state-of-the-ar
 
 <div align="center">
 
-| Name   | Scale | Arch | Context  | ImageSize | Dataset      | Box mAP (%) | Params | FLOPs | Recipe                                                                                    | Download                                                                                              |
-|--------|-------|------|----------|-----------|--------------|-------------|--------|-------|-------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| YOLOv8 | N     | P5   | D910x8-G | 640       | MS COCO 2017 | 37.2        | 3.2M   | 8.7G  | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov8/yolov8n.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-n_500e_mAP372-cc07f5bd.ckpt)  |
+| Name   | Scale | Arch | Context  | ImageSize | Dataset      | Box mAP (%) | Params | FLOPs   | Recipe                                                                                    | Download                                                                                              |
+|--------|-------|------|----------|-----------|--------------|-------------|--------|---------|-------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| YOLOv8 | N     | P5   | D910x8-G | 640       | MS COCO 2017 | 37.2        | 3.2M   | 8.7G    | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov8/yolov8n.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-n_500e_mAP372-cc07f5bd.ckpt)  |
+| YOLOv8 | X     | P5   | D910x8-G | 640       | MS COCO 2017 | 53.7        | 68.2M  | 257.8G  | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov8/yolov8x.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-x_500e_mAP537-b958e1c7.ckpt)  |
 
 </div>
 <br>
