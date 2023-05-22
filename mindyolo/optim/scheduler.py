@@ -7,21 +7,48 @@ __all__ = [
 ]
 
 
-def create_lr_scheduler(lr_init, lr_scheduler=None, **kwargs):
+def create_lr_scheduler(lr_init, lr_scheduler=None, by_epoch=True, **kwargs):
     """
     Create lr scheduler for optimizer.
 
     Args:
         lr_init: Initial learning rate
         lr_scheduler: LR scheduler name like 'linear', 'cos'.
+        by_epoch: learning rate updated by epoch if true, else updated by iteration. Default true
         **kwargs: Others
     """
 
     if lr_scheduler:
-        # TODO: Add common lr_scheduler
-        raise NotImplementedError(f"Not support lr_scheduler: {lr_scheduler}")
+        assert isinstance(lr_scheduler, str), f'lr_scheduler should be a string, but got {type(lr_scheduler)}'
+        if lr_scheduler == "yolox":
+            return create_yolox_lr_scheduler(lr_init=lr_init, by_epoch=by_epoch, **kwargs)
     else:
         return lr_init
+
+
+def create_yolox_lr_scheduler(start_factor, end_factor, lr_init, steps_per_epoch, warmup_epochs, epochs, by_epoch, **kwargs):
+    # quadratic
+    lrs_qua = quadratic_lr(0.01, start_factor, lr_init, steps_per_epoch, epochs=warmup_epochs, by_epoch=by_epoch)
+    # cosine
+    cosine_epochs = epochs - warmup_epochs
+    lrs_cos = cosine_decay_lr(start_factor, end_factor, lr_init, steps_per_epoch, epochs=cosine_epochs, by_epoch=by_epoch)
+    lrs = lrs_qua + lrs_cos
+    return lrs
+
+
+def quadratic_lr(start_factor, end_factor, lr_init, steps_per_epoch, epochs, by_epoch=True, t_max=None, **kwargs):
+    if t_max is None:
+        t_max = epochs if by_epoch else steps_per_epoch * epochs
+    lrs = []
+    start_lr = lr_init * start_factor
+    end_lr = lr_init * end_factor
+    for i in range(steps_per_epoch * epochs):
+        epoch_idx = i // steps_per_epoch
+        index = epoch_idx if by_epoch else i
+        multiplier = min(index, t_max) / t_max
+        multiplier = pow(multiplier, 2)
+        lrs.append(start_lr + multiplier * (end_lr - start_lr))
+    return lrs
 
 
 def create_warmup_momentum_scheduler(steps_per_epoch, momentum=None, warmup_momentum=None,
@@ -95,7 +122,7 @@ def linear_lr(start_factor, end_factor, lr_init, steps_per_epoch, epochs, t_max=
     return lrs
 
 
-def cosine_decay_lr(start_factor, end_factor, lr_init, steps_per_epoch, epochs, t_max=None, **kwargs):
+def cosine_decay_lr(start_factor, end_factor, lr_init, steps_per_epoch, epochs, by_epoch=True, t_max=None, **kwargs):
     """
     Args:
         start_factor: Starting factor.
@@ -114,15 +141,16 @@ def cosine_decay_lr(start_factor, end_factor, lr_init, steps_per_epoch, epochs, 
     """
 
     if t_max is None:
-        t_max = epochs
+        t_max = epochs if by_epoch else steps_per_epoch * epochs
     lrs = []
     start_lr = lr_init * start_factor
     end_lr = lr_init * end_factor
     delta = 0.5 * (start_lr - end_lr)
     for i in range(steps_per_epoch * epochs):
-        t_cur = i // steps_per_epoch
-        t_cur = min(t_cur, t_max)
-        lrs.append(end_lr + delta * (1.0 + math.cos(math.pi * t_cur / t_max)))
+        epoch_idx = i // steps_per_epoch
+        index = epoch_idx if by_epoch else i
+        multiplier = min(index, t_max) / t_max
+        lrs.append(end_lr + delta * (1.0 + math.cos(math.pi * multiplier)))
     return lrs
 
 

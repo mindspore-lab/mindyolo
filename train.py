@@ -10,7 +10,7 @@ from mindyolo.models import create_loss, create_model
 from mindyolo.optim import create_group_param, create_lr_scheduler, create_warmup_momentum_scheduler, \
     create_optimizer, EMA
 from mindyolo.utils import logger
-from mindyolo.utils.config import parse_args
+from mindyolo.utils.config import parse_args, config_format_func
 from mindyolo.utils.utils import set_seed, set_default, load_pretrain, freeze_layers
 from mindyolo.utils.train_step_factory import get_gradreducer, get_loss_scaler, create_train_step_fn
 from mindyolo.utils.trainer_factory import create_trainer
@@ -51,6 +51,7 @@ def get_parser_train(parents=None):
                         help='grad accumulate step, recommended when batch-size is less than 64')
     parser.add_argument('--auto_accumulate', type=ast.literal_eval, default=False, help='auto accumulate')
     parser.add_argument('--log_interval', type=int, default=100, help='log interval')
+    parser.add_argument('--eval_interval', type=int, default=1, help='eval interval')
     parser.add_argument('--single_cls', type=ast.literal_eval, default=False,
                         help='train multi-class data as single-class')
     parser.add_argument('--sync_bn', type=ast.literal_eval, default=False,
@@ -86,6 +87,10 @@ def train(args):
     set_default(args)
     main_device = (args.rank % args.rank_size == 0)
 
+    logger.info("parse_args:")
+    logger.info('\n' + config_format_func(args))
+    logger.info("Please check the above information for the configurations")
+
     # Create Network
     args.network.recompute = args.recompute
     args.network.recompute_layers = args.recompute_layers
@@ -95,6 +100,7 @@ def train(args):
         num_classes=args.data.nc,
         sync_bn=args.sync_bn,
     )
+
     if args.ema and main_device:
         ema_network = create_model(
             model_name=args.network.model_name,
@@ -231,6 +237,7 @@ def train(args):
             overflow_still_update=args.overflow_still_update,
             keep_checkpoint_max=args.keep_checkpoint_max,
             log_interval=args.log_interval,
+            eval_interval=args.eval_interval,
             loss_item_name=[] if not hasattr(loss_fn, 'loss_item_name') else loss_fn.loss_item_name,
             save_dir=args.save_dir,
             enable_modelarts=args.enable_modelarts,

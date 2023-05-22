@@ -92,13 +92,18 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
     _SYNC_BN = sync_bn
     if _SYNC_BN:
         logger.info('Parse model with Sync BN.')
-    # logger.info('\n%3s%18s%3s%10s  %-40s%-30s' % ('', 'from', 'n', 'params', 'module', 'arguments'))  # print detail
+    verbose = d.get('verbose_log', False)
+    if verbose:
+        logger.info('')
+        logger.info('network structure are as follows')
+        logger.info('%3s%18s%3s%10s  %-60s%-40s' % ('', 'from', 'n', 'params', 'module', 'arguments'))
     anchors, reg_max, max_channels = d.get('anchors', None), d.get('reg_max', None), d.get('max_channels', None)
     stride, gd, gw = d.stride, d.depth_multiple, d.width_multiple
     nc, na = nc, (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors  # number of classes, number of anchors
 
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
     layers_param = []
+    num_total_param, num_train_param = 0, 0
     for i, (f, n, m, args) in enumerate(d.backbone + d.head):  # from, number, module, args
         kwargs = {}
         m = eval(m) if isinstance(m, str) else m  # eval strings
@@ -122,16 +127,18 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
         args = _args
 
         n = max(round(n * gd), 1) if n > 1 else n  # depth gain
-        if m in (nn.Conv2d, ConvNormAct, RepConv, DownC, SPPCSPC, SPPF, C3, C2f, Bottleneck, Residualblock):
+        if m in (nn.Conv2d, ConvNormAct, RepConv, DownC, SPPCSPC, SPPF, C3, C2f, Bottleneck, Residualblock, Focus,
+                 DWConvNormAct, DWBottleneck, DWC3):
             c1, c2 = ch[f], args[0]
             if max_channels:
                 c2 = min(c2, max_channels)
             c2 = math.ceil(c2 * gw / 8) * 8
 
             args = [c1, c2, *args[1:]]
-            if m in (ConvNormAct, RepConv, DownC, SPPCSPC, SPPF, C3, C2f, Bottleneck, Residualblock):
+            if m in (ConvNormAct, RepConv, DownC, SPPCSPC, SPPF, C3, C2f, Bottleneck, Residualblock,
+                     DWConvNormAct, DWBottleneck, DWC3):
                 kwargs["sync_bn"] = sync_bn
-            if m in (DownC, SPPCSPC, C3, C2f):
+            if m in (DownC, SPPCSPC, C3, C2f, DWC3):
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m in (nn.BatchNorm2d, nn.SyncBatchNorm):
@@ -144,7 +151,7 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
             args.append([ch[x] for x in f])
             if isinstance(args[1], int):  # number of anchors
                 args[1] = [list(range(args[1] * 2))] * len(f)
-        elif m in (YOLOv8Head,):  # head of anchor free
+        elif m in (YOLOv8Head, YOLOXHead):  # head of anchor free
             args.append([ch[x] for x in f])
         elif m is ReOrg:
             c2 = ch[f] * 4
@@ -155,12 +162,17 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
 
         t = str(m) # module type
         np = sum([x.size for x in m_.get_parameters()])  # number params
+        np_trainable = sum([x.size for x in m_.trainable_params()])  # number trainable params
+        num_total_param += np
+        num_train_param += np_trainable
         m_.i, m_.f, m_.type, m_.np = i, f, t, np  # attach index, 'from' index, type, number params
         layers_param.append((i, f, t, np))
-        # logger.info('%3s%18s%3s%10.0f  %-40s%-30s' % (i, f, n, np, t, args))  # print detail
+        if verbose:
+            logger.info('%3s%18s%3s%10.0f  %-60s%-40s' % (i, f, n, np, t, args+[kwargs] if kwargs else args))  # print
         save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)  # append to savelist
         layers.append(m_)
         if i == 0:
             ch = []
         ch.append(c2)
+    logger.info(f"number of network params, total: {num_total_param / 1e6}M, trainable: {num_train_param / 1e6}M")
     return nn.CellList(layers), sorted(save), layers_param

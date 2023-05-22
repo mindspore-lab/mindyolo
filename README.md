@@ -38,8 +38,9 @@ Seed [MODEL ZOO](MODEL_ZOO.md).
 - [x] [YOLOv5](configs/yolov5)
 - [x] [YOLOv3](configs/yolov3)
 - [x] [YOLOv4](configs/yolov4)
+- [x] [YOLOX](configs/yolox)
 - [ ] [YOLOv6](configs/yolov6)
-- [ ] [YOLOX](configs/yolox)
+
 
 </details>
 

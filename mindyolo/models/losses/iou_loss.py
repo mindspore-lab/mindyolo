@@ -3,6 +3,8 @@ import math
 import mindspore as ms
 from mindspore import ops, Tensor
 
+from mindyolo.models.layers.utils import box_cxcywh_to_xyxy
+
 PI = Tensor(math.pi, ms.float32)
 EPS = 1e-7
 
@@ -62,7 +64,7 @@ def box_iou(box1, box2):
     return inter / (area1[:, None] + area2[None, :] - inter).clip(EPS, None)  # iou = inter / (area1 + area2 - inter)
 
 
-def batch_box_iou(batch_box1, batch_box2):
+def batch_box_iou(batch_box1, batch_box2, xywh=False):
     """
     Return intersection-over-union (Jaccard index) of boxes.
     Both sets of boxes are expected to be in (x1, y1, x2, y2) format.
@@ -73,6 +75,9 @@ def batch_box_iou(batch_box1, batch_box2):
         iou (Tensor[B, N, M]): the NxM matrix containing the pairwise
             IoU values for every element in boxes1 and boxes2
     """
+    if xywh:
+        batch_box1 = box_cxcywh_to_xyxy(batch_box1)
+        batch_box2 = box_cxcywh_to_xyxy(batch_box2)
 
     area1 = batch_box_area(batch_box1)
     area2 = batch_box_area(batch_box2)

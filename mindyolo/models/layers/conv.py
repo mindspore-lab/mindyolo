@@ -145,3 +145,25 @@ class DownC(nn.Cell):
 
     def construct(self, x):
         return ops.concat((self.cv2(self.cv1(x)), self.cv3(self.mp(x))), axis=1)
+
+
+class Focus(nn.Cell):
+    # Focus wh information into c-space
+    def __init__(self, c1, c2, k=1, s=1, act=True, momentum=0.97, eps=1e-3, sync_bn=False):  # ch_in, ch_out, kernel, stride, padding, groups
+        super(Focus, self).__init__()
+        self.conv = ConvNormAct(c1 * 4, c2, k, s, act=act, momentum=momentum, eps=eps, sync_bn=sync_bn)
+
+    def construct(self, x):  # x(b,c,w,h) -> y(b,4c,w/2,h/2)
+        return self.conv(ops.concat([x[..., ::2, ::2], x[..., 1::2, ::2], x[..., ::2, 1::2], x[..., 1::2, 1::2]], 1))
+
+
+class DWConvNormAct(nn.Cell):
+    """Conv2d + BN + Act, depthwise ConvNormAct used in yolox nano scale, an approach to reduce parameter number
+        """
+    def __init__(self, c1, c2, k=1, s=1, p=None, d=1, act=True, momentum=0.97, eps=1e-3, sync_bn=False):  # ch_in, ch_out, kernel, stride, padding, groups
+        super(DWConvNormAct, self).__init__()
+        self.dconv = ConvNormAct(c1, c1, k, s, p, g=c1, d=d, act=act, momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.pconv = ConvNormAct(c1, c2, k=1, s=1, p=p, g=1, d=d, act=act, momentum=momentum, eps=eps, sync_bn=sync_bn)
+
+    def construct(self, x):
+        return self.pconv(self.dconv(x))

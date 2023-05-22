@@ -243,6 +243,11 @@ class COCODataset:
                         self.albumentations = Albumentations(size=self.img_size)
                     image, labels = self.albumentations(image, labels, **_trans)
                 else:
+                    if image is None:
+                        image, hw_ori = self.load_image(index)
+                        labels = self.labels[index].copy()
+                        new_shape = self.img_size if not self.rect else self.batch_shapes[self.batch[index]]
+                        image, labels, hw_ori, hw_scale, pad = self.letterbox(image, labels, hw_ori, new_shape,)
                     image, labels = getattr(self, func_name)(image, labels, **_trans)
 
         image = np.ascontiguousarray(image)

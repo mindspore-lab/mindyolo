@@ -37,11 +37,11 @@ class SPPCSPC(nn.Cell):
 
 class SPPF(nn.Cell):
     # Spatial Pyramid Pooling - Fast (SPPF) layer for YOLOv5 by Glenn Jocher
-    def __init__(self, c1, c2, k=5, momentum=0.97, eps=1e-3, sync_bn=False):  # equivalent to SPP(k=(5, 9, 13))
+    def __init__(self, c1, c2, k=5, act=True, momentum=0.97, eps=1e-3, sync_bn=False):  # equivalent to SPP(k=(5, 9, 13))
         super(SPPF, self).__init__()
         c_ = c1 // 2  # hidden channels
-        self.conv1 = ConvNormAct(c1, c_, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
-        self.conv2 = ConvNormAct(c_ * 4, c2, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.conv1 = ConvNormAct(c1, c_, 1, 1, act=act, momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.conv2 = ConvNormAct(c_ * 4, c2, 1, 1, act=act, momentum=momentum, eps=eps, sync_bn=sync_bn)
         self.concat = ops.Concat(axis=1)
         self.m = nn.MaxPool2d(kernel_size=k, stride=1, pad_mode="same")
 
