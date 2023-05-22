@@ -8,7 +8,7 @@
 2. 从[model zoo](MODEL_ZOO.md)中下载相应的预训练模型权重文件。
 3. 使用内置配置进行推理，请运行以下命令：
 
-```
+```shell
 # NPU (默认)
 python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_ckpt/WEIGHT.ckpt --image_path /path_to_image/IMAGE.jpg
 
@@ -27,7 +27,7 @@ python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_c
   
   <details onclose>
 
-  ```
+  ```text
     coco/
       {train,val}2017.txt
       annotations/
@@ -46,22 +46,23 @@ python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_c
   </details>
 
 * 在多卡NPU/GPU上进行分布式模型训练，以8卡为例:
-  ```
+
+  ```shell
   mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
   ```
 
 * 在单卡NPU/GPU/CPU上训练模型：
 
-  ```
+  ```shell
   python train.py --config ./configs/yolov7/yolov7.yaml 
   ```
 
 * 评估模型的精度：
 
-  ```
+  ```shell
   python test.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_ckpt/WEIGHT.ckpt
   ```
-*注意：默认设备为Ascend，您可以指定'device_target'为Ascend/GPU/CPU。*
+*注意：默认超参为8卡训练，单卡情况需调整部分参数。 默认设备为Ascend，您可以指定'device_target'的值为Ascend/GPU/CPU。*
 * 有关更多选项，请参阅 `train/test.py -h`.
 
 
