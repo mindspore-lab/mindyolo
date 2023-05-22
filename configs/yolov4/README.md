@@ -27,8 +27,9 @@ AP (65.7% AP50) for the MS COCO dataset at a realtime speed of 65 FPS on Tesla V
 
 <div align="center">
 
-| Name   | Scale              | Context  | ImageSize | Dataset      | Box mAP (%) | Params | FLOPs | Recipe                                                                                        | Download                                                                                                             |
-|--------|--------------------|----------|-----------|--------------|-------------|--------|-------|-----------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
+| Name   | Scale        | Context  | ImageSize | Dataset      | Box mAP (%) | Params | FLOPs | Recipe                                                                                   | Download                                                                                                             |
+|--------|--------------|----------|-----------|--------------|-------------|--------|-------|------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
+| YOLOv4 | CSPDarknet53 | D910x8-G | 608       | MS COCO 2017 | 45.4        | 27.6M  | 52G   | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov4/yolov4.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_320e_map454-50172f93.ckpt)      |
 | YOLOv4 | CSPDarknet53(silu) | D910x8-G | 608       | MS COCO 2017 | 45.8        | 27.6M  | 52G   | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov4/yolov4-silu.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_silu_320e_map458-bdfc3205.ckpt) |
 
 </div>
@@ -69,7 +70,12 @@ Similarly, you can train the model on multiple GPU devices with the above mpirun
 
 For detailed illustration of all hyper-parameters, please refer to [config.py](https://github.com/mindspore-lab/mindyolo/blob/master/mindyolo/utils/config.py).
 
-**Note:**  As the global batch size  (batch_size x num_devices) is an important hyper-parameter, it is recommended to keep the global batch size unchanged for reproduction or adjust the learning rate linearly to a new global batch size.
+#### Notes 
+- As the global batch size  (batch_size x num_devices) is an important hyper-parameter, it is recommended to keep the global batch size unchanged for reproduction or adjust the learning rate linearly to a new global batch size.
+- If the following warning occurs, setting the environment variable PYTHONWARNINGS='ignore:semaphore_tracker:UserWarning' will fix it.
+```shell
+multiprocessing/semaphore_tracker.py: 144 UserWarning: semaphore_tracker: There appear to be 235 leaked semaphores to clean up at shutdown len(cache))
+```
 
 #### - Standalone Training
 
