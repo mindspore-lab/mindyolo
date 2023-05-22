@@ -28,7 +28,7 @@ The master branch works with **MindSpore 1.8.1**.
 
 ## Benchmark and Model Zoo
 
-Seed [MODEL ZOO](MODEL_ZOO.md).
+See [MODEL ZOO](MODEL_ZOO.md).
 
 <details open>
 <summary><b>Supported Algorithms</b></summary>
@@ -61,7 +61,6 @@ pip install -r requirements.txt
 MindSpore can be easily installed by following the official [instructions](https://www.mindspore.cn/install) where you can select your hardware platform for the best fit. To run in distributed mode, [openmpi](https://www.open-mpi.org/software/ompi/v4.0/) is required to install.
 
 The following instructions assume the desired dependency is fulfilled.
-
 
 ## Getting Started
 
