@@ -31,7 +31,7 @@ def parse_args(parser):
     # defaults will have been overridden if config file specified.
     args = parser.parse_args(remaining)
 
-    return args
+    return Config(vars(args))
 
 
 def load_config(file_path):
@@ -115,6 +115,7 @@ class Config(dict):
 
     def __setattr__(self, name, value):
         self[name] = value
+        self.__dict__.update({name: value})
 
     def __getattr__(self, name):
         if name in self:
@@ -140,9 +141,8 @@ def config_format_func(config, prefix=''):
         prefix += '.'
 
     for k, v in config.__dict__.items():
-        if isinstance(v, dict):
+        if isinstance(v, Config):
             msg += config_format_func(v, prefix=str(k))
         else:
-
             msg += format(prefix + str(k), '<40') + format(str(v), '<') + '\n'
     return msg

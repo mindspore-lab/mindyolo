@@ -88,7 +88,7 @@ def train(args):
     main_device = (args.rank % args.rank_size == 0)
 
     logger.info("parse_args:")
-    logger.info('\n' + config_format_func(args))
+    logger.info('\n' + str(args))
     logger.info("Please check the above information for the configurations")
 
     # Create Network
