@@ -16,6 +16,8 @@
 | YOLOv4 | CSPDarknet53(silu) | D910x8-G | 608       | MS COCO 2017 | 45.8        | 27.6M  | 52G    | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov4/yolov4-silu.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_silu_320e_map458-bdfc3205.ckpt) |
 | YOLOv3 | Darknet53    | D910x8-G | 640       | MS COCO 2017 | 45.5        | 61.9M  | 156.4G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov3/yolov3.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov3/yolov3-darknet53_300e_mAP455-adfb27af.ckpt)         |
 | YOLOX  | Tiny               | D910x8-G | 416       | MS COCO 2017 | 33.3        | 5.1M   | 6.5G   | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-tiny.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-tiny_300e_map333-e5ae3a2e.ckpt)               |
+| YOLOX  | S                  | D910x8-G | 640       | MS COCO 2017 | 40.7        | 9.0M   | 26.8G  | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-s.yaml)      | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-s_300e_map407-2018bcfc.ckpt)                   |
+| YOLOX  | M                  | D910x8-G | 640       | MS COCO 2017 | 46.7        | 25.3M  | 73.8G  | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-m.yaml)      | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-m_300e_map467-1c2e26c7.ckpt)                   |
 
 <br>
 
