@@ -9,11 +9,11 @@ __BASE__: [
 # 2. depthwise is true
 # 3. depth and width
 
-weight: ./runs/2023.05.08-05:18:55/weights/yolox-nano-285_1848.ckpt
-ema_weight: ./runs/2023.05.08-05:18:55/weights/EMA_yolox-nano-285_1848.ckpt
+weight: ./runs/exp_name/weights/yolox-nano-285_1848.ckpt
+ema_weight: ./runs/exp_name/weights/EMA_yolox-nano-285_1848.ckpt
 
 optimizer:
-  checkpoint_path: ./runs/2023.05.08-05:18:55/weights/optim_yolox-nano.ckpt
+  checkpoint_path: ./runs/exp_name/weights/optim_yolox-nano.ckpt
 
 img_size: 416
 

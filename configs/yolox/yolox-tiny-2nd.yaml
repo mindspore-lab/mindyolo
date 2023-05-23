@@ -8,11 +8,11 @@ __BASE__: [
 # 1. img_size
 # 2. depth and width
 
-weight: ./runs/2023.05.17-09:29:38/weights/yolox-tiny-285_1848.ckpt
-ema_weight: ./runs/2023.05.17-09:29:38/weights/EMA_yolox-tiny-285_1848.ckpt
+weight: ./runs/exp_name/weights/yolox-tiny-285_1848.ckpt
+ema_weight: ./runs/exp_name/weights/EMA_yolox-tiny-285_1848.ckpt
 
 optimizer:
-  checkpoint_path: ./runs/2023.05.17-09:29:38/weights/optim_yolox-tiny.ckpt
+  checkpoint_path: ./runs/exp_name/weights/optim_yolox-tiny.ckpt
 
 img_size: 416
 

@@ -3,11 +3,11 @@ __BASE__: [
   './hyp.scratch.yaml',
 ]
 
-weight: ./runs/2023.05.18-09:50:26/weights/yolox-s-285_1848.ckpt
-ema_weight: ./runs/2023.05.18-09:50:26/weights/EMA_yolox-s-285_1848.ckpt
+weight: ./runs/exp_name/weights/yolox-s-285_1848.ckpt
+ema_weight: ./runs/exp_name/weights/EMA_yolox-s-285_1848.ckpt
 
 optimizer:
-  checkpoint_path: ./runs/2023.05.18-09:50:26/weights/optim_yolox-s.ckpt
+  checkpoint_path: ./runs/exp_name/weights/optim_yolox-s.ckpt
   lr_init: 0.0005  # fix learning rate of the 2nd part of training, equals to 1st lr_init * end_factor 0.01*0.05
 
 epochs: 15
