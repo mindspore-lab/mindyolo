@@ -3,24 +3,12 @@ __BASE__: [
   './hyp.scratch.yaml',
 ]
 
-optimizer:
-
-  lr_init: 0.01  # initial learning rate (SGD=1E-2, Adam=1E-3)
-  lr_scheduler: yolox  # quadratic warmup + cosine decay
-  start_factor: 1.0
-  end_factor: 0.05
-
-  warmup_epochs: 5  # warmup epochs (fractions ok)
-  by_epoch: False # update lr by step
-
-epochs: 285
-
 network:
   model_name: yolox
+  stride: [ 8, 16, 32 ]
 
   depth_multiple: 0.33
   width_multiple: 0.50
-  stride: [ 8, 16, 32 ]
 
   backbone:
     # [from, number, module, args]
