@@ -1,11 +1,7 @@
 import mindspore as ms
 from mindspore import context, nn, ops
 
-__all__ = [
-    "create_train_step_fn",
-    "get_gradreducer", "get_loss_scaler"
-]
-
+__all__ = ["create_train_step_fn", "get_gradreducer", "get_loss_scaler"]
 
 
 def get_gradreducer(is_parallel, parameters):
@@ -19,17 +15,18 @@ def get_gradreducer(is_parallel, parameters):
     return grad_reducer
 
 
-def get_loss_scaler(ms_loss_scaler='static', scale_value=1024, scale_factor=2, scale_window=2000):
-    if ms_loss_scaler == 'dynamic':
+def get_loss_scaler(ms_loss_scaler="static", scale_value=1024, scale_factor=2, scale_window=2000):
+    if ms_loss_scaler == "dynamic":
         from mindspore.amp import DynamicLossScaler
-        loss_scaler = DynamicLossScaler(scale_value=scale_value,
-                                        scale_factor=scale_factor,
-                                        scale_window=scale_window)
-    elif ms_loss_scaler == 'static':
+
+        loss_scaler = DynamicLossScaler(scale_value=scale_value, scale_factor=scale_factor, scale_window=scale_window)
+    elif ms_loss_scaler == "static":
         from mindspore.amp import StaticLossScaler
+
         loss_scaler = StaticLossScaler(scale_value=scale_value)
-    elif ms_loss_scaler in ('none', 'None'):
+    elif ms_loss_scaler in ("none", "None"):
         from mindspore.amp import StaticLossScaler
+
         loss_scaler = StaticLossScaler(1.0)
     else:
         raise NotImplementedError(f"Not support ms_loss_scaler: {ms_loss_scaler}")
@@ -37,7 +34,9 @@ def get_loss_scaler(ms_loss_scaler='static', scale_value=1024, scale_factor=2, s
     return loss_scaler
 
 
-def create_train_step_fn(network, loss_fn, optimizer, loss_ratio, scaler, reducer, overflow_still_update=False, ms_jit=False):
+def create_train_step_fn(
+    network, loss_fn, optimizer, loss_ratio, scaler, reducer, overflow_still_update=False, ms_jit=False
+):
     from mindyolo.utils.all_finite import all_finite
 
     def forward_func(x, label):

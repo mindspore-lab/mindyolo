@@ -1,10 +1,10 @@
 """Custom Logger."""
+import logging
 import os
 import sys
-import logging
 from datetime import datetime
 
-__all__ = ['get_logger']
+__all__ = ["get_logger"]
 
 GLOBAL_LOGGER = None
 
@@ -16,12 +16,13 @@ class Logger(logging.Logger):
     Args:
          logger_name(str): The name of Logger. In most cases, it can be the name of the network.
     """
+
     def __init__(self, logger_name="MindYOLO"):
         super(Logger, self).__init__(logger_name)
         self.log_level = "INFO"
         self.rank_id = _get_rank_id()
         self.device_per_servers = 8
-        self.formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+        self.formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
 
 
 def setup_logging(logger_name="MindYOLO", log_level="INFO", rank_id=None, device_per_servers=8):
@@ -33,9 +34,11 @@ def setup_logging(logger_name="MindYOLO", log_level="INFO", rank_id=None, device
         logger.rank_id = rank_id
     logger.device_per_servers = device_per_servers
 
-    if logger.log_level not in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']:
-        raise ValueError(f"Not support log_level: {logger.log_level}, "
-                         f"the log_level should be in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']")
+    if logger.log_level not in ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]:
+        raise ValueError(
+            f"Not support log_level: {logger.log_level}, "
+            f"the log_level should be in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']"
+        )
 
     # In the distributed scenario, only one card is printed on the console.
     if logger.rank_id % logger.device_per_servers == 0:
@@ -62,22 +65,22 @@ def setup_logging_file(log_dir="./logs"):
 
 def print_args(args):
     """Print hyper-parameter"""
-    get_logger().info('Args:')
+    get_logger().info("Args:")
     args_dict = vars(args)
     for key in args_dict.keys():
-        get_logger().info('--> %s: %s', key, args_dict[key])
-    get_logger().info('')
+        get_logger().info("--> %s: %s", key, args_dict[key])
+    get_logger().info("")
 
 
 def important_info(msg, *args, **kwargs):
     """For information that needs to be focused on, add special printing format."""
     line_width = 2
-    important_msg = '\n'
-    important_msg += ('*'*70 + '\n')*line_width
-    important_msg += ('*'*line_width + '\n')*2
-    important_msg += '*'*line_width + ' '*8 + msg + '\n'
-    important_msg += ('*'*line_width + '\n')*2
-    important_msg += ('*'*70 + '\n')*line_width
+    important_msg = "\n"
+    important_msg += ("*" * 70 + "\n") * line_width
+    important_msg += ("*" * line_width + "\n") * 2
+    important_msg += "*" * line_width + " " * 8 + msg + "\n"
+    important_msg += ("*" * line_width + "\n") * 2
+    important_msg += ("*" * 70 + "\n") * line_width
     get_logger().info(important_msg, *args, **kwargs)
 
 
@@ -128,13 +131,15 @@ def get_level():
 
 def _get_rank_id():
     """Get rank id."""
-    rank_id = os.getenv('RANK_ID')
-    gpu_rank_id = os.getenv('OMPI_COMM_WORLD_RANK')
-    rank = '0'
+    rank_id = os.getenv("RANK_ID")
+    gpu_rank_id = os.getenv("OMPI_COMM_WORLD_RANK")
+    rank = "0"
     if rank_id and gpu_rank_id and rank_id != gpu_rank_id:
         print(
             f"Environment variables RANK_ID and OMPI_COMM_WORLD_RANK set by different values, RANK_ID={rank_id}, "
-            f"OMPI_COMM_WORLD_RANK={gpu_rank_id}. We will use RANK_ID to get rank id by default.", flush=True)
+            f"OMPI_COMM_WORLD_RANK={gpu_rank_id}. We will use RANK_ID to get rank id by default.",
+            flush=True,
+        )
     if rank_id:
         rank = rank_id
     elif gpu_rank_id:

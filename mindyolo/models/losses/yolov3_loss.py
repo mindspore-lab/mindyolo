@@ -2,36 +2,31 @@ import numpy as np
 
 import mindspore as ms
 import mindspore.numpy as mnp
-from mindspore import ops, nn, Tensor
+from mindspore import Tensor, nn, ops
 
 from mindyolo.models.registry import register_model
+from .focal_loss import BCEWithLogitsLoss, FocalLoss, smooth_BCE
+from .iou_loss import batch_box_iou, bbox_iou
 
-from .focal_loss import FocalLoss, BCEWithLogitsLoss, smooth_BCE
-from .iou_loss import bbox_iou, batch_box_iou
-
-CLIP_VALUE = 1000.
+CLIP_VALUE = 1000.0
 EPS = 1e-7
 
-__all__ = [
-    'YOLOv3Loss',
-]
+__all__ = ["YOLOv3Loss"]
 
 
 @register_model
 class YOLOv3Loss(nn.Cell):
     def __init__(
-            self,
-            box, obj, cls, anchor_t, label_smoothing, fl_gamma, cls_pw, obj_pw,
-            anchors, stride, nc, **kwargs
+        self, box, obj, cls, anchor_t, label_smoothing, fl_gamma, cls_pw, obj_pw, anchors, stride, nc, **kwargs
     ):
         super(YOLOv3Loss, self).__init__()
         self.hyp_box = box
         self.hyp_obj = obj
         self.hyp_cls = cls
         self.hyp_anchor_t = anchor_t
-        self.nc = nc                    # number of classes
+        self.nc = nc  # number of classes
         self.na = len(anchors[0]) // 2  # number of anchors
-        self.nl = len(anchors)          # number of layers
+        self.nl = len(anchors)  # number of layers
 
         stride = np.array(stride)
         anchors = np.array(anchors).reshape((self.nl, -1, 2))
@@ -44,8 +39,9 @@ class YOLOv3Loss(nn.Cell):
         # Focal loss
         g = fl_gamma  # focal loss gamma
         if g > 0:
-            BCEcls, BCEobj = FocalLoss(bce_pos_weight=Tensor([cls_pw], ms.float32), gamma=g), \
-                             FocalLoss(bce_pos_weight=Tensor([obj_pw], ms.float32), gamma=g)
+            BCEcls, BCEobj = FocalLoss(bce_pos_weight=Tensor([cls_pw], ms.float32), gamma=g), FocalLoss(
+                bce_pos_weight=Tensor([obj_pw], ms.float32), gamma=g
+            )
         else:
             # Define criteria
             BCEcls = BCEWithLogitsLoss(bce_pos_weight=Tensor(np.array([cls_pw]), ms.float32))
@@ -55,22 +51,31 @@ class YOLOv3Loss(nn.Cell):
         self.balance = ms.Parameter(Tensor(_balance, ms.float32), requires_grad=False)
         self.BCEcls, self.BCEobj, self.gr = BCEcls, BCEobj, 1.0
 
-        self._off = Tensor([
-            [0, 0],
-            [1, 0],
-            [0, 1],
-            [-1, 0],
-            [0, -1],  # j,k,l,m
-        ], dtype=ms.float32)
+        self._off = Tensor(
+            [
+                [0, 0],
+                [1, 0],
+                [0, 1],
+                [-1, 0],
+                [0, -1],  # j,k,l,m
+            ],
+            dtype=ms.float32,
+        )
 
-        self.loss_item_name = ['loss', 'lbox', 'lobj', 'lcls']  # branch name returned by lossitem for print
+        self.loss_item_name = ["loss", "lbox", "lobj", "lcls"]  # branch name returned by lossitem for print
 
     def construct(self, p, targets, imgs):
-        lcls, lbox, lobj = 0., 0., 0.
-        tcls, tbox, indices, anchors, tmasks = self.build_targets(p, targets)  # class, box, (image, anchor, gridj, gridi), anchors, mask
-        tcls, tbox, indices, anchors, tmasks = ops.stop_gradient(tcls), ops.stop_gradient(tbox), \
-                                               ops.stop_gradient(indices), ops.stop_gradient(anchors), \
-                                               ops.stop_gradient(tmasks)
+        lcls, lbox, lobj = 0.0, 0.0, 0.0
+        tcls, tbox, indices, anchors, tmasks = self.build_targets(
+            p, targets
+        )  # class, box, (image, anchor, gridj, gridi), anchors, mask
+        tcls, tbox, indices, anchors, tmasks = (
+            ops.stop_gradient(tcls),
+            ops.stop_gradient(tbox),
+            ops.stop_gradient(indices),
+            ops.stop_gradient(anchors),
+            ops.stop_gradient(tmasks),
+        )
 
         # Losses
         for layer_index, pi in enumerate(p):  # layer index, layer predictions
@@ -96,7 +101,9 @@ class YOLOv3Loss(nn.Cell):
                 # Objectness
                 iou = ops.stop_gradient(iou).clip(0, None).astype(pi.dtype)
                 # tobj[b, a, gj, gi] = iou * tmask  # iou ratio
-                tobj[b, a, gj, gi] = ((1.0 - self.gr) + self.gr * ops.stop_gradient(iou).clip(0, None)) * tmask  # iou ratio
+                tobj[b, a, gj, gi] = (
+                    (1.0 - self.gr) + self.gr * ops.stop_gradient(iou).clip(0, None)
+                ) * tmask  # iou ratio
 
                 # Classification
                 if self.nc > 1:  # cls loss (only if multiple classes)
@@ -123,24 +130,26 @@ class YOLOv3Loss(nn.Cell):
         mask_t = targets[:, 1] >= 0
         na, nt = self.na, targets.shape[0]  # number of anchors, targets
         tcls, tbox, indices, anch, tmasks = (), (), (), (), ()
-        gain = ops.ones(7, ms.int32) # normalized to gridspace gain
-        ai = ops.tile(mnp.arange(na).view(-1, 1), (1, nt)) # shape: (na, nt)
+        gain = ops.ones(7, ms.int32)  # normalized to gridspace gain
+        ai = ops.tile(mnp.arange(na).view(-1, 1), (1, nt))  # shape: (na, nt)
         ai = ops.cast(ai, targets.dtype)
-        targets = ops.concat((ops.tile(targets, (na, 1, 1)), ai[:, :, None]), 2) # append anchor indices # shape: (na, nt, 7)
+        targets = ops.concat(
+            (ops.tile(targets, (na, 1, 1)), ai[:, :, None]), 2
+        )  # append anchor indices # shape: (na, nt, 7)
 
         g = 0.5  # bias
         off = ops.cast(self._off, targets.dtype) * g  # offsets
 
         for i in range(self.nl):
             anchors, shape = self.anchors[i], p[i].shape
-            gain[2:6] = get_tensor(shape, targets.dtype)[[3, 2, 3, 2]] # xyxy gain
+            gain[2:6] = get_tensor(shape, targets.dtype)[[3, 2, 3, 2]]  # xyxy gain
 
             # Match targets to anchors
             t = targets * gain  # shape(na,nt,7) # xywhn -> xywh
             # Matches
             # if nt:
             r = t[..., 4:6] / anchors[:, None]  # wh ratio
-            j = ops.maximum(r, 1 / r).max(2) < self.hyp_anchor_t # compare
+            j = ops.maximum(r, 1 / r).max(2) < self.hyp_anchor_t  # compare
 
             # t = t[j]  # filter
             mask_m_t = ops.logical_and(j, mask_t[None, :]).view(-1)
@@ -172,7 +181,7 @@ class YOLOv3Loss(nn.Cell):
             t = ops.tile(t, (3, 1, 1))  # shape(5, *, 7)
             t = t.view(-1, 7)
             mask_m_t = (ops.cast(j, ms.int32) * ops.cast(mask_m_t[None, :], ms.int32)).view(-1)
-            offsets = (ops.zeros_like(gxy)[None, :, :] + off[:, None, :])  # (1,*,2) + (5,1,2) -> (5,na*nt,2)
+            offsets = ops.zeros_like(gxy)[None, :, :] + off[:, None, :]  # (1,*,2) + (5,1,2) -> (5,na*nt,2)
             offsets_new = ops.zeros((3,) + offsets.shape[1:], offsets.dtype)
             # offsets_new[0, :, :] = offsets[0, :, :]
             offsets_new[1:2, :, :] = ops.select(tag1.astype(ms.bool_), offsets[1, :, :], offsets[3, :, :])
@@ -181,17 +190,18 @@ class YOLOv3Loss(nn.Cell):
             offsets = offsets.view(-1, 2)
 
             # Define
-            b, c, gxy, gwh, a = ops.cast(t[:, 0], ms.int32), \
-                                ops.cast(t[:, 1], ms.int32), \
-                                t[:, 2:4], \
-                                t[:, 4:6], \
-                                ops.cast(t[:, 6], ms.int32) # (image, class), grid xy, grid wh, anchors
+            b, c, gxy, gwh, a = (
+                ops.cast(t[:, 0], ms.int32),
+                ops.cast(t[:, 1], ms.int32),
+                t[:, 2:4],
+                t[:, 4:6],
+                ops.cast(t[:, 6], ms.int32),
+            )  # (image, class), grid xy, grid wh, anchors
             gij = ops.cast(gxy - offsets, ms.int32)
             gij = gij[:]
             gi, gj = gij[:, 0], gij[:, 1]  # grid indices
             gi = gi.clip(0, shape[3] - 1)
             gj = gj.clip(0, shape[2] - 1)
-
 
             # Append
             indices += (ops.stack((b, a, gj, gi), 0),)  # image, anchor, grid
@@ -200,11 +210,13 @@ class YOLOv3Loss(nn.Cell):
             tcls += (c,)  # class
             tmasks += (mask_m_t,)
 
-        return ops.stack(tcls), \
-               ops.stack(tbox), \
-               ops.stack(indices), \
-               ops.stack(anch), \
-               ops.stack(tmasks) # class, box, (image, anchor, gridj, gridi), anchors, mask
+        return (
+            ops.stack(tcls),
+            ops.stack(tbox),
+            ops.stack(indices),
+            ops.stack(anch),
+            ops.stack(tmasks),
+        )  # class, box, (image, anchor, gridj, gridi), anchors, mask
 
 
 def xywh2xyxy(x):
@@ -222,13 +234,16 @@ def get_tensor(x, dtype=ms.float32):
     return Tensor(x, dtype)
 
 
-if __name__ == '__main__':
-    from mindyolo.utils.config import parse_config
+if __name__ == "__main__":
     from mindyolo.models.losses.loss_factory import create_loss
+    from mindyolo.utils.config import parse_config
+
     cfg = parse_config()
-    loss_fn = create_loss(name='YOLOv7Loss',
-                          **cfg.loss,
-                          anchors=cfg.network.get('anchors', None),
-                          stride=cfg.network.get('stride', None),
-                          nc=cfg.data.get('nc', None))
+    loss_fn = create_loss(
+        name="YOLOv7Loss",
+        **cfg.loss,
+        anchors=cfg.network.get("anchors", None),
+        stride=cfg.network.get("stride", None),
+        nc=cfg.data.get("nc", None),
+    )
     print(f"loss_fn is {loss_fn}")

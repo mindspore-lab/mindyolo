@@ -1,11 +1,12 @@
-from mindspore import nn, ops, Tensor
 import mindspore as ms
+from mindspore import Tensor, nn, ops
 
 
 class YOLOv4Head(nn.Cell):
     """
     YOLOv4 Detect Head, convert the output result to a prediction box based on the anchor point.
     """
+
     def __init__(self, nc=80, anchors=(), ch=()):  # detection layer
         super(YOLOv4Head, self).__init__()
 
@@ -17,14 +18,14 @@ class YOLOv4Head(nn.Cell):
         self.nl = 3  # number of detection layers
         self.na = len(anchors) // 3  # number of anchors
 
-        self.m = nn.CellList([nn.Conv2d(x, self.no * self.na, 1,
-                                        pad_mode="valid",
-                                        has_bias=True) for x in ch])  # output conv
+        self.m = nn.CellList(
+            [nn.Conv2d(x, self.no * self.na, 1, pad_mode="valid", has_bias=True) for x in ch]
+        )  # output conv
 
         # prediction on the default anchor boxes
-        self.detect_1 = DetectionBlock('l', anchors, self.no)
-        self.detect_2 = DetectionBlock('m', anchors, self.no)
-        self.detect_3 = DetectionBlock('s', anchors, self.no)
+        self.detect_1 = DetectionBlock("l", anchors, self.no)
+        self.detect_2 = DetectionBlock("m", anchors, self.no)
+        self.detect_3 = DetectionBlock("s", anchors, self.no)
 
     def construct(self, x):
         big_object_output = self.m[0](x[0])
@@ -45,21 +46,22 @@ class YOLOv4Head(nn.Cell):
 
 class DetectionBlock(nn.Cell):
     """
-     YOLOv4 detection Network. It will finally output the detection result.
+    YOLOv4 detection Network. It will finally output the detection result.
     """
+
     def __init__(self, scale, anchor_scales, no):
         super(DetectionBlock, self).__init__()
-        if scale == 's':
+        if scale == "s":
             idx = (6, 7, 8)
             self.scale_x_y = 1.2
             self.offset_x_y = 0.1
             self.stride = 8
-        elif scale == 'm':
+        elif scale == "m":
             idx = (3, 4, 5)
             self.scale_x_y = 1.1
             self.offset_x_y = 0.05
             self.stride = 16
-        elif scale == 'l':
+        elif scale == "l":
             idx = (0, 1, 2)
             self.scale_x_y = 1.05
             self.offset_x_y = 0.025
@@ -80,11 +82,7 @@ class DetectionBlock(nn.Cell):
         input_shape = Tensor(tuple(input_shape[::-1]), ms.float32)
 
         # Reshape and transpose the feature to [n, grid_size[0], grid_size[1], 3, num_attrib]
-        prediction = x.view(num_batch,
-                            self.num_anchors_per_scale,
-                            self.num_attrib,
-                            grid_size[0],
-                            grid_size[1])
+        prediction = x.view(num_batch, self.num_anchors_per_scale, self.num_attrib, grid_size[0], grid_size[1])
         prediction = prediction.transpose((0, 3, 4, 1, 2))
 
         range_x = range(grid_size[1])
@@ -105,8 +103,9 @@ class DetectionBlock(nn.Cell):
 
         # gridsize1 is x
         # gridsize0 is y
-        box_xy = (self.scale_x_y * self.sigmoid(box_xy) - self.offset_x_y + grid) / \
-                 ops.cast(ops.tuple_to_array((grid_size[1], grid_size[0])), ms.float32)
+        box_xy = (self.scale_x_y * self.sigmoid(box_xy) - self.offset_x_y + grid) / ops.cast(
+            ops.tuple_to_array((grid_size[1], grid_size[0])), ms.float32
+        )
         # box_wh is w->h
         box_wh = ops.exp(box_wh) * self.anchors / input_shape
         box_confidence = self.sigmoid(box_confidence)

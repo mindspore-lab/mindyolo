@@ -1,7 +1,7 @@
 import math
 from typing import Tuple
 
-from mindspore import ops, Tensor
+from mindspore import Tensor, ops
 
 
 def make_divisible(x, divisor):
@@ -21,24 +21,24 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
     return p
 
 
-def meshgrid(inputs, indexing='xy'):
+def meshgrid(inputs, indexing="xy"):
     # An alternative implementation of ops.meshgrid, Only supports inputs with a length of 2.
     # Meshgrid op is not supported on a specific model of machine an alternative
     # solution is adopted, which will be updated later.
     x, y = inputs
     nx, ny = x.shape[0], y.shape[0]
     xv, yv = None, None
-    if indexing == 'xy':
+    if indexing == "xy":
         xv = ops.tile(x.view(1, -1), (ny, 1))
         yv = ops.tile(y.view(-1, 1), (1, nx))
-    elif indexing == 'ij':
+    elif indexing == "ij":
         xv = ops.tile(x.view(-1, 1), (1, ny))
         yv = ops.tile(y.view(1, -1), (nx, 1))
 
     return xv, yv
 
 
-#------------------------box operation starts--------------------------
+# ------------------------box operation starts--------------------------
 def box_cxcywh_to_xyxy(bbox) -> Tensor:
     """Convert bbox coordinates from (cx, cy, w, h) to (x1, y1, x2, y2)
 
@@ -67,6 +67,7 @@ def box_xyxy_to_cxcywh(bbox) -> Tensor:
     new_bbox = tuple([(x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0), (y1 - y0)])
     return ops.stack(new_bbox, axis=-1)
 
+
 def box_scale(boxes, scale, sclale_reciprocal=False) -> Tensor:
     """
     Scale the box with horizontal and vertical scaling factors
@@ -78,7 +79,7 @@ def box_scale(boxes, scale, sclale_reciprocal=False) -> Tensor:
     assert len(boxes.shape) in [2, 3]
     scale_x, scale_y = scale
     if sclale_reciprocal:
-        scale_x, scale_y = 1.0/scale_x, 1.0/scale_y
+        scale_x, scale_y = 1.0 / scale_x, 1.0 / scale_y
     new_scale = Tensor([scale_x, scale_y, scale_x, scale_y])  # (4,) or (bs, 4)
     boxes *= new_scale
     return boxes
@@ -100,4 +101,6 @@ def box_clip(boxes, clip_size: Tuple[int, int]) -> Tensor:
     y2 = boxes[..., 3].clip(0, h)
     boxes = ops.stack((x1, y1, x2, y2), axis=-1)
     return boxes
-#------------------------box operation ends--------------------------
+
+
+# ------------------------box operation ends--------------------------

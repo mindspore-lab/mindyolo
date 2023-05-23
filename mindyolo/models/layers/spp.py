@@ -13,6 +13,7 @@ class SPPCSPC(nn.Cell):
         by splitting the gradient flow. In this way, we have confirmed that the propagated gradient information can
         have a large correlation difference by switching concatenation and transition steps.
     """
+
     def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5, k=(5, 9, 13), momentum=0.97, eps=1e-3, sync_bn=False):
         super(SPPCSPC, self).__init__()
         c_ = int(2 * c2 * e)  # hidden channels
@@ -37,7 +38,9 @@ class SPPCSPC(nn.Cell):
 
 class SPPF(nn.Cell):
     # Spatial Pyramid Pooling - Fast (SPPF) layer for YOLOv5 by Glenn Jocher
-    def __init__(self, c1, c2, k=5, act=True, momentum=0.97, eps=1e-3, sync_bn=False):  # equivalent to SPP(k=(5, 9, 13))
+    def __init__(
+        self, c1, c2, k=5, act=True, momentum=0.97, eps=1e-3, sync_bn=False
+    ):  # equivalent to SPP(k=(5, 9, 13))
         super(SPPF, self).__init__()
         c_ = c1 // 2  # hidden channels
         self.conv1 = ConvNormAct(c1, c_, 1, 1, act=act, momentum=momentum, eps=eps, sync_bn=sync_bn)

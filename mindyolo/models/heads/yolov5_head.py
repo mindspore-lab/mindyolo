@@ -2,13 +2,12 @@ import numpy as np
 
 import mindspore as ms
 import mindspore.numpy as mnp
-from mindspore import nn, ops, Tensor, Parameter
+from mindspore import Parameter, Tensor, nn, ops
 
 from ..layers.utils import meshgrid
 
 
 class YOLOv5Head(nn.Cell):
-
     def __init__(self, nc=80, anchors=(), stride=(), ch=()):  # detection layer
         super(YOLOv5Head, self).__init__()
         self.stride = stride
@@ -17,14 +16,16 @@ class YOLOv5Head(nn.Cell):
         self.no = nc + 5  # number of outputs per anchor
         self.nl = len(anchors)  # number of detection layers
         self.na = len(anchors[0]) // 2  # number of anchors
-        self.anchors = Parameter(Tensor(anchors, ms.float32).view(self.nl, -1, 2),
-                                    requires_grad=False)  # shape(nl,na,2)
-        self.anchor_grid = Parameter(Tensor(anchors, ms.float32).view(self.nl, 1, -1, 1, 1, 2),
-                                        requires_grad=False)  # shape(nl,1,na,1,1,2)
+        self.anchors = Parameter(
+            Tensor(anchors, ms.float32).view(self.nl, -1, 2), requires_grad=False
+        )  # shape(nl,na,2)
+        self.anchor_grid = Parameter(
+            Tensor(anchors, ms.float32).view(self.nl, 1, -1, 1, 1, 2), requires_grad=False
+        )  # shape(nl,1,na,1,1,2)
 
-        self.m = nn.CellList([nn.Conv2d(x, self.no * self.na, 1,
-                                        pad_mode="valid",
-                                        has_bias=True) for x in ch])  # output conv
+        self.m = nn.CellList(
+            [nn.Conv2d(x, self.no * self.na, 1, pad_mode="valid", has_bias=True) for x in ch]
+        )  # output conv
 
     def construct(self, x):
         z = ()  # inference output
@@ -40,7 +41,7 @@ class YOLOv5Head(nn.Cell):
                 grid_tensor = self._make_grid(nx, ny, out.dtype)
 
                 y = ops.Sigmoid()(out)
-                y[..., 0:2] = (y[..., 0:2] * 2. - 0.5 + grid_tensor) * self.stride[i]  # xy
+                y[..., 0:2] = (y[..., 0:2] * 2.0 - 0.5 + grid_tensor) * self.stride[i]  # xy
                 y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
                 z += (y.view(bs, -1, self.no),)
 
@@ -50,7 +51,7 @@ class YOLOv5Head(nn.Cell):
     @staticmethod
     def _make_grid(nx=20, ny=20, dtype=ms.float32):
         # FIXME: Not supported on a specific model of machine
-        xv, yv = meshgrid((mnp.arange(nx), mnp.arange(ny)))  #ops.meshgrid((mnp.arange(nx), mnp.arange(ny)))
+        xv, yv = meshgrid((mnp.arange(nx), mnp.arange(ny)))  # ops.meshgrid((mnp.arange(nx), mnp.arange(ny)))
         return ops.cast(ops.stack((xv, yv), 2).view((1, 1, ny, nx, 2)), dtype)
 
     def convert(self, z):
@@ -66,5 +67,4 @@ class YOLOv5Head(nn.Cell):
 
 @ops.constexpr(reuse_result=True)
 def get_convert_matrix():
-    return Tensor(np.array([[1, 0, 1, 0], [0, 1, 0, 1], [-0.5, 0, 0.5, 0], [0, -0.5, 0, 0.5]]),
-                  dtype=ms.float32)
+    return Tensor(np.array([[1, 0, 1, 0], [0, 1, 0, 1], [-0.5, 0, 0.5, 0], [0, -0.5, 0, 0.5]]), dtype=ms.float32)

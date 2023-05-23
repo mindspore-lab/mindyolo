@@ -1,12 +1,11 @@
 import os
 import pathlib
-import types
 import time
+import types
 from typing import Union
 
 import mindspore as ms
-import numpy as np
-from mindspore import nn, ops, Tensor, SummaryRecord
+from mindspore import SummaryRecord, Tensor, nn, ops
 
 from mindyolo.utils import logger
 from mindyolo.utils.checkpoint_manager import CheckpointManager
@@ -26,47 +25,54 @@ def create_trainer(
     optimizer: nn.Cell,
     dataloader: ms.dataset.Dataset,
     steps_per_epoch: int,
-    summary
+    summary,
 ):
     return Trainer(
-        model_name=model_name, train_step_fn=train_step_fn, scaler=scaler,
-        network=network, ema=ema, optimizer=optimizer,
-        dataloader=dataloader, steps_per_epoch=steps_per_epoch,
-        summary=summary
+        model_name=model_name,
+        train_step_fn=train_step_fn,
+        scaler=scaler,
+        network=network,
+        ema=ema,
+        optimizer=optimizer,
+        dataloader=dataloader,
+        steps_per_epoch=steps_per_epoch,
+        summary=summary,
     )
 
 
 class Trainer:
-    def __init__(self, model_name, train_step_fn, scaler, network, ema, optimizer, dataloader, steps_per_epoch, summary):
+    def __init__(
+        self, model_name, train_step_fn, scaler, network, ema, optimizer, dataloader, steps_per_epoch, summary
+    ):
         self.summary_record = None
         self.summary = summary
         self.model_name = model_name
         self.train_step_fn = train_step_fn
         self.scaler = scaler
         self.dataloader = dataloader
-        self.network = network      # for save checkpoint
-        self.ema = ema              # for save checkpoint and ema
+        self.network = network  # for save checkpoint
+        self.ema = ema  # for save checkpoint and ema
         self.optimizer = optimizer  # for save checkpoint
         self.global_step = 0
         self.steps_per_epoch = steps_per_epoch
 
     def train(
-            self,
-            epochs: int,
-            main_device: bool,
-            warmup_step: int = 0,
-            warmup_momentum: Union[list, None] = None,
-            accumulate: int = 1,
-            overflow_still_update: bool = False,
-            keep_checkpoint_max: int = 10,
-            log_interval: int = 1,
-            eval_interval: int = 1,
-            loss_item_name: list = [],
-            save_dir: str = '',
-            enable_modelarts: bool = False,
-            train_url: str = '',
-            run_eval: bool = False,
-            test_fn: types.FunctionType = None,
+        self,
+        epochs: int,
+        main_device: bool,
+        warmup_step: int = 0,
+        warmup_momentum: Union[list, None] = None,
+        accumulate: int = 1,
+        overflow_still_update: bool = False,
+        keep_checkpoint_max: int = 10,
+        log_interval: int = 1,
+        eval_interval: int = 1,
+        loss_item_name: list = [],
+        save_dir: str = "",
+        enable_modelarts: bool = False,
+        train_url: str = "",
+        run_eval: bool = False,
+        test_fn: types.FunctionType = None,
     ):
         # Attr
         self.epochs = epochs
@@ -77,10 +83,10 @@ class Trainer:
         self.loss_item_name = loss_item_name
 
         # Directories
-        ckpt_save_dir = os.path.join(save_dir, 'weights')
-        sync_lock_dir = os.path.join(save_dir, 'sync_locks') if not enable_modelarts else '/tmp/sync_locks'
+        ckpt_save_dir = os.path.join(save_dir, "weights")
+        sync_lock_dir = os.path.join(save_dir, "sync_locks") if not enable_modelarts else "/tmp/sync_locks"
         if self.summary:
-            summary_dir = os.path.join(save_dir, 'summary')
+            summary_dir = os.path.join(save_dir, "summary")
             self.summary_record = SummaryRecord(summary_dir)
         if main_device:
             os.makedirs(ckpt_save_dir, exist_ok=True)  # save checkpoint path
@@ -93,22 +99,26 @@ class Trainer:
         self.accumulate_grads_fn = self._get_accumulate_grads_fn()
 
         # Set Checkpoint Manager
-        manager = CheckpointManager(ckpt_save_policy='latest_k')
-        manager_ema = CheckpointManager(ckpt_save_policy='latest_k') if self.ema else None
-        manager_best = CheckpointManager(ckpt_save_policy='top_k') if run_eval else None
+        manager = CheckpointManager(ckpt_save_policy="latest_k")
+        manager_ema = CheckpointManager(ckpt_save_policy="latest_k") if self.ema else None
+        manager_best = CheckpointManager(ckpt_save_policy="top_k") if run_eval else None
         ckpt_filelist_best = []
 
         loader = self.dataloader.create_dict_iterator(output_numpy=False, num_epochs=1)
         s_step_time = time.time()
         s_epoch_time = time.time()
         if self.log_interval > self.steps_per_epoch:
-            logger.warning(f"log interval should be less than total steps of one epoch, "
-                           f"but got {self.log_interval} > {self.steps_per_epoch}, please check")
+            logger.warning(
+                f"log interval should be less than total steps of one epoch, "
+                f"but got {self.log_interval} > {self.steps_per_epoch}, please check"
+            )
             self.log_interval = self.steps_per_epoch
         for i, data in enumerate(loader):
             if i == 0:
-                logger.warning("The first epoch will be compiled for the graph, which may take a long time; "
-                               "You can come back later :).")
+                logger.warning(
+                    "The first epoch will be compiled for the graph, which may take a long time; "
+                    "You can come back later :)."
+                )
             cur_epoch = (i // self.steps_per_epoch) + 1
             cur_step = (i % self.steps_per_epoch) + 1
 
@@ -118,18 +128,22 @@ class Trainer:
                     dtype = self.optimizer.momentum.dtype
                     self.optimizer.momentum = Tensor(warmup_momentum[i], dtype)
 
-            imgs, labels = data['image'], data['labels']
+            imgs, labels = data["image"], data["labels"]
             self.train_step(imgs, labels, cur_step=cur_step, cur_epoch=cur_epoch)
 
             # train log
             if cur_step % self.log_interval == 0:
-                logger.info(f"Epoch {cur_epoch}/{epochs}, Step {cur_step}/{self.steps_per_epoch}, "
-                            f"step time: {(time.time() - s_step_time) * 1000 / self.log_interval:.2f} ms")
+                logger.info(
+                    f"Epoch {cur_epoch}/{epochs}, Step {cur_step}/{self.steps_per_epoch}, "
+                    f"step time: {(time.time() - s_step_time) * 1000 / self.log_interval:.2f} ms"
+                )
                 s_step_time = time.time()
 
             # run eval on the main device at eval_interval and the last epoch
-            if run_eval and ((i + 1) % (self.eval_interval * self.steps_per_epoch) == 0
-                             or i + 1 == self.epochs * self.steps_per_epoch):
+            if run_eval and (
+                (i + 1) % (self.eval_interval * self.steps_per_epoch) == 0
+                or i + 1 == self.epochs * self.steps_per_epoch
+            ):
                 s_eval_time = time.time()
                 sync_lock = os.path.join(sync_lock_dir, "run_eval_sync.lock." + str(cur_epoch))
                 # single device run eval only
@@ -141,13 +155,17 @@ class Trainer:
                     accuracy = accuracy[0] if isinstance(accuracy, (list, tuple)) else accuracy
                     eval_network.set_train(_train_status)
 
-                    save_path_best = os.path.join(ckpt_save_dir,
-                                                  f"best_{self.model_name}-{cur_epoch}_{self.steps_per_epoch}"
-                                                  f"_acc{accuracy:.3f}.ckpt")
-                    ckpt_filelist_best = manager_best.save_ckpoint(eval_network, num_ckpt=keep_checkpoint_max,
-                                                                   metric=accuracy, save_path=save_path_best)
-                    logger.info(f"Epoch {cur_epoch}/{epochs}, eval accuracy: {accuracy:.3f}, "
-                                f"run_eval time: {(time.time() - s_eval_time):.3f} s.")
+                    save_path_best = os.path.join(
+                        ckpt_save_dir,
+                        f"best_{self.model_name}-{cur_epoch}_{self.steps_per_epoch}" f"_acc{accuracy:.3f}.ckpt",
+                    )
+                    ckpt_filelist_best = manager_best.save_ckpoint(
+                        eval_network, num_ckpt=keep_checkpoint_max, metric=accuracy, save_path=save_path_best
+                    )
+                    logger.info(
+                        f"Epoch {cur_epoch}/{epochs}, eval accuracy: {accuracy:.3f}, "
+                        f"run_eval time: {(time.time() - s_eval_time):.3f} s."
+                    )
 
                     pathlib.Path(sync_lock).touch()
                 # other device wait for lock sign
@@ -159,13 +177,15 @@ class Trainer:
             # save checkpoint per epoch on main device
             if self.main_device and (i + 1) % self.steps_per_epoch == 0:
                 # Save Checkpoint
-                ms.save_checkpoint(self.optimizer, os.path.join(ckpt_save_dir, f'optim_{self.model_name}.ckpt'),
-                                   async_save=True)
+                ms.save_checkpoint(
+                    self.optimizer, os.path.join(ckpt_save_dir, f"optim_{self.model_name}.ckpt"), async_save=True
+                )
                 save_path = os.path.join(ckpt_save_dir, f"{self.model_name}-{cur_epoch}_{self.steps_per_epoch}.ckpt")
                 manager.save_ckpoint(self.network, num_ckpt=keep_checkpoint_max, save_path=save_path)
                 if self.ema:
-                    save_path_ema = os.path.join(ckpt_save_dir,
-                                                 f"EMA_{self.model_name}-{cur_epoch}_{self.steps_per_epoch}.ckpt")
+                    save_path_ema = os.path.join(
+                        ckpt_save_dir, f"EMA_{self.model_name}-{cur_epoch}_{self.steps_per_epoch}.ckpt"
+                    )
                     manager_ema.save_ckpoint(self.ema.ema, num_ckpt=keep_checkpoint_max, save_path=save_path_ema)
                 logger.info(f"Saving model to {save_path}")
 
@@ -174,14 +194,13 @@ class Trainer:
                     if self.ema:
                         sync_data(save_path_ema, train_url + "/weights/" + save_path_ema.split("/")[-1])
 
-                logger.info(
-                    f"Epoch {cur_epoch}/{epochs}, epoch time: {(time.time() - s_epoch_time) / 60:.2f} min.")
+                logger.info(f"Epoch {cur_epoch}/{epochs}, epoch time: {(time.time() - s_epoch_time) / 60:.2f} min.")
                 s_step_time = time.time()
                 s_epoch_time = time.time()
 
         if enable_modelarts and ckpt_filelist_best:
             for p in ckpt_filelist_best:
-                sync_data(p, train_url + '/weights/best/' + p.split("/")[-1])
+                sync_data(p, train_url + "/weights/best/" + p.split("/")[-1])
         if enable_modelarts and self.summary:
             for p in os.listdir(summary_dir):
                 summary_file_path = os.path.join(summary_dir, p)
@@ -191,38 +210,48 @@ class Trainer:
         logger.info("End Train.")
 
     def train_with_datasink(
-            self,
-            epochs: int,
-            main_device: bool,
-            warmup_epoch: int = 0,
-            warmup_momentum: Union[list, None] = None,
-            keep_checkpoint_max: int = 10,
-            loss_item_name: list = [],
-            save_dir: str = '',
-            enable_modelarts: bool = False,
-            train_url: str = '',
-            run_eval: bool = False,
-            test_fn: types.FunctionType = None,
+        self,
+        epochs: int,
+        main_device: bool,
+        warmup_epoch: int = 0,
+        warmup_momentum: Union[list, None] = None,
+        keep_checkpoint_max: int = 10,
+        loss_item_name: list = [],
+        save_dir: str = "",
+        enable_modelarts: bool = False,
+        train_url: str = "",
+        run_eval: bool = False,
+        test_fn: types.FunctionType = None,
     ):
         # Modify dataset columns name for data sink mode, because dataloader could not send string data to device.
         def modify_dataset_columns(image, labels, img_files):
             return image, labels
-        loader = self.dataloader.map(modify_dataset_columns,
-                                     input_columns=['image', 'labels', 'img_files'],
-                                     output_columns=['image', 'labels'],
-                                     column_order=['image', 'labels'])
+
+        loader = self.dataloader.map(
+            modify_dataset_columns,
+            input_columns=["image", "labels", "img_files"],
+            output_columns=["image", "labels"],
+            column_order=["image", "labels"],
+        )
 
         # Change warmup_momentum, list of step -> list of epoch
-        warmup_momentum = [warmup_momentum[_i * self.steps_per_epoch] for _i in range(warmup_epoch)] + \
-                          [warmup_momentum[-1],] * (epochs - warmup_epoch) if warmup_momentum else None
+        warmup_momentum = (
+            [warmup_momentum[_i * self.steps_per_epoch] for _i in range(warmup_epoch)]
+            + [
+                warmup_momentum[-1],
+            ]
+            * (epochs - warmup_epoch)
+            if warmup_momentum
+            else None
+        )
 
         # Build train epoch func with sink process
         train_epoch_fn = ms.train.data_sink(
             fn=self.train_step_fn,
             dataset=loader,
             sink_size=self.steps_per_epoch,
-            steps=epochs*self.steps_per_epoch,
-            jit=True
+            steps=epochs * self.steps_per_epoch,
+            jit=True,
         )
 
         # Attr
@@ -231,27 +260,29 @@ class Trainer:
         self.loss_item_name = loss_item_name
 
         # Directories
-        ckpt_save_dir = os.path.join(save_dir, 'weights')
-        sync_lock_dir = os.path.join(save_dir, 'sync_locks') if not enable_modelarts else '/tmp/sync_locks'
+        ckpt_save_dir = os.path.join(save_dir, "weights")
+        sync_lock_dir = os.path.join(save_dir, "sync_locks") if not enable_modelarts else "/tmp/sync_locks"
         if self.summary:
-            summary_dir = os.path.join(save_dir, 'summary')
+            summary_dir = os.path.join(save_dir, "summary")
             self.summary_record = SummaryRecord(summary_dir)
         if main_device:
             os.makedirs(ckpt_save_dir, exist_ok=True)  # save checkpoint path
             os.makedirs(sync_lock_dir, exist_ok=False)  # sync_lock for run_eval
 
         # Set Checkpoint Manager
-        manager = CheckpointManager(ckpt_save_policy='latest_k')
-        manager_ema = CheckpointManager(ckpt_save_policy='latest_k') if self.ema else None
-        manager_best = CheckpointManager(ckpt_save_policy='top_k') if run_eval else None
+        manager = CheckpointManager(ckpt_save_policy="latest_k")
+        manager_ema = CheckpointManager(ckpt_save_policy="latest_k") if self.ema else None
+        manager_best = CheckpointManager(ckpt_save_policy="top_k") if run_eval else None
         ckpt_filelist_best = []
 
         s_epoch_time = time.time()
         for epoch in range(epochs):
             if epoch == 0:
                 logger.warning("In the data sink mode, log output will only occur once each epoch is completed.")
-                logger.warning("The first epoch will be compiled for the graph, which may take a long time; "
-                               "You can come back later :).")
+                logger.warning(
+                    "The first epoch will be compiled for the graph, which may take a long time; "
+                    "You can come back later :)."
+                )
 
             if warmup_momentum and isinstance(self.optimizer, (nn.SGD, nn.Momentum)):
                 dtype = self.optimizer.momentum.dtype
@@ -264,7 +295,7 @@ class Trainer:
             cur_epoch = epoch + 1
             log_string = f"Epoch {cur_epoch}/{epochs}, Step {self.steps_per_epoch}/{self.steps_per_epoch}"
             if len(self.loss_item_name) < len(loss_item):
-                self.loss_item_name += [f'loss_item{i}' for i in range(len(loss_item) - len(self.loss_item_name))]
+                self.loss_item_name += [f"loss_item{i}" for i in range(len(loss_item) - len(self.loss_item_name))]
             for i in range(len(loss_item)):
                 log_string += f", {self.loss_item_name[i]}: {loss_item[i].asnumpy():.4f}"
                 if self.summary:
@@ -293,13 +324,17 @@ class Trainer:
                     accuracy = accuracy[0] if isinstance(accuracy, (list, tuple)) else accuracy
                     eval_network.set_train(_train_status)
 
-                    save_path_best = os.path.join(ckpt_save_dir,
-                                                  f"best/{self.model_name}-{cur_epoch}_{self.steps_per_epoch}"
-                                                  f"_acc{accuracy:.2f}.ckpt")
-                    ckpt_filelist_best = manager_best.save_ckpoint(eval_network, num_ckpt=keep_checkpoint_max,
-                                                                   metric=accuracy, save_path=save_path_best)
-                    logger.info(f"Epoch {cur_epoch}/{epochs}, eval accuracy: {accuracy:.2f}, "
-                                f"run_eval time: {(time.time() - s_eval_time):.2f} s.")
+                    save_path_best = os.path.join(
+                        ckpt_save_dir,
+                        f"best/{self.model_name}-{cur_epoch}_{self.steps_per_epoch}" f"_acc{accuracy:.2f}.ckpt",
+                    )
+                    ckpt_filelist_best = manager_best.save_ckpoint(
+                        eval_network, num_ckpt=keep_checkpoint_max, metric=accuracy, save_path=save_path_best
+                    )
+                    logger.info(
+                        f"Epoch {cur_epoch}/{epochs}, eval accuracy: {accuracy:.2f}, "
+                        f"run_eval time: {(time.time() - s_eval_time):.2f} s."
+                    )
                     try:
                         os.mknod(sync_lock)
                     except IOError:
@@ -313,16 +348,16 @@ class Trainer:
             # save checkpoint per epoch on main device
             if self.main_device:
                 # Save Checkpoint
-                ms.save_checkpoint(self.optimizer, os.path.join(ckpt_save_dir, f'optim_{self.model_name}.ckpt'),
-                                   async_save=True)
-                save_path = os.path.join(ckpt_save_dir,
-                                         f"{self.model_name}-{cur_epoch}_{self.steps_per_epoch}.ckpt")
+                ms.save_checkpoint(
+                    self.optimizer, os.path.join(ckpt_save_dir, f"optim_{self.model_name}.ckpt"), async_save=True
+                )
+                save_path = os.path.join(ckpt_save_dir, f"{self.model_name}-{cur_epoch}_{self.steps_per_epoch}.ckpt")
                 manager.save_ckpoint(self.network, num_ckpt=keep_checkpoint_max, save_path=save_path)
                 if self.ema:
-                    save_path_ema = os.path.join(ckpt_save_dir,
-                                                 f"EMA_{self.model_name}-{cur_epoch}_{self.steps_per_epoch}.ckpt")
-                    manager_ema.save_ckpoint(self.ema.ema, num_ckpt=keep_checkpoint_max,
-                                             save_path=save_path_ema)
+                    save_path_ema = os.path.join(
+                        ckpt_save_dir, f"EMA_{self.model_name}-{cur_epoch}_{self.steps_per_epoch}.ckpt"
+                    )
+                    manager_ema.save_ckpoint(self.ema.ema, num_ckpt=keep_checkpoint_max, save_path=save_path_ema)
                 logger.info(f"Saving model to {save_path}")
 
                 if enable_modelarts:
@@ -330,13 +365,12 @@ class Trainer:
                     if self.ema:
                         sync_data(save_path_ema, train_url + "/weights/" + save_path_ema.split("/")[-1])
 
-                logger.info(
-                    f"Epoch {cur_epoch}/{epochs}, epoch time: {(time.time() - s_epoch_time) / 60:.2f} min.")
+                logger.info(f"Epoch {cur_epoch}/{epochs}, epoch time: {(time.time() - s_epoch_time) / 60:.2f} min.")
                 s_epoch_time = time.time()
 
         if enable_modelarts and ckpt_filelist_best:
             for p in ckpt_filelist_best:
-                sync_data(p, train_url + '/weights/best/' + p.split("/")[-1])
+                sync_data(p, train_url + "/weights/best/" + p.split("/")[-1])
         if enable_modelarts and self.summary:
             for p in os.listdir(summary_dir):
                 summary_file_path = os.path.join(summary_dir, p)
@@ -362,8 +396,9 @@ class Trainer:
             if grads_finite or self.overflow_still_update:
                 self.accumulate_cur_step += 1
                 if self.accumulate_grads:
-                    self.accumulate_grads = self.accumulate_grads_fn(self.accumulate_grads,
-                                                                     grads)  # update self.accumulate_grads
+                    self.accumulate_grads = self.accumulate_grads_fn(
+                        self.accumulate_grads, grads
+                    )  # update self.accumulate_grads
                 else:
                     self.accumulate_grads = grads
 
@@ -371,24 +406,31 @@ class Trainer:
                     self.optimizer(self.accumulate_grads)
                     if self.ema:
                         self.ema.update()
-                    logger.info(f"Epoch {cur_epoch}/{self.epochs}, Step {cur_step}/{self.steps_per_epoch}, "
-                                f"accumulate: {self.accumulate}, optimizer an accumulate step success.")
+                    logger.info(
+                        f"Epoch {cur_epoch}/{self.epochs}, Step {cur_step}/{self.steps_per_epoch}, "
+                        f"accumulate: {self.accumulate}, optimizer an accumulate step success."
+                    )
                     from mindyolo.utils.all_finite import all_finite
+
                     if not all_finite(self.accumulate_grads):
                         logger.warning(f"overflow, still update.")
                     # reset accumulate
                     self.accumulate_grads, self.accumulate_cur_step = None, 0
             else:
-                logger.warning(f"Epoch {cur_epoch}/{self.epochs}, Step {cur_step}/{self.steps_per_epoch}, "
-                               f"accumulate: {self.accumulate}, this step grad overflow, drop. "
-                               f"Loss scale adjust to {self.scaler.scale_value.asnumpy()}")
+                logger.warning(
+                    f"Epoch {cur_epoch}/{self.epochs}, Step {cur_step}/{self.steps_per_epoch}, "
+                    f"accumulate: {self.accumulate}, this step grad overflow, drop. "
+                    f"Loss scale adjust to {self.scaler.scale_value.asnumpy()}"
+                )
 
         # train log
         if cur_step % self.log_interval == 0:
-            log_string = f"Epoch {cur_epoch}/{self.epochs}, Step {cur_step}/{self.steps_per_epoch}, imgsize {imgs.shape[2:]}"
+            log_string = (
+                f"Epoch {cur_epoch}/{self.epochs}, Step {cur_step}/{self.steps_per_epoch}, imgsize {imgs.shape[2:]}"
+            )
             # print loss
             if len(self.loss_item_name) < len(loss_item):
-                self.loss_item_name += [f'loss_item{i}' for i in range(len(loss_item) - len(self.loss_item_name))]
+                self.loss_item_name += [f"loss_item{i}" for i in range(len(loss_item) - len(self.loss_item_name))]
             for i in range(len(loss_item)):
                 log_string += f", {self.loss_item_name[i]}: {loss_item[i].asnumpy():.4f}"
                 if self.summary:

@@ -1,24 +1,26 @@
 import os
+
 import cv2
+from pathlib import Path
+import numpy as np
+from PIL import ExifTags, Image
+from tqdm import tqdm
+import hashlib
 import random
 import glob
-import hashlib
-import numpy as np
-from pathlib import Path
-from tqdm import tqdm
-from PIL import Image, ExifTags
 
 from mindyolo.utils import logger
+
+from .albumentations import Albumentations
 from .copypaste import copy_paste
 from .perspective import random_perspective
-from .albumentations import Albumentations
 
 __all__ = ["COCODataset"]
 
 
 # Get orientation exif tag
 for orientation in ExifTags.TAGS.keys():
-    if ExifTags.TAGS[orientation] == 'Orientation':
+    if ExifTags.TAGS[orientation] == "Orientation":
         break
 
 
@@ -46,21 +48,24 @@ class COCODataset:
             that apply data enhancements on data set objects in order.
     """
 
-    def __init__(self,
-                 dataset_path='',
-                 img_size=640,
-                 transforms_dict=None,
-                 is_training=False,
-                 augment=False,
-                 rect=False,
-                 single_cls=False,
-                 batch_size=32,
-                 stride=32,
-                 pad=0.0
-                 ):
+    def __init__(
+        self,
+        dataset_path="",
+        img_size=640,
+        transforms_dict=None,
+        is_training=False,
+        augment=False,
+        rect=False,
+        single_cls=False,
+        batch_size=32,
+        stride=32,
+        pad=0.0,
+    ):
         self.cache_version = 0.1
         self.path = dataset_path
-        self.img_formats = ['bmp', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'dng', 'webp', 'mpo']  # acceptable image suffixes
+
+        # acceptable image suffixes
+        self.img_formats = ['bmp', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'dng', 'webp', 'mpo']
         self.help_url = 'https://github.com/ultralytics/yolov5/wiki/Train-Custom-Data'
 
         self.img_size = img_size
@@ -70,57 +75,58 @@ class COCODataset:
         self.transforms_dict = transforms_dict
         self.is_training = is_training
         if is_training:
-            self.dataset_column_names = ['image', 'labels', 'img_files']
+            self.dataset_column_names = ["image", "labels", "img_files"]
         else:
-            self.dataset_column_names = ['image', 'labels', 'img_files', 'hw_ori', 'hw_scale', 'pad']
+            self.dataset_column_names = ["image", "labels", "img_files", "hw_ori", "hw_scale", "pad"]
 
         try:
             f = []  # image files
             for p in self.path if isinstance(self.path, list) else [self.path]:
                 p = Path(p)  # os-agnostic
                 if p.is_dir():  # dir
-                    f += glob.glob(str(p / '**' / '*.*'), recursive=True)
+                    f += glob.glob(str(p / "**" / "*.*"), recursive=True)
                 elif p.is_file():  # file
-                    with open(p, 'r') as t:
+                    with open(p, "r") as t:
                         t = t.read().strip().splitlines()
                         parent = str(p.parent) + os.sep
-                        f += [x.replace('./', parent) if x.startswith('./') else x for x in t]  # local to global path
+                        f += [x.replace("./", parent) if x.startswith("./") else x for x in t]  # local to global path
                 else:
-                    raise Exception(f'{p} does not exist')
-            self.img_files = sorted([x.replace('/', os.sep) for x in f if x.split('.')[-1].lower() in self.img_formats])
-            assert self.img_files, f'No images found'
+                    raise Exception(f"{p} does not exist")
+            self.img_files = sorted([x.replace("/", os.sep) for x in f if x.split(".")[-1].lower() in self.img_formats])
+            assert self.img_files, f"No images found"
         except Exception as e:
-            raise Exception(f'Error loading data from {self.path}: {e}\nSee {self.help_url}')
+            raise Exception(f"Error loading data from {self.path}: {e}\nSee {self.help_url}")
 
         # Check cache
         self.label_files = self._img2label_paths(self.img_files)  # labels
-        cache_path = (p if p.is_file() else Path(self.label_files[0]).parent).with_suffix('.cache.npy')  # cached labels
+        cache_path = (p if p.is_file() else Path(self.label_files[0]).parent).with_suffix(".cache.npy")  # cached labels
         if cache_path.is_file():
             cache, exists = np.load(cache_path, allow_pickle=True).item(), True  # load dict
-            if cache['version'] == self.cache_version and \
-                    cache['hash'] == self._get_hash(self.label_files + self.img_files):
-                logger.info(f'Dataset Cache file hash/version check success.')
-                logger.info(f'Load dataset cache from [{cache_path}] success.')
+            if cache["version"] == self.cache_version and cache["hash"] == self._get_hash(
+                self.label_files + self.img_files
+            ):
+                logger.info(f"Dataset Cache file hash/version check success.")
+                logger.info(f"Load dataset cache from [{cache_path}] success.")
             else:
-                logger.info(f'Dataset cache file hash/version check fail.')
-                logger.info(f'Datset caching now...')
+                logger.info(f"Dataset cache file hash/version check fail.")
+                logger.info(f"Datset caching now...")
                 cache, exists = self.cache_labels(cache_path), False  # cache
-                logger.info(f'Dataset caching success.')
+                logger.info(f"Dataset caching success.")
         else:
-            logger.info(f'No dataset cache available, caching now...')
+            logger.info(f"No dataset cache available, caching now...")
             cache, exists = self.cache_labels(cache_path), False  # cache
-            logger.info(f'Dataset caching success.')
+            logger.info(f"Dataset caching success.")
 
         # Display cache
-        nf, nm, ne, nc, n = cache.pop('results')  # found, missing, empty, corrupted, total
+        nf, nm, ne, nc, n = cache.pop("results")  # found, missing, empty, corrupted, total
         if exists:
             d = f"Scanning '{cache_path}' images and labels... {nf} found, {nm} missing, {ne} empty, {nc} corrupted"
             tqdm(None, desc=d, total=n, initial=n)  # display cache results
-        assert nf > 0 or not augment, f'No labels in {cache_path}. Can not train without labels. See {self.help_url}'
+        assert nf > 0 or not augment, f"No labels in {cache_path}. Can not train without labels. See {self.help_url}"
 
         # Read cache
-        cache.pop('hash')  # remove hash
-        cache.pop('version')  # remove version
+        cache.pop("hash")  # remove hash
+        cache.pop("version")  # remove version
         labels, shapes, self.segments = zip(*cache.values())
         self.labels = list(labels)
         self.img_shapes = np.array(shapes, dtype=np.float64)
@@ -164,16 +170,16 @@ class COCODataset:
 
         self.imgIds = [int(Path(im_file).stem) for im_file in self.img_files]
 
-    def cache_labels(self, path=Path('./labels.cache')):
+    def cache_labels(self, path=Path("./labels.cache")):
         # Get orientation exif tag
         for orientation in ExifTags.TAGS.keys():
-            if ExifTags.TAGS[orientation] == 'Orientation':
+            if ExifTags.TAGS[orientation] == "Orientation":
                 break
 
         # Cache dataset labels, check images and read shapes
         x = {}  # dict
         nm, nf, ne, nc = 0, 0, 0, 0  # number missing, found, empty, duplicate
-        pbar = tqdm(zip(self.img_files, self.label_files), desc='Scanning images', total=len(self.img_files))
+        pbar = tqdm(zip(self.img_files, self.label_files), desc="Scanning images", total=len(self.img_files))
         for i, (im_file, lb_file) in enumerate(pbar):
             try:
                 # verify images
@@ -181,24 +187,26 @@ class COCODataset:
                 im.verify()  # PIL verify
                 shape = self._exif_size(im)  # image size
                 segments = []  # instance segments
-                assert (shape[0] > 9) & (shape[1] > 9), f'image size {shape} <10 pixels'
-                assert im.format.lower() in self.img_formats, f'invalid image format {im.format}'
+                assert (shape[0] > 9) & (shape[1] > 9), f"image size {shape} <10 pixels"
+                assert im.format.lower() in self.img_formats, f"invalid image format {im.format}"
 
                 # verify labels
                 if os.path.isfile(lb_file):
                     nf += 1  # label found
-                    with open(lb_file, 'r') as f:
+                    with open(lb_file, "r") as f:
                         l = [x.split() for x in f.read().strip().splitlines()]
                         if any([len(x) > 8 for x in l]):  # is segment
                             classes = np.array([x[0] for x in l], dtype=np.float32)
                             segments = [np.array(x[1:], dtype=np.float32).reshape(-1, 2) for x in l]  # (cls, xy1...)
-                            l = np.concatenate((classes.reshape(-1, 1), self._segments2boxes(segments)), 1)  # (cls, xywh)
+                            l = np.concatenate(
+                                (classes.reshape(-1, 1), self._segments2boxes(segments)), 1
+                            )  # (cls, xywh)
                         l = np.array(l, dtype=np.float32)
                     if len(l):
-                        assert l.shape[1] == 5, 'labels require 5 columns each'
-                        assert (l >= 0).all(), 'negative labels'
-                        assert (l[:, 1:] <= 1).all(), 'non-normalized or out of bounds coordinate labels'
-                        assert np.unique(l, axis=0).shape[0] == l.shape[0], 'duplicate labels'
+                        assert l.shape[1] == 5, "labels require 5 columns each"
+                        assert (l >= 0).all(), "negative labels"
+                        assert (l[:, 1:] <= 1).all(), "non-normalized or out of bounds coordinate labels"
+                        assert np.unique(l, axis=0).shape[0] == l.shape[0], "duplicate labels"
                     else:
                         ne += 1  # label empty
                         l = np.zeros((0, 5), dtype=np.float32)
@@ -208,38 +216,37 @@ class COCODataset:
                 x[im_file] = [l, shape, segments]
             except Exception as e:
                 nc += 1
-                print(f'WARNING: Ignoring corrupted image and/or label {im_file}: {e}')
+                print(f"WARNING: Ignoring corrupted image and/or label {im_file}: {e}")
 
             pbar.desc = f"Scanning '{path.parent / path.stem}' images and labels... " \
                         f"{nf} found, {nm} missing, {ne} empty, {nc} corrupted"
         pbar.close()
 
         if nf == 0:
-            print(f'WARNING: No labels found in {path}. See {self.help_url}')
+            print(f"WARNING: No labels found in {path}. See {self.help_url}")
 
-        x['hash'] = self._get_hash(self.label_files + self.img_files)
-        x['results'] = nf, nm, ne, nc, i + 1
-        x['version'] = self.cache_version  # cache version
+        x["hash"] = self._get_hash(self.label_files + self.img_files)
+        x["results"] = nf, nm, ne, nc, i + 1
+        x["version"] = self.cache_version  # cache version
         np.save(path, x)  # save for next time
-        logger.info(f'New cache created: {path}')
+        logger.info(f"New cache created: {path}")
         return x
 
     def __getitem__(self, index):
-
         index, image, labels, segment, hw_ori, hw_scale, pad = index, None, None, None, None, None, None
         for _i, ori_trans in enumerate(self.transforms_dict):
             _trans = ori_trans.copy()
-            func_name, prob = _trans.pop('func_name'), _trans.pop('prob', 1.0)
+            func_name, prob = _trans.pop("func_name"), _trans.pop("prob", 1.0)
             if random.random() < prob:
-                if func_name == 'mosaic':
+                if func_name == "mosaic":
                     image, labels = self.mosaic(index, **_trans)
-                elif func_name == 'letterbox':
+                elif func_name == "letterbox":
                     image, hw_ori = self.load_image(index)
                     labels = self.labels[index].copy()
                     new_shape = self.img_size if not self.rect else self.batch_shapes[self.batch[index]]
                     image, labels, hw_ori, hw_scale, pad = self.letterbox(image, labels, hw_ori, new_shape, **_trans)
-                elif func_name == 'albumentations':
-                    if getattr(self, 'albumentations', None) is None:
+                elif func_name == "albumentations":
+                    if getattr(self, "albumentations", None) is None:
                         self.albumentations = Albumentations(size=self.img_size)
                     image, labels = self.albumentations(image, labels, **_trans)
                 else:
@@ -247,7 +254,12 @@ class COCODataset:
                         image, hw_ori = self.load_image(index)
                         labels = self.labels[index].copy()
                         new_shape = self.img_size if not self.rect else self.batch_shapes[self.batch[index]]
-                        image, labels, hw_ori, hw_scale, pad = self.letterbox(image, labels, hw_ori, new_shape,)
+                        image, labels, hw_ori, hw_scale, pad = self.letterbox(
+                            image,
+                            labels,
+                            hw_ori,
+                            new_shape,
+                        )
                     image, labels = getattr(self, func_name)(image, labels, **_trans)
 
         image = np.ascontiguousarray(image)
@@ -266,7 +278,7 @@ class COCODataset:
         if img is None:  # not cached
             path = self.img_files[index]
             img = cv2.imread(path)  # BGR
-            assert img is not None, 'Image Not Found ' + path
+            assert img is not None, "Image Not Found " + path
             h_ori, w_ori = img.shape[:2]  # orig hw
             r = self.img_size / max(h_ori, w_ori)  # resize image to img_size
             if r != 1:  # always resize down, only resize up if training with augmentation
@@ -326,17 +338,18 @@ class COCODataset:
 
         return sample_labels, sample_images, sample_masks
 
-    def mosaic(self,
-               index,
-               mosaic9_prob=0.,
-               copy_paste_prob=0.0,
-               degrees=0.0,
-               translate=0.2,
-               scale=0.9,
-               shear=0.0,
-               perspective=0.0):
-
-        assert mosaic9_prob >= 0. and mosaic9_prob <= 1.
+    def mosaic(
+        self,
+        index,
+        mosaic9_prob=0.0,
+        copy_paste_prob=0.0,
+        degrees=0.0,
+        translate=0.2,
+        scale=0.9,
+        shear=0.0,
+        perspective=0.0,
+    ):
+        assert mosaic9_prob >= 0.0 and mosaic9_prob <= 1.0
         if random.random() < (1 - mosaic9_prob):
             return self.mosaic4(index, copy_paste_prob, degrees, translate, scale, shear, perspective)
         else:
@@ -388,13 +401,17 @@ class COCODataset:
 
         # Augment
         img4, labels4, segments4 = copy_paste(img4, labels4, segments4, probability=copy_paste_prob)
-        img4, labels4 = random_perspective(img4, labels4, segments4,
-                                           degrees=degrees,
-                                           translate=translate,
-                                           scale=scale,
-                                           shear=shear,
-                                           perspective=perspective,
-                                           border=mosaic_border)  # border to remove
+        img4, labels4 = random_perspective(
+            img4,
+            labels4,
+            segments4,
+            degrees=degrees,
+            translate=translate,
+            scale=scale,
+            shear=shear,
+            perspective=perspective,
+            border=mosaic_border,
+        )  # border to remove
 
         return img4, labels4
 
@@ -444,12 +461,12 @@ class COCODataset:
             segments9.extend(segments)
 
             # Image
-            img9[y1:y2, x1:x2] = img[y1 - pady:, x1 - padx:]  # img9[ymin:ymax, xmin:xmax]
+            img9[y1:y2, x1:x2] = img[y1 - pady :, x1 - padx :]  # img9[ymin:ymax, xmin:xmax]
             hp, wp = h, w  # height, width previous
 
         # Offset
         yc, xc = [int(random.uniform(0, s)) for _ in mosaic_border]  # mosaic center x, y
-        img9 = img9[yc:yc + 2 * s, xc:xc + 2 * s]
+        img9 = img9[yc : yc + 2 * s, xc : xc + 2 * s]
 
         # Concat/clip labels
         labels9 = np.concatenate(labels9, 0)
@@ -463,13 +480,17 @@ class COCODataset:
 
         # Augment
         img9, labels9, segments9 = copy_paste(img9, labels9, segments9, probability=copy_paste_prob)
-        img9, labels9 = random_perspective(img9, labels9, segments9,
-                                           degrees=degrees,
-                                           translate=translate,
-                                           scale=scale,
-                                           shear=shear,
-                                           perspective=perspective,
-                                           border=mosaic_border)  # border to remove
+        img9, labels9 = random_perspective(
+            img9,
+            labels9,
+            segments9,
+            degrees=degrees,
+            translate=translate,
+            scale=scale,
+            shear=shear,
+            perspective=perspective,
+            border=mosaic_border,
+        )  # border to remove
 
         return img9, labels9
 
@@ -477,11 +498,11 @@ class COCODataset:
         if needed_mosaic:
             mosaic_trans = None
             for _trans in self.transforms_dict:
-                if _trans['func_name'] == 'mosaic':
+                if _trans["func_name"] == "mosaic":
                     mosaic_trans = _trans.copy()
                     break
             assert mosaic_trans is not None, "Mixup needed mosaic bug 'mosaic' not in transforms_dict"
-            _, _ = mosaic_trans.pop('func_name'), mosaic_trans.pop('prob', 1.0)
+            _, _ = mosaic_trans.pop("func_name"), mosaic_trans.pop("prob", 1.0)
             image2, labels2 = self.mosaic(random.randint(0, len(self.labels) - 1), **mosaic_trans)
         else:
             index2 = random.randint(0, len(self.labels) - 1)
@@ -494,12 +515,10 @@ class COCODataset:
         return image, labels
 
     def pastein(self, image, labels, num_sample=30):
-
         # load sample
         sample_labels, sample_images, sample_masks = [], [], []
         while len(sample_labels) < num_sample:
-            sample_labels_, sample_images_, sample_masks_ = \
-                self.load_samples(random.randint(0, len(self.labels) - 1))
+            sample_labels_, sample_images_, sample_masks_ = self.load_samples(random.randint(0, len(self.labels) - 1))
             sample_labels += sample_labels_
             sample_images += sample_images_
             sample_masks += sample_masks_
@@ -529,8 +548,9 @@ class COCODataset:
             else:
                 ioa = np.zeros(1)
 
-            if (ioa < 0.30).all() and len(sample_labels) and (xmax > xmin + 20) and (
-                    ymax > ymin + 20):  # allow 30% obscuration of existing labels
+            if (
+                (ioa < 0.30).all() and len(sample_labels) and (xmax > xmin + 20) and (ymax > ymin + 20)
+            ):  # allow 30% obscuration of existing labels
                 sel_ind = random.randint(0, len(sample_labels) - 1)
                 hs, ws, cs = sample_images[sel_ind].shape
                 r_scale = min((ymax - ymin) / hs, (xmax - xmin) / ws)
@@ -540,7 +560,7 @@ class COCODataset:
                 if (r_w > 10) and (r_h > 10):
                     r_mask = cv2.resize(sample_masks[sel_ind], (r_w, r_h))
                     r_image = cv2.resize(sample_images[sel_ind], (r_w, r_h))
-                    temp_crop = image[ymin:ymin + r_h, xmin:xmin + r_w]
+                    temp_crop = image[ymin : ymin + r_h, xmin : xmin + r_w]
                     m_ind = r_mask > 0
                     if m_ind.astype(np.int).sum() > 60:
                         temp_crop[m_ind] = r_image[m_ind]
@@ -550,22 +570,24 @@ class COCODataset:
                         else:
                             labels = np.array([[sample_labels[sel_ind], *box]])
 
-                        image[ymin:ymin + r_h, xmin:xmin + r_w] = temp_crop # Modify on the original image
+                        image[ymin : ymin + r_h, xmin : xmin + r_w] = temp_crop  # Modify on the original image
 
         return image, labels
 
-    def random_perspective(self,
-                           image, labels, segments=(),
-                           degrees=10, translate=.1, scale=.1, shear=10,
-                           perspective=0.0, border=(0, 0)):
-
-        image, labels = random_perspective(image, labels, segments,
-                                           degrees=degrees,
-                                           translate=translate,
-                                           scale=scale,
-                                           shear=shear,
-                                           perspective=perspective,
-                                           border=border)
+    def random_perspective(
+        self, image, labels, segments=(), degrees=10, translate=0.1, scale=0.1, shear=10, perspective=0.0, border=(0, 0)
+    ):
+        image, labels = random_perspective(
+            image,
+            labels,
+            segments,
+            degrees=degrees,
+            translate=translate,
+            scale=scale,
+            shear=shear,
+            perspective=perspective,
+            border=border,
+        )
         return image, labels
 
     def hsv_augment(self, image, labels, hgain=0.5, sgain=0.5, vgain=0.5):
@@ -647,11 +669,11 @@ class COCODataset:
         labels_out = np.full((padding_size, 6), padding_value, dtype=np.float32)
         nL = len(labels)
         if nL:
-            labels_out[:min(nL, padding_size), 0:1] = 0.
-            labels_out[:min(nL, padding_size), 1:] = labels[:min(nL, padding_size), :]
+            labels_out[: min(nL, padding_size), 0:1] = 0.0
+            labels_out[: min(nL, padding_size), 1:] = labels[: min(nL, padding_size), :]
         return image, labels_out
 
-    def image_norm(self, image, labels, scale=255.):
+    def image_norm(self, image, labels, scale=255.0):
         image = image.astype(np.float32, copy=False)
         image /= scale
         return image, labels
@@ -673,9 +695,12 @@ class COCODataset:
             h, w, c = img.shape  # height, width, channels
             for j in random.sample(range(n), k=round(probability * n)):
                 l, s = labels[j], segments[j]
-                box = l[1].astype(int).clip(0, w - 1), l[2].astype(int).clip(0, h - 1), l[3].astype(int).clip(0, w - 1), \
-                      l[
-                          4].astype(int).clip(0, h - 1)
+                box = (
+                    l[1].astype(int).clip(0, w - 1),
+                    l[2].astype(int).clip(0, h - 1),
+                    l[3].astype(int).clip(0, w - 1),
+                    l[4].astype(int).clip(0, h - 1),
+                )
 
                 if (box[2] <= box[0]) or (box[3] <= box[1]):
                     continue
@@ -685,25 +710,25 @@ class COCODataset:
                 mask = np.zeros(img.shape, np.uint8)
 
                 cv2.drawContours(mask, [segments[j].astype(np.int32)], -1, (255, 255, 255), cv2.FILLED)
-                sample_masks.append(mask[box[1]:box[3], box[0]:box[2], :])
+                sample_masks.append(mask[box[1] : box[3], box[0] : box[2], :])
 
                 result = cv2.bitwise_and(src1=img, src2=mask)
                 i = result > 0  # pixels to replace
                 mask[i] = result[i]  # cv2.imwrite('debug.jpg', img)  # debug
-                sample_images.append(mask[box[1]:box[3], box[0]:box[2], :])
+                sample_images.append(mask[box[1] : box[3], box[0] : box[2], :])
 
         return sample_labels, sample_images, sample_masks
 
     def _img2label_paths(self, img_paths):
         # Define label paths as a function of image paths
-        sa, sb = os.sep + 'images' + os.sep, os.sep + 'labels' + os.sep  # /images/, /labels/ substrings
-        return ['txt'.join(x.replace(sa, sb, 1).rsplit(x.split('.')[-1], 1)) for x in img_paths]
+        sa, sb = os.sep + "images" + os.sep, os.sep + "labels" + os.sep  # /images/, /labels/ substrings
+        return ["txt".join(x.replace(sa, sb, 1).rsplit(x.split(".")[-1], 1)) for x in img_paths]
 
     def _get_hash(self, paths):
         # Returns a single hash value of a list of paths (files or dirs)
         size = sum(os.path.getsize(p) for p in paths if os.path.exists(p))  # sizes
         h = hashlib.md5(str(size).encode())  # hash sizes
-        h.update(''.join(paths).encode())  # hash paths
+        h.update("".join(paths).encode())  # hash paths
         return h.hexdigest()  # return hash
 
     def _exif_size(self, img):
@@ -738,8 +763,14 @@ class COCODataset:
     def test_collate_fn(imgs, labels, path, hw_ori, hw_scale, pad, batch_info):
         for i, l in enumerate(labels):
             l[:, 0] = i  # add target image index for build_targets()
-        return np.stack(imgs, 0), np.stack(labels, 0), path, \
-               np.stack(hw_ori, 0), np.stack(hw_scale, 0), np.stack(pad, 0)
+        return (
+            np.stack(imgs, 0),
+            np.stack(labels, 0),
+            path,
+            np.stack(hw_ori, 0),
+            np.stack(hw_scale, 0),
+            np.stack(pad, 0),
+        )
 
 
 def bbox_ioa(box1, box2):
@@ -751,8 +782,9 @@ def bbox_ioa(box1, box2):
     b2_x1, b2_y1, b2_x2, b2_y2 = box2[0], box2[1], box2[2], box2[3]
 
     # Intersection area
-    inter_area = (np.minimum(b1_x2, b2_x2) - np.maximum(b1_x1, b2_x1)).clip(0) * \
-                 (np.minimum(b1_y2, b2_y2) - np.maximum(b1_y1, b2_y1)).clip(0)
+    inter_area = (np.minimum(b1_x2, b2_x2) - np.maximum(b1_x1, b2_x1)).clip(0) * (
+        np.minimum(b1_y2, b2_y2) - np.maximum(b1_y1, b2_y1)
+    ).clip(0)
 
     # box2 area
     box2_area = (b2_x2 - b2_x1) * (b2_y2 - b2_y1) + 1e-16

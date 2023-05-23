@@ -1,34 +1,24 @@
-import math
+import numpy as np
 
 import mindspore as ms
-import numpy as np
-from mindspore import nn, Tensor
-
-from .initializer import initialize_defult
-
-__all__ = [
-    'YOLOX',
-    'yolox'
-]
+from mindspore import Tensor, nn
 
 from mindyolo.models.registry import register_model
-from .model_factory import build_model_from_cfg
+from .initializer import initialize_defult
 from .heads import YOLOXHead
+from .model_factory import build_model_from_cfg
 
-def _cfg(url='', **kwargs):
-    return {
-        'url': url,
-        **kwargs
-    }
+__all__ = ["YOLOX", "yolox"]
 
 
-default_cfgs = {
-    'yolox': _cfg(url='')
-}
+def _cfg(url="", **kwargs):
+    return {"url": url, **kwargs}
+
+default_cfgs = {"yolox": _cfg(url="")}
 
 
 class YOLOX(nn.Cell):
-    """ connect yolox backbone and head """
+    """connect yolox backbone and head"""
 
     def __init__(self, cfg, in_channels=3, num_classes=80, sync_bn=False):
         super(YOLOX, self).__init__()
@@ -57,6 +47,6 @@ class YOLOX(nn.Cell):
 @register_model
 def yolox(cfg, in_channels=3, num_classes=None, **kwargs) -> YOLOX:
     """Get GoogLeNet model.
-     Refer to the base class `models.GoogLeNet` for more details."""
+    Refer to the base class `models.GoogLeNet` for more details."""
     model = YOLOX(cfg, in_channels=in_channels, num_classes=num_classes, **kwargs)
     return model

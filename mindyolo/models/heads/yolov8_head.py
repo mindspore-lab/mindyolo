@@ -3,9 +3,9 @@ import numpy as np
 
 import mindspore as ms
 import mindspore.numpy as mnp
-from mindspore import nn, ops, Tensor, Parameter
+from mindspore import Parameter, Tensor, nn, ops
 
-from ..layers import ConvNormAct, DFL, Identity
+from ..layers import DFL, ConvNormAct, Identity
 from ..layers.utils import meshgrid
 
 
@@ -25,20 +25,30 @@ class YOLOv8Head(nn.Cell):
         self.stride = Parameter(Tensor(stride, ms.int32), requires_grad=False)
 
         c2, c3 = max((16, ch[0] // 4, self.reg_max * 4)), max(ch[0], self.nc)  # channels
-        self.cv2 = nn.CellList([
-            nn.SequentialCell([
-                ConvNormAct(x, c2, 3, sync_bn=sync_bn),
-                ConvNormAct(c2, c2, 3, sync_bn=sync_bn),
-                nn.Conv2d(c2, 4 * self.reg_max, 1, has_bias=True)
-            ]) for x in ch
-        ])
-        self.cv3 = nn.CellList([
-            nn.SequentialCell([
-                ConvNormAct(x, c3, 3, sync_bn=sync_bn),
-                ConvNormAct(c3, c3, 3, sync_bn=sync_bn),
-                nn.Conv2d(c3, self.nc, 1, has_bias=True)
-            ]) for x in ch
-        ])
+        self.cv2 = nn.CellList(
+            [
+                nn.SequentialCell(
+                    [
+                        ConvNormAct(x, c2, 3, sync_bn=sync_bn),
+                        ConvNormAct(c2, c2, 3, sync_bn=sync_bn),
+                        nn.Conv2d(c2, 4 * self.reg_max, 1, has_bias=True),
+                    ]
+                )
+                for x in ch
+            ]
+        )
+        self.cv3 = nn.CellList(
+            [
+                nn.SequentialCell(
+                    [
+                        ConvNormAct(x, c3, 3, sync_bn=sync_bn),
+                        ConvNormAct(c3, c3, 3, sync_bn=sync_bn),
+                        nn.Conv2d(c3, self.nc, 1, has_bias=True),
+                    ]
+                )
+                for x in ch
+            ]
+        )
         self.dfl = DFL(self.reg_max) if self.reg_max > 1 else Identity()
 
     def construct(self, x):
@@ -55,11 +65,11 @@ class YOLOv8Head(nn.Cell):
             for i in range(len(out)):
                 _x += (out[i].view(shape[0], self.no, -1),)
             _x = ops.concat(_x, 2)
-            box, cls = _x[:, :self.reg_max * 4, :], _x[:, self.reg_max * 4:self.reg_max * 4 + self.nc, :]
+            box, cls = _x[:, : self.reg_max * 4, :], _x[:, self.reg_max * 4 : self.reg_max * 4 + self.nc, :]
             # box, cls = ops.concat([xi.view(shape[0], self.no, -1) for xi in x], 2).split((self.reg_max * 4, self.nc), 1)
             dbox = self.dist2bbox(self.dfl(box), ops.expand_dims(_anchors, 0), xywh=True, axis=1) * _strides
             p = ops.concat((dbox, ops.Sigmoid()(cls)), 1)
-            p = ops.transpose(p, (0, 2, 1)) # (bs, no-84, nbox) -> (bs, nbox, no-84)
+            p = ops.transpose(p, (0, 2, 1))  # (bs, no-84, nbox) -> (bs, nbox, no-84)
 
         return out if self.training else (p, out)
 
@@ -73,7 +83,7 @@ class YOLOv8Head(nn.Cell):
             sx = mnp.arange(w, dtype=dtype) + grid_cell_offset  # shift x
             sy = mnp.arange(h, dtype=dtype) + grid_cell_offset  # shift y
             # FIXME: Not supported on a specific model of machine
-            sy, sx = meshgrid((sy, sx), indexing='ij')  # ops.meshgrid((sy, sx), indexing='ij')
+            sy, sx = meshgrid((sy, sx), indexing="ij")  # ops.meshgrid((sy, sx), indexing='ij')
             anchor_points += (ops.stack((sx, sy), -1).view(-1, 2),)
             stride_tensor += (ops.ones((h * w, 1), dtype) * stride,)
         return ops.concat(anchor_points), ops.concat(stride_tensor)
@@ -97,5 +107,5 @@ class YOLOv8Head(nn.Cell):
             s = s.asnumpy()
             a[-1].bias = ops.assign(a[-1].bias, Tensor(np.ones(a[-1].bias.shape), ms.float32))
             b_np = b[-1].bias.data.asnumpy()
-            b_np[:m.nc] = math.log(5 / m.nc / (640 / int(s)) ** 2)
+            b_np[: m.nc] = math.log(5 / m.nc / (640 / int(s)) ** 2)
             b[-1].bias = ops.assign(b[-1].bias, Tensor(b_np, ms.float32))

@@ -1,5 +1,6 @@
 from mindspore import nn, ops
 
+
 class Upsample(nn.Cell):
     """
     Using the interpolate method specified by `mode` resize the input tensor.
@@ -15,14 +16,14 @@ class Upsample(nn.Cell):
         mode (string): The method used to interpolate: 'linear' | 'bilinear'. Default is 'linear'.
     """
 
-    def __init__(self, sizes=None, scales=None, mode='nearest'):
+    def __init__(self, sizes=None, scales=None, mode="nearest"):
         super(Upsample, self).__init__()
         self.sizes = sizes
         self.scales = scales
         self.mode = mode
 
     def construct(self, x):
-        if self.mode == 'nearest' and self.scales:
+        if self.mode == "nearest" and self.scales:
             return ops.ResizeNearestNeighbor((x.shape[-2] * self.scales, x.shape[-1] * self.scales))(x)
         else:
             return ops.interpolate(x, sizes=self.sizes, scales=self.scales, mode=self.mode)

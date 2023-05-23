@@ -1,41 +1,41 @@
-import os
 import math
+import os
 from copy import deepcopy
-from mindspore import nn, ops, load_checkpoint, load_param_into_net
-from .registry import is_model, model_entrypoint
-from .layers import *
-from .heads import *
+
+from mindspore import load_checkpoint, load_param_into_net, nn, ops
 
 from mindyolo.utils import logger
+from .heads import *
+from .layers import *
+from .registry import is_model, model_entrypoint
 
-__all__ = [
-    'create_model',
-    'build_model_from_cfg'
-]
+__all__ = ["create_model", "build_model_from_cfg"]
 
 
 def create_model(
-        model_name: str,
-        model_cfg: dict = None,
-        in_channels: int = 3,
-        num_classes: int = 80,
-        checkpoint_path: str = '',
-        **kwargs):
+    model_name: str,
+    model_cfg: dict = None,
+    in_channels: int = 3,
+    num_classes: int = 80,
+    checkpoint_path: str = "",
+    **kwargs,
+):
     model_args = dict(cfg=model_cfg, num_classes=num_classes, in_channels=in_channels)
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
     if not is_model(model_name):
-        raise RuntimeError(f'Unknown model {model_name}')
+        raise RuntimeError(f"Unknown model {model_name}")
 
     create_fn = model_entrypoint(model_name)
     model = create_fn(**model_args, **kwargs)
 
     if checkpoint_path:
-        assert os.path.isfile(checkpoint_path) and checkpoint_path.endswith('.ckpt'), \
-            f"[{checkpoint_path}] not a ckpt file."
+        assert os.path.isfile(checkpoint_path) and checkpoint_path.endswith(
+            ".ckpt"
+        ), f"[{checkpoint_path}] not a ckpt file."
         checkpoint_param = load_checkpoint(checkpoint_path)
         load_param_into_net(model, checkpoint_param)
-        logger.info(f'Load checkpoint from [{checkpoint_path}] success.')
+        logger.info(f"Load checkpoint from [{checkpoint_path}] success.")
 
     return model
 
@@ -48,16 +48,17 @@ def build_model_from_cfg(**kwargs):
 class Model(nn.Cell):
     def __init__(self, model_cfg, in_channels=3, num_classes=80, sync_bn=False):
         super(Model, self).__init__()
-        self.model, self.save, self.layers_param = parse_model(deepcopy(model_cfg),
-                                                               ch=[in_channels],
-                                                               nc=num_classes,
-                                                               sync_bn=sync_bn)
+        self.model, self.save, self.layers_param = parse_model(
+            deepcopy(model_cfg), ch=[in_channels], nc=num_classes, sync_bn=sync_bn
+        )
         # Recompute
-        if hasattr(model_cfg, 'recompute') and model_cfg.recompute and model_cfg.recompute_layers > 0:
+        if hasattr(model_cfg, "recompute") and model_cfg.recompute and model_cfg.recompute_layers > 0:
             for i in range(model_cfg.recompute_layers):
                 self.model[i].recompute()
-            logger.info(f"Turn on recompute, and the results of the first {model_cfg.recompute_layers} layers "
-                        f"will be recomputed.")
+            logger.info(
+                f"Turn on recompute, and the results of the first {model_cfg.recompute_layers} layers "
+                f"will be recomputed."
+            )
 
     def construct(self, x):
         y, dt = (), ()  # outputs
@@ -91,15 +92,18 @@ class Model(nn.Cell):
 def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
     _SYNC_BN = sync_bn
     if _SYNC_BN:
-        logger.info('Parse model with Sync BN.')
-    verbose = d.get('verbose_log', False)
+        logger.info("Parse model with Sync BN.")
+    verbose = d.get("verbose_log", False)
     if verbose:
-        logger.info('')
-        logger.info('network structure are as follows')
-        logger.info('%3s%18s%3s%10s  %-60s%-40s' % ('', 'from', 'n', 'params', 'module', 'arguments'))
-    anchors, reg_max, max_channels = d.get('anchors', None), d.get('reg_max', None), d.get('max_channels', None)
+        logger.info("")
+        logger.info("network structure are as follows")
+        logger.info("%3s%18s%3s%10s  %-60s%-40s" % ("", "from", "n", "params", "module", "arguments"))
+    anchors, reg_max, max_channels = d.get("anchors", None), d.get("reg_max", None), d.get("max_channels", None)
     stride, gd, gw = d.stride, d.depth_multiple, d.width_multiple
-    nc, na = nc, (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors  # number of classes, number of anchors
+    nc, na = (
+        nc,
+        (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors,
+    )  # number of classes, number of anchors
 
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
     layers_param = []
@@ -110,9 +114,9 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
 
         _args = []
         for j, a in enumerate(args):
-            if isinstance(a, str) and '=' in a:
-                _index = a.find('=')
-                k, v = a[:_index], a[_index + 1:]
+            if isinstance(a, str) and "=" in a:
+                _index = a.find("=")
+                k, v = a[:_index], a[_index + 1 :]
                 try:
                     v = eval(v)
                 except:
@@ -123,20 +127,48 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
                     a = eval(a) if isinstance(a, str) else a
                 except:
                     logger.warning(f"Parse Model, args: {a}, keep str type")
-                _args += [a, ]
+                _args += [
+                    a,
+                ]
         args = _args
 
         n = max(round(n * gd), 1) if n > 1 else n  # depth gain
-        if m in (nn.Conv2d, ConvNormAct, RepConv, DownC, SPPCSPC, SPPF, C3, C2f, Bottleneck, Residualblock, Focus,
-                 DWConvNormAct, DWBottleneck, DWC3):
+        if m in (
+            nn.Conv2d,
+            ConvNormAct,
+            RepConv,
+            DownC,
+            SPPCSPC,
+            SPPF,
+            C3,
+            C2f,
+            Bottleneck,
+            Residualblock,
+            Focus,
+            DWConvNormAct,
+            DWBottleneck,
+            DWC3,
+        ):
             c1, c2 = ch[f], args[0]
             if max_channels:
                 c2 = min(c2, max_channels)
             c2 = math.ceil(c2 * gw / 8) * 8
 
             args = [c1, c2, *args[1:]]
-            if m in (ConvNormAct, RepConv, DownC, SPPCSPC, SPPF, C3, C2f, Bottleneck, Residualblock,
-                     DWConvNormAct, DWBottleneck, DWC3):
+            if m in (
+                ConvNormAct,
+                RepConv,
+                DownC,
+                SPPCSPC,
+                SPPF,
+                C3,
+                C2f,
+                Bottleneck,
+                Residualblock,
+                DWConvNormAct,
+                DWBottleneck,
+                DWC3,
+            ):
                 kwargs["sync_bn"] = sync_bn
             if m in (DownC, SPPCSPC, C3, C2f, DWC3):
                 args.insert(2, n)  # number of repeats
@@ -160,7 +192,7 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
 
         m_ = nn.SequentialCell([m(*args, **kwargs) for _ in range(n)]) if n > 1 else m(*args, **kwargs)
 
-        t = str(m) # module type
+        t = str(m)  # module type
         np = sum([x.size for x in m_.get_parameters()])  # number params
         np_trainable = sum([x.size for x in m_.trainable_params()])  # number trainable params
         num_total_param += np
@@ -168,7 +200,7 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
         m_.i, m_.f, m_.type, m_.np = i, f, t, np  # attach index, 'from' index, type, number params
         layers_param.append((i, f, t, np))
         if verbose:
-            logger.info('%3s%18s%3s%10.0f  %-60s%-40s' % (i, f, n, np, t, args+[kwargs] if kwargs else args))  # print
+            logger.info("%3s%18s%3s%10.0f  %-60s%-40s" % (i, f, n, np, t, args + [kwargs] if kwargs else args))  # print
         save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)  # append to savelist
         layers.append(m_)
         if i == 0:

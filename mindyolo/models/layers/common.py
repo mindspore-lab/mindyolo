@@ -1,13 +1,14 @@
 import numpy as np
 
 import mindspore as ms
-from mindspore import nn, ops, Tensor
+from mindspore import Tensor, nn, ops
 
 
 class Shortcut(nn.Cell):
     """
     Shortcut layer.
     """
+
     def construct(self, x):
         if isinstance(x, (tuple, list)) and len(x) == 2:
             return x[0] + x[1]
@@ -18,6 +19,7 @@ class Concat(nn.Cell):
     """
     Connect tensor in the specified axis.
     """
+
     def __init__(self, axis=1):
         super(Concat, self).__init__()
         self.axis = axis
@@ -30,6 +32,7 @@ class ReOrg(nn.Cell):
     """
     Reorganize the input Tensor (b, c, w, h) into a new shape (b, 4c, w/2, h/2).
     """
+
     def __init__(self):
         super(ReOrg, self).__init__()
 
@@ -66,6 +69,5 @@ class DFL(nn.Cell):
 
     def initialize_conv_weight(self):
         self.conv.weight = ops.assign(
-            self.conv.weight,
-            Tensor(np.arange(self.c1).reshape((1, self.c1, 1, 1)), dtype=ms.float32)
+            self.conv.weight, Tensor(np.arange(self.c1).reshape((1, self.c1, 1, 1)), dtype=ms.float32)
         )

@@ -1,7 +1,7 @@
 """Utility Tools"""
-from .logger import *
-from .config import *
 from .checkpoint_manager import *
-from .modelarts import *
+from .config import *
+from .logger import *
 from .metrics import *
+from .modelarts import *
 from .utils import *

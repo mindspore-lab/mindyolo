@@ -1,24 +1,17 @@
 import mindspore.nn as nn
+
 from .initializer import initialize_defult
-from .registry import register_model
 from .model_factory import build_model_from_cfg
+from .registry import register_model
 
-__all__ = [
-    'YOLOv4',
-    'yolov4'
-]
+__all__ = ["YOLOv4", "yolov4"]
 
 
-def _cfg(url='', **kwargs):
-    return {
-        'url': url,
-        **kwargs
-    }
+def _cfg(url="", **kwargs):
+    return {"url": url, **kwargs}
 
 
-default_cfgs = {
-    'yolov4': _cfg(url='')
-}
+default_cfgs = {"yolov4": _cfg(url="")}
 
 
 class YOLOv4(nn.Cell):
@@ -44,6 +37,6 @@ class YOLOv4(nn.Cell):
 @register_model
 def yolov4(cfg, in_channels=3, num_classes=None, **kwargs) -> YOLOv4:
     """Get GoogLeNet model.
-     Refer to the base class `models.GoogLeNet` for more details."""
+    Refer to the base class `models.GoogLeNet` for more details."""
     model = YOLOv4(cfg=cfg, in_channels=in_channels, num_classes=num_classes, **kwargs)
     return model
