@@ -41,7 +41,6 @@ See [MODEL ZOO](MODEL_ZOO.md).
 - [x] [YOLOX](configs/yolox)
 - [ ] [YOLOv6](configs/yolov6)
 
-
 </details>
 
 ## Installation
