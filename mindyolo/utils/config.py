@@ -1,22 +1,22 @@
-import os
-import yaml
 import argparse
 import collections
+import os
 from copy import deepcopy
-from pprint import pprint, pformat
+import yaml
 
 try:
     collectionsAbc = collections.abc
 except AttributeError:
     collectionsAbc = collections
 
-__all__ = ['parse_args']
+__all__ = ["parse_args"]
 
 
 def parse_args(parser):
-    parser_config = argparse.ArgumentParser(description='Config', add_help=False)
-    parser_config.add_argument('-c', '--config', type=str, default='',
-                               help='YAML config file specifying default arguments.')
+    parser_config = argparse.ArgumentParser(description="Config", add_help=False)
+    parser_config.add_argument(
+        "-c", "--config", type=str, default="", help="YAML config file specifying default arguments."
+    )
 
     args_config, remaining = parser_config.parse_known_args()
 
@@ -48,7 +48,7 @@ def load_config(file_path):
         for base_yaml in base_yamls:
             if base_yaml.startswith("~"):
                 base_yaml = os.path.expanduser(base_yaml)
-            if not base_yaml.startswith('/'):
+            if not base_yaml.startswith("/"):
                 base_yaml = os.path.join(os.path.dirname(file_path), base_yaml)
 
             base_cfg_default, base_cfg_helper, base_cfg_choices = load_config(base_yaml)
@@ -57,9 +57,11 @@ def load_config(file_path):
             all_base_cfg_choices = _merge_config(base_cfg_choices, all_base_cfg_choices)
 
         del cfg_default[BASE]
-        return _merge_config(cfg_default, all_base_cfg_default), \
-               _merge_config(cfg_helper, all_base_cfg_helper), \
-               _merge_config(cfg_choices, all_base_cfg_choices)
+        return (
+            _merge_config(cfg_default, all_base_cfg_default),
+            _merge_config(cfg_helper, all_base_cfg_helper),
+            _merge_config(cfg_choices, all_base_cfg_choices),
+        )
 
     return cfg_default, cfg_helper, cfg_choices
 
@@ -71,7 +73,7 @@ def _parse_yaml(yaml_path):
     Args:
         yaml_path: Path to the yaml config.
     """
-    with open(yaml_path, 'r') as fin:
+    with open(yaml_path, "r") as fin:
         try:
             cfgs = yaml.load_all(fin.read(), Loader=yaml.FullLoader)
             cfgs = [x for x in cfgs]
@@ -95,8 +97,7 @@ def _merge_config(config, base):
     """Merge config"""
     new = deepcopy(base)
     for k, v in config.items():
-        if (k in new and isinstance(new[k], dict) and
-                isinstance(config[k], collectionsAbc.Mapping)):
+        if k in new and isinstance(new[k], dict) and isinstance(config[k], collectionsAbc.Mapping):
             new[k] = _merge_config(config[k], new[k])
         else:
             new[k] = config[k]
@@ -107,6 +108,7 @@ class Config(dict):
     """
     Configuration namespace. Convert dictionary to members.
     """
+
     def __init__(self, cfg_dict):
         super(Config, self).__init__()
         for k, v in cfg_dict.items():
@@ -129,20 +131,21 @@ class Config(dict):
     def __repr__(self):
         return self.__str__()
 
-def config_format_func(config, prefix=''):
+
+def config_format_func(config, prefix=""):
     """
     Args:
         config: dict-like object
     Returns:
         formatted str
     """
-    msg = ''
+    msg = ""
     if prefix:
-        prefix += '.'
+        prefix += "."
 
     for k, v in config.__dict__.items():
         if isinstance(v, Config):
             msg += config_format_func(v, prefix=str(k))
         else:
-            msg += format(prefix + str(k), '<40') + format(str(v), '<') + '\n'
+            msg += format(prefix + str(k), "<40") + format(str(v), "<") + "\n"
     return msg

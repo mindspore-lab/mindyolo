@@ -4,4 +4,4 @@ Test example
 
 
 def test_example():
-    """ init test example """
+    """init test example"""

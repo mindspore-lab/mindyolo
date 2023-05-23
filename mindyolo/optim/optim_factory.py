@@ -1,22 +1,23 @@
-''' optim factory '''
+""" optim factory """
 import os
 from typing import Optional
-from mindspore import nn
-from mindspore import load_checkpoint, load_param_into_net
+
+from mindspore import load_checkpoint, load_param_into_net, nn
 
 __all__ = ["create_optimizer"]
 
 
 def create_optimizer(
-        params,
-        optimizer: str = 'momentum',
-        lr: Optional[float] = 1e-3,
-        weight_decay: float = 0,
-        momentum: float = 0.9,
-        nesterov: bool = False,
-        loss_scale: float = 1.0,
-        checkpoint_path: str = '',
-        **kwargs):
+    params,
+    optimizer: str = "momentum",
+    lr: Optional[float] = 1e-3,
+    weight_decay: float = 0,
+    momentum: float = 0.9,
+    nesterov: bool = False,
+    loss_scale: float = 1.0,
+    checkpoint_path: str = "",
+    **kwargs,
+):
     r"""Creates optimizer by name.
 
     Args:
@@ -35,27 +36,29 @@ def create_optimizer(
 
     optim = optimizer.lower()
 
-    if optim == 'sgd':
-        optimizer = nn.SGD(params=params,
-                           learning_rate=lr,
-                           momentum=momentum,
-                           weight_decay=weight_decay,
-                           nesterov=nesterov,
-                           loss_scale=loss_scale
-                           )
-    elif optim in ['momentum', 'nesterov']:
-        optimizer = nn.Momentum(params=params,
-                                learning_rate=lr,
-                                momentum=momentum,
-                                weight_decay=weight_decay,
-                                use_nesterov=nesterov,
-                                loss_scale=loss_scale
-                                )
+    if optim == "sgd":
+        optimizer = nn.SGD(
+            params=params,
+            learning_rate=lr,
+            momentum=momentum,
+            weight_decay=weight_decay,
+            nesterov=nesterov,
+            loss_scale=loss_scale,
+        )
+    elif optim in ["momentum", "nesterov"]:
+        optimizer = nn.Momentum(
+            params=params,
+            learning_rate=lr,
+            momentum=momentum,
+            weight_decay=weight_decay,
+            use_nesterov=nesterov,
+            loss_scale=loss_scale,
+        )
     else:
-        raise ValueError(f'Invalid optimizer: {optim}')
+        raise ValueError(f"Invalid optimizer: {optim}")
 
-    if checkpoint_path.endswith('.ckpt') and os.path.isfile(checkpoint_path):
-        param_dict = load_checkpoint(checkpoint_path, filter_prefix='learning_rate')
+    if checkpoint_path.endswith(".ckpt") and os.path.isfile(checkpoint_path):
+        param_dict = load_checkpoint(checkpoint_path, filter_prefix="learning_rate")
         load_param_into_net(optimizer, param_dict)
 
     return optimizer

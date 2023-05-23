@@ -1,7 +1,7 @@
 import math
 
 import mindspore as ms
-from mindspore import nn, ops, Tensor
+from mindspore import Tensor, nn, ops
 from mindspore import numpy as mnp
 from mindspore.common import initializer as init
 
@@ -10,8 +10,16 @@ from mindyolo.models.layers.utils import meshgrid
 
 
 class YOLOXHead(nn.Cell):
-    def __init__(self, nc=80, stride=(8, 16, 32), ch=(256, 512, 1024), is_standard_backbone=True, act=True,
-                 depth_wise=False, sync_bn=False):
+    def __init__(
+        self,
+        nc=80,
+        stride=(8, 16, 32),
+        ch=(256, 512, 1024),
+        is_standard_backbone=True,
+        act=True,
+        depth_wise=False,
+        sync_bn=False,
+    ):
         """
         YOlOx head
         Args:
@@ -37,17 +45,25 @@ class YOLOXHead(nn.Cell):
         HeadCNA = DWConvNormAct if depth_wise else ConvNormAct
         for i in range(self.nl):  # three kind of resolution, 80, 40, 20
             self.stems.append(ConvNormAct(ch[i], hidden_ch, 1, act=act, sync_bn=sync_bn))
-            self.cls_convs.append(nn.SequentialCell(
-                [HeadCNA(hidden_ch, hidden_ch, 3, act=act, sync_bn=sync_bn),
-                 HeadCNA(hidden_ch, hidden_ch, 3, act=act, sync_bn=sync_bn)]
-            ))
-            self.reg_convs.append(nn.SequentialCell(
-                [HeadCNA(hidden_ch, hidden_ch, 3, act=act, sync_bn=sync_bn),
-                 HeadCNA(hidden_ch, hidden_ch, 3, act=act, sync_bn=sync_bn)]
-            ))
-            self.cls_preds.append(nn.Conv2d(hidden_ch, self.nc, 1, pad_mode='pad', has_bias=True))
-            self.reg_preds.append(nn.Conv2d(hidden_ch, 4, 1, pad_mode='pad', has_bias=True))
-            self.obj_preds.append(nn.Conv2d(hidden_ch, 1, 1, pad_mode='pad', has_bias=True))
+            self.cls_convs.append(
+                nn.SequentialCell(
+                    [
+                        HeadCNA(hidden_ch, hidden_ch, 3, act=act, sync_bn=sync_bn),
+                        HeadCNA(hidden_ch, hidden_ch, 3, act=act, sync_bn=sync_bn),
+                    ]
+                )
+            )
+            self.reg_convs.append(
+                nn.SequentialCell(
+                    [
+                        HeadCNA(hidden_ch, hidden_ch, 3, act=act, sync_bn=sync_bn),
+                        HeadCNA(hidden_ch, hidden_ch, 3, act=act, sync_bn=sync_bn),
+                    ]
+                )
+            )
+            self.cls_preds.append(nn.Conv2d(hidden_ch, self.nc, 1, pad_mode="pad", has_bias=True))
+            self.reg_preds.append(nn.Conv2d(hidden_ch, 4, 1, pad_mode="pad", has_bias=True))
+            self.obj_preds.append(nn.Conv2d(hidden_ch, 1, 1, pad_mode="pad", has_bias=True))
 
     def construct(self, feat_list):
         assert isinstance(feat_list, (tuple, list)) and len(feat_list) == self.nl
@@ -64,8 +80,11 @@ class YOLOXHead(nn.Cell):
             obj_output = self.obj_preds[i](reg_feat)
 
             # Convert to origin image scale (640)
-            output = ops.concat([reg_output, obj_output, cls_output], 1) if self.training else \
-                ops.concat([reg_output, ops.sigmoid(obj_output), ops.sigmoid(cls_output)], 1)
+            output = (
+                ops.concat([reg_output, obj_output, cls_output], 1)
+                if self.training
+                else ops.concat([reg_output, ops.sigmoid(obj_output), ops.sigmoid(cls_output)], 1)
+            )
             output = self.convert_to_origin_scale(output, stride=self.stride[i])
             outputs.append(output)
         outputs_cat = ops.concat(outputs, 1)
@@ -74,11 +93,12 @@ class YOLOXHead(nn.Cell):
     def initialize_biases(self, prior_prob=1e-2):
         for i in range(self.nl):  # 80, 40, 20
             for cell in [self.cls_preds[i], self.obj_preds[i]]:
-                cell.bias.set_data(init.initializer(-math.log((1 - prior_prob) / prior_prob), cell.bias.shape,
-                                                    cell.bias.dtype))
+                cell.bias.set_data(
+                    init.initializer(-math.log((1 - prior_prob) / prior_prob), cell.bias.shape, cell.bias.dtype)
+                )
 
     def convert_to_origin_scale(self, output, stride):
-        """ map to origin image scale for each fpn """
+        """map to origin image scale for each fpn"""
         batch_size = ops.shape(output)[0]
         grid_size = ops.shape(output)[2:4]
         stride = ops.cast(stride, output.dtype)
@@ -103,5 +123,5 @@ class YOLOXHead(nn.Cell):
     @staticmethod
     def _make_grid(nx=20, ny=20, dtype=ms.float32):
         # FIXME: Not supported on a specific model of machine
-        xv, yv = meshgrid((mnp.arange(nx), mnp.arange(ny)))  #ops.meshgrid((mnp.arange(nx), mnp.arange(ny)))
+        xv, yv = meshgrid((mnp.arange(nx), mnp.arange(ny)))  # ops.meshgrid((mnp.arange(nx), mnp.arange(ny)))
         return ops.cast(ops.stack((xv, yv), 2).view((1, 1, ny, nx, 2)), dtype)

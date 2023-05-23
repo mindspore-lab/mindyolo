@@ -1,9 +1,9 @@
 """
 Create dataloader
 """
-import cv2
 import multiprocessing
 
+import cv2
 import mindspore.dataset as de
 
 from mindyolo.utils import logger
@@ -51,18 +51,26 @@ def create_loader(
     num_parallel_workers = min(int(cores / rank_size), num_parallel_workers)
     logger.info(f"Dataloader num parallel workers: [{num_parallel_workers}]")
     if rank_size > 1:
-        ds = de.GeneratorDataset(dataset, column_names=dataset_column_names,
-                                 num_parallel_workers=min(8, num_parallel_workers), shuffle=shuffle,
-                                 python_multiprocessing=python_multiprocessing,
-                                 num_shards=rank_size, shard_id=rank)
+        ds = de.GeneratorDataset(
+            dataset,
+            column_names=dataset_column_names,
+            num_parallel_workers=min(8, num_parallel_workers),
+            shuffle=shuffle,
+            python_multiprocessing=python_multiprocessing,
+            num_shards=rank_size,
+            shard_id=rank,
+        )
     else:
-        ds = de.GeneratorDataset(dataset, column_names=dataset_column_names,
-                                 num_parallel_workers=min(32, num_parallel_workers), shuffle=shuffle,
-                                 python_multiprocessing=python_multiprocessing)
-    ds = ds.batch(batch_size,
-                  per_batch_map=batch_collate_fn,
-                  input_columns=dataset_column_names,
-                  drop_remainder=drop_remainder)
+        ds = de.GeneratorDataset(
+            dataset,
+            column_names=dataset_column_names,
+            num_parallel_workers=min(32, num_parallel_workers),
+            shuffle=shuffle,
+            python_multiprocessing=python_multiprocessing,
+        )
+    ds = ds.batch(
+        batch_size, per_batch_map=batch_collate_fn, input_columns=dataset_column_names, drop_remainder=drop_remainder
+    )
     ds = ds.repeat(epoch_size)
 
     return ds

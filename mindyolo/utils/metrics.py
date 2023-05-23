@@ -1,15 +1,20 @@
 import time
+
 import numpy as np
 
-__all__ = [
-    'non_max_suppression',
-    'scale_coords',
-    'xyxy2xywh', 'xywh2xyxy'
-]
+__all__ = ["non_max_suppression", "scale_coords", "xyxy2xywh", "xywh2xyxy"]
 
 
-def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, conf_free=False, classes=None, agnostic=False,
-                        multi_label=False, time_limit=20.0):
+def non_max_suppression(
+    prediction,
+    conf_thres=0.25,
+    iou_thres=0.45,
+    conf_free=False,
+    classes=None,
+    agnostic=False,
+    multi_label=False,
+    time_limit=20.0,
+):
     """Runs Non-Maximum Suppression (NMS) on inference results
 
     Args:
@@ -28,15 +33,15 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, conf_free=F
     else:
         nc = prediction.shape[2] - 4  # number of classes
         xc = prediction[..., 4:].max(-1) > conf_thres  # candidates
-        prediction = np.concatenate((prediction[..., :4],
-                                     prediction[..., 4:].max(-1, keepdims=True),
-                                     prediction[..., 4:]), axis=-1)
+        prediction = np.concatenate(
+            (prediction[..., :4], prediction[..., 4:].max(-1, keepdims=True), prediction[..., 4:]), axis=-1
+        )
 
     # Settings
     min_wh, max_wh = 2, 4096  # (pixels) minimum and maximum box width and height
     max_det = 300  # maximum number of detections per image
     max_nms = 30000  # maximum number of boxes into torchvision.ops.nms()
-    time_limit = time_limit if time_limit > 0 else 1e3 # seconds to quit after
+    time_limit = time_limit if time_limit > 0 else 1e3  # seconds to quit after
     redundant = True  # require redundant detections
     multi_label &= nc > 1  # multiple labels per box (adds 0.5ms/img)
     merge = False  # use merge-NMS
@@ -44,7 +49,6 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, conf_free=F
     t = time.time()
     output = [np.zeros((0, 6))] * prediction.shape[0]
     for xi, x in enumerate(prediction):  # image index, image inference
-
         # Apply constraints
         # x[((x[..., 2:4] < min_wh) | (x[..., 2:4] > max_wh)).any(1), 4] = 0  # width-height
         x = x[xc[xi]]  # confidence
@@ -86,11 +90,11 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, conf_free=F
         c = x[:, 5:6] * (0 if agnostic else max_wh)  # classes
         boxes, scores = x[:, :4] + c, x[:, 4]  # boxes (offset by class), scores
 
-        i = _nms(boxes, scores, iou_thres) # NMS for per sample
+        i = _nms(boxes, scores, iou_thres)  # NMS for per sample
 
         if i.shape[0] > max_det:  # limit detections
             i = i[:max_det]
-        if merge and (1 < n < 3E3):  # Merge NMS (boxes merged using weighted mean)
+        if merge and (1 < n < 3e3):  # Merge NMS (boxes merged using weighted mean)
             # update boxes as boxes(i,4) = weights(i,n) * boxes(n,4)
             iou = _box_iou(boxes[i], boxes) > iou_thres  # iou matrix # (N, M)
             weights = iou * scores[None]  # box weights
@@ -101,8 +105,10 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, conf_free=F
 
         output[xi] = x[i]
         if (time.time() - t) > time_limit:
-            print(f'WARNING: Batch NMS time limit {time_limit}s exceeded, this batch '
-                  f'process {xi + 1}/{prediction.shape[0]} sample.')
+            print(
+                f"WARNING: Batch NMS time limit {time_limit}s exceeded, this batch "
+                f"process {xi + 1}/{prediction.shape[0]} sample."
+            )
             break  # time limit exceeded
 
     return output
@@ -117,15 +123,14 @@ def scale_coords(img1_shape, coords, img0_shape, ratio=None, pad=None):
         ratio = ratio[0]
 
     if pad is None:
-        padh, padw = (img1_shape[0] - img0_shape[0] * ratio) / 2, \
-                     (img1_shape[1] - img0_shape[1] * ratio) / 2
+        padh, padw = (img1_shape[0] - img0_shape[0] * ratio) / 2, (img1_shape[1] - img0_shape[1] * ratio) / 2
     else:
         padh, padw = pad[:]
 
-    coords[:, [0, 2]] -= padw     # x padding
-    coords[:, [1, 3]] -= padh     # y padding
-    coords[:, [0, 2]] /= ratio    # x rescale
-    coords[:, [1, 3]] /= ratio    # y rescale
+    coords[:, [0, 2]] -= padw  # x padding
+    coords[:, [1, 3]] -= padh  # y padding
+    coords[:, [0, 2]] /= ratio  # x rescale
+    coords[:, [1, 3]] /= ratio  # y rescale
     coords = _clip_coords(coords, img0_shape)
     return coords
 
@@ -194,7 +199,9 @@ def _box_iou(box1, box2):
     area2 = box_area(box2.T)
 
     # inter(N,M) = (rb(N,M,2) - lt(N,M,2)).clamp(0).prod(2)
-    inter = (np.minimum(box1[:, None, 2:], box2[:, 2:]) - np.maximum(box1[:, None, :2], box2[:, :2])).clip(0, None).prod(2)
+    inter = (
+        (np.minimum(box1[:, None, 2:], box2[:, 2:]) - np.maximum(box1[:, None, :2], box2[:, :2])).clip(0, None).prod(2)
+    )
     return inter / (area1[:, None] + area2 - inter)  # iou = inter / (area1 + area2 - inter)
 
 

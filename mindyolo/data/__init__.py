@@ -1,7 +1,7 @@
+from . import constants, dataset, loader
+from .constants import *
 from .dataset import *
 from .loader import *
-from .constants import *
-from . import dataset, loader, constants
 
 __all__ = []
 __all__.extend(dataset.__all__)

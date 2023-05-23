@@ -1,7 +1,6 @@
 """MindX SDK Inference"""
 
 import numpy as np
-
 from .model_base import ModelBase
 
 
@@ -15,7 +14,7 @@ class MindXModel(ModelBase):
 
     def _init_model(self):
         global base, Tensor
-        from mindx.sdk import base, Tensor, visionDataFormat
+        from mindx.sdk import Tensor, base, visionDataFormat
 
         base.mx_init()
         self.model = base.model(self.model_path, self.device_id)

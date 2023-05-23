@@ -2,23 +2,21 @@ import numpy as np
 
 import mindspore as ms
 import mindspore.numpy as mnp
-from mindspore import ops, nn, Tensor
+from mindspore import Tensor, nn, ops
 
 from mindyolo.models.registry import register_model
-
-from .focal_loss import smooth_BCE, BCEWithLogitsLoss
+from .focal_loss import BCEWithLogitsLoss, smooth_BCE
 from .iou_loss import bbox_iou
 
-CLIP_VALUE = 1000.
+CLIP_VALUE = 1000.0
 EPS = 1e-7
 
-__all__ = [
-    'YOLOv4Loss',
-]
+__all__ = ["YOLOv4Loss"]
 
 
 class ConfidenceLoss(nn.Cell):
     """Loss for confidence."""
+
     def __init__(self):
         super(ConfidenceLoss, self).__init__()
         self.cross_entropy = ops.SigmoidCrossEntropyWithLogits()
@@ -33,11 +31,7 @@ class ConfidenceLoss(nn.Cell):
 
 @register_model
 class YOLOv4Loss(nn.Cell):
-    def __init__(
-            self,
-            box, obj, cls, label_smoothing, ignore_threshold, iou_threshold,
-            anchors, nc, **kwargs
-    ):
+    def __init__(self, box, obj, cls, label_smoothing, ignore_threshold, iou_threshold, anchors, nc, **kwargs):
         super(YOLOv4Loss, self).__init__()
         self.ignore_threshold = ignore_threshold
         self.iou = Iou()
@@ -45,11 +39,11 @@ class YOLOv4Loss(nn.Cell):
         self.hyp_box = box
         self.hyp_obj = obj
         self.hyp_cls = cls
-        self.nc = nc                    # number of classes
+        self.nc = nc  # number of classes
 
         anchors = np.array(anchors)
         self.na = anchors.shape[0]  # number of anchors
-        self.nl = 3          # number of layers
+        self.nl = 3  # number of layers
 
         self.anchors = Tensor(anchors, ms.float32)  # shape(na,2)
 
@@ -59,7 +53,7 @@ class YOLOv4Loss(nn.Cell):
         self.BCEobj = ConfidenceLoss()
         self.BCEcls = BCEWithLogitsLoss(reduction="sum")
 
-        self.loss_item_name = ['loss', 'lbox', 'lobj', 'lcls']  # branch name returned by lossitem for print
+        self.loss_item_name = ["loss", "lbox", "lobj", "lcls"]  # branch name returned by lossitem for print
 
         self.concat = ops.Concat(axis=-1)
         self.reduce_max = ops.ReduceMax(keep_dims=False)
@@ -68,11 +62,17 @@ class YOLOv4Loss(nn.Cell):
         image_shape = imgs.shape
         gain = get_tensor(image_shape, targets.dtype)[[3, 2]]
         ori_targets = targets.copy()
-        lcls, lbox, lobj = 0., 0., 0.
-        tcls, tbox, indices, anchors, tmasks = self.build_targets(p, targets, imgs)  # class, box, (image, anchor, gridj, gridi), anchors, mask
-        tcls, tbox, indices, anchors, tmasks = ops.stop_gradient(tcls), ops.stop_gradient(tbox), \
-                                               ops.stop_gradient(indices), ops.stop_gradient(anchors), \
-                                               ops.stop_gradient(tmasks)
+        lcls, lbox, lobj = 0.0, 0.0, 0.0
+        tcls, tbox, indices, anchors, tmasks = self.build_targets(
+            p, targets, imgs
+        )  # class, box, (image, anchor, gridj, gridi), anchors, mask
+        tcls, tbox, indices, anchors, tmasks = (
+            ops.stop_gradient(tcls),
+            ops.stop_gradient(tbox),
+            ops.stop_gradient(indices),
+            ops.stop_gradient(anchors),
+            ops.stop_gradient(tmasks),
+        )
 
         # Losses
         for layer_index, yolo_out in enumerate(p):  # layer index, layer predictions
@@ -83,7 +83,7 @@ class YOLOv4Loss(nn.Cell):
 
             pi_shape = pi.shape
             y_true = ops.zeros((pi_shape[0], pi_shape[1], pi_shape[2], pi_shape[3], 1), pi.dtype)
-            y_true[b, gj, gi, a][:, 0] = 1.
+            y_true[b, gj, gi, a][:, 0] = 1.0
 
             n = b.shape[0]  # number of targets
             if n:
@@ -118,7 +118,7 @@ class YOLOv4Loss(nn.Cell):
             ignore_mask = ops.ExpandDims()(ignore_mask, -1)
             ignore_mask = ops.stop_gradient(ignore_mask)
             object_mask = y_true[:, :, :, :, 0:1]
-            lobj += self.BCEobj(object_mask, pi[:, :, :, :, 4:5], ignore_mask) # obj loss
+            lobj += self.BCEobj(object_mask, pi[:, :, :, :, 4:5], ignore_mask)  # obj loss
 
         lbox *= self.hyp_box
         lobj *= self.hyp_obj
@@ -139,7 +139,9 @@ class YOLOv4Loss(nn.Cell):
         gain_wh = ops.ones(7, ms.int32)  # normalized to gridspace gain
         ai = ops.tile(mnp.arange(na).view(-1, 1), (1, nt))  # shape: (na, nt)
         ai = ops.cast(ai, targets.dtype)
-        targets_9_anchors = ops.concat((ops.tile(targets, (na, 1, 1)), ai[:, :, None]), 2)  # append anchor indices # shape: (na, nt, 7)
+        targets_9_anchors = ops.concat(
+            (ops.tile(targets, (na, 1, 1)), ai[:, :, None]), 2
+        )  # append anchor indices # shape: (na, nt, 7)
 
         gain_wh[4:6] = get_tensor(image_shape, targets_9_anchors.dtype)[[3, 2]]  # xyxy gain
 
@@ -172,9 +174,11 @@ class YOLOv4Loss(nn.Cell):
             t = t.view(-1, 7)
 
             # Define
-            b, gxy, a = ops.cast(t[:, 0], ms.int32), \
-                                t[:, 2:4], \
-                                ops.cast(t[:, 6], ms.int32)  # (image, class), grid xy, grid wh, anchors
+            b, gxy, a = (
+                ops.cast(t[:, 0], ms.int32),
+                t[:, 2:4],
+                ops.cast(t[:, 6], ms.int32),
+            )  # (image, class), grid xy, grid wh, anchors
             gij = ops.cast(gxy, ms.int32)
             gij = gij[:]
             gi, gj = gij[:, 0], gij[:, 1]  # grid indices
@@ -190,11 +194,13 @@ class YOLOv4Loss(nn.Cell):
         tcls = ops.cast(targets_3_anchors[:, 1], ms.int32)  # class
         tbox = targets_3_anchors[:, 2:6]  # box
 
-        return tcls, \
-               tbox, \
-               ops.stack(indices), \
-               ops.stack(anch), \
-               ops.stack(tmasks) # class, box, (image, anchor, gridj, gridi), anchors, mask
+        return (
+            tcls,
+            tbox,
+            ops.stack(indices),
+            ops.stack(anch),
+            ops.stack(tmasks),
+        )  # class, box, (image, anchor, gridj, gridi), anchors, mask
 
 
 def xywh2xyxy(x):
@@ -214,6 +220,7 @@ def get_tensor(x, dtype=ms.float32):
 
 class Iou(nn.Cell):
     """Calculate the iou of boxes"""
+
     def __init__(self):
         super(Iou, self).__init__()
         self.min = ops.Minimum()
@@ -227,8 +234,8 @@ class Iou(nn.Cell):
         """
         box1_xy = box1[:, :, :, :, :, :2]
         box1_wh = box1[:, :, :, :, :, 2:4]
-        box1_mins = box1_xy - box1_wh / ops.scalar_to_tensor(2.0) # topLeft
-        box1_maxs = box1_xy + box1_wh / ops.scalar_to_tensor(2.0) # rightDown
+        box1_mins = box1_xy - box1_wh / ops.scalar_to_tensor(2.0)  # topLeft
+        box1_maxs = box1_xy + box1_wh / ops.scalar_to_tensor(2.0)  # rightDown
 
         box2_xy = box2[:, :, :, :, :, :2]
         box2_wh = box2[:, :, :, :, :, 2:4]
@@ -239,8 +246,9 @@ class Iou(nn.Cell):
         intersect_maxs = self.min(box1_maxs, box2_maxs)
         intersect_wh = self.max(intersect_maxs - intersect_mins, ops.scalar_to_tensor(0.0))
         # P.squeeze: for effiecient slice
-        intersect_area = ops.Squeeze(-1)(intersect_wh[:, :, :, :, :, 0:1]) * \
-                         ops.Squeeze(-1)(intersect_wh[:, :, :, :, :, 1:2])
+        intersect_area = ops.Squeeze(-1)(intersect_wh[:, :, :, :, :, 0:1]) * ops.Squeeze(-1)(
+            intersect_wh[:, :, :, :, :, 1:2]
+        )
         box1_area = ops.Squeeze(-1)(box1_wh[:, :, :, :, :, 0:1]) * ops.Squeeze(-1)(box1_wh[:, :, :, :, :, 1:2])
         box2_area = ops.Squeeze(-1)(box2_wh[:, :, :, :, :, 0:1]) * ops.Squeeze(-1)(box2_wh[:, :, :, :, :, 1:2])
         iou = intersect_area / (box1_area + box2_area - intersect_area)
@@ -248,13 +256,16 @@ class Iou(nn.Cell):
         return iou
 
 
-if __name__ == '__main__':
-    from mindyolo.utils.config import parse_config
+if __name__ == "__main__":
     from mindyolo.models.losses.loss_factory import create_loss
+    from mindyolo.utils.config import parse_config
+
     cfg = parse_config()
-    loss_fn = create_loss(name='YOLOv7Loss',
-                          **cfg.loss,
-                          anchors=cfg.network.get('anchors', None),
-                          stride=cfg.network.get('stride', None),
-                          nc=cfg.data.get('nc', None))
+    loss_fn = create_loss(
+        name="YOLOv7Loss",
+        **cfg.loss,
+        anchors=cfg.network.get("anchors", None),
+        stride=cfg.network.get("stride", None),
+        nc=cfg.data.get("nc", None),
+    )
     print(f"loss_fn is {loss_fn}")

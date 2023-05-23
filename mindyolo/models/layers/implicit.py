@@ -1,6 +1,8 @@
 import numpy as np
+
 import mindspore as ms
-from mindspore import nn, Tensor, Parameter
+from mindspore import Parameter, Tensor, nn
+
 
 class ImplicitA(nn.Cell):
     """
@@ -10,7 +12,7 @@ class ImplicitA(nn.Cell):
         subsequent convolutional layer.
     """
 
-    def __init__(self, channel, mean=0., std=.02):
+    def __init__(self, channel, mean=0.0, std=0.02):
         super(ImplicitA, self).__init__()
         self.channel = channel
         self.mean = mean
@@ -29,7 +31,7 @@ class ImplicitM(nn.Cell):
         subsequent convolutional layer.
     """
 
-    def __init__(self, channel, mean=0., std=.02):
+    def __init__(self, channel, mean=0.0, std=0.02):
         super(ImplicitM, self).__init__()
         self.channel = channel
         self.mean = mean

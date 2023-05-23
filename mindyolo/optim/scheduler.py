@@ -1,10 +1,7 @@
 import math
 import numpy as np
 
-__all__ = [
-    'create_lr_scheduler',
-    'create_warmup_momentum_scheduler'
-]
+__all__ = ["create_lr_scheduler", "create_warmup_momentum_scheduler"]
 
 
 def create_lr_scheduler(lr_init, lr_scheduler=None, by_epoch=True, **kwargs):
@@ -19,19 +16,23 @@ def create_lr_scheduler(lr_init, lr_scheduler=None, by_epoch=True, **kwargs):
     """
 
     if lr_scheduler:
-        assert isinstance(lr_scheduler, str), f'lr_scheduler should be a string, but got {type(lr_scheduler)}'
+        assert isinstance(lr_scheduler, str), f"lr_scheduler should be a string, but got {type(lr_scheduler)}"
         if lr_scheduler == "yolox":
             return create_yolox_lr_scheduler(lr_init=lr_init, by_epoch=by_epoch, **kwargs)
     else:
         return lr_init
 
 
-def create_yolox_lr_scheduler(start_factor, end_factor, lr_init, steps_per_epoch, warmup_epochs, epochs, by_epoch, **kwargs):
+def create_yolox_lr_scheduler(
+    start_factor, end_factor, lr_init, steps_per_epoch, warmup_epochs, epochs, by_epoch, **kwargs
+):
     # quadratic
     lrs_qua = quadratic_lr(0.01, start_factor, lr_init, steps_per_epoch, epochs=warmup_epochs, by_epoch=by_epoch)
     # cosine
     cosine_epochs = epochs - warmup_epochs
-    lrs_cos = cosine_decay_lr(start_factor, end_factor, lr_init, steps_per_epoch, epochs=cosine_epochs, by_epoch=by_epoch)
+    lrs_cos = cosine_decay_lr(
+        start_factor, end_factor, lr_init, steps_per_epoch, epochs=cosine_epochs, by_epoch=by_epoch
+    )
     lrs = lrs_qua + lrs_cos
     return lrs
 
@@ -51,8 +52,9 @@ def quadratic_lr(start_factor, end_factor, lr_init, steps_per_epoch, epochs, by_
     return lrs
 
 
-def create_warmup_momentum_scheduler(steps_per_epoch, momentum=None, warmup_momentum=None,
-                                     warmup_epochs=None, min_warmup_step=None, **kwargs):
+def create_warmup_momentum_scheduler(
+    steps_per_epoch, momentum=None, warmup_momentum=None, warmup_epochs=None, min_warmup_step=None, **kwargs
+):
     """
     Create warmup momentum scheduler.
 
@@ -154,9 +156,18 @@ def cosine_decay_lr(start_factor, end_factor, lr_init, steps_per_epoch, epochs, 
     return lrs
 
 
-def cosine_decay_lr_with_linear_warmup(warmup_epochs, warmup_lrs,
-                                       start_factor, end_factor, lr_init, steps_per_epoch, epochs,
-                                       min_warmup_step=1000, t_max=None, **kwargs):
+def cosine_decay_lr_with_linear_warmup(
+    warmup_epochs,
+    warmup_lrs,
+    start_factor,
+    end_factor,
+    lr_init,
+    steps_per_epoch,
+    epochs,
+    min_warmup_step=1000,
+    t_max=None,
+    **kwargs,
+):
     """
     Args:
         warmup_epochs (Union[int, tuple[int]]): The warmup epochs of the lr scheduler.
@@ -191,15 +202,18 @@ def cosine_decay_lr_with_linear_warmup(warmup_epochs, warmup_lrs,
         raise ValueError
 
     if isinstance(warmup_lrs, float):
-        warmup_lrs = [warmup_lrs,]
+        warmup_lrs = [
+            warmup_lrs,
+        ]
     elif isinstance(warmup_lrs, (list, tuple)):
-        if warmup_lrs[-1] in ('None', 'none', None):
+        if warmup_lrs[-1] in ("None", "none", None):
             warmup_lrs = warmup_lrs[:-1]
     else:
         raise ValueError
 
-    assert len(warmup_epochs) == len(warmup_lrs) + 1, \
-        "LRScheduler: The length of 'warmup_epochs' and 'warmup_lrs' is inconsistent"
+    assert (
+        len(warmup_epochs) == len(warmup_lrs) + 1
+    ), "LRScheduler: The length of 'warmup_epochs' and 'warmup_lrs' is inconsistent"
 
     lrs = cosine_decay_lr(start_factor, end_factor, lr_init, steps_per_epoch, epochs, t_max)
     warmup_steps = [min(i * steps_per_epoch, len(lrs)) for i in warmup_epochs]

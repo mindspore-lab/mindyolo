@@ -2,25 +2,20 @@ import numpy as np
 
 import mindspore as ms
 import mindspore.numpy as mnp
-from mindspore import ops, nn, Tensor, Parameter
+from mindspore import Parameter, Tensor, nn, ops
 
 from mindyolo.models.registry import register_model
-
-from .focal_loss import FocalLoss, BCEWithLogitsLoss, smooth_BCE
+from .focal_loss import BCEWithLogitsLoss, FocalLoss, smooth_BCE
 from .iou_loss import bbox_iou
 
-__all__ = [
-    'YOLOv5Loss',
-]
+__all__ = ["YOLOv5Loss"]
 
 
 @register_model
 class YOLOv5Loss(nn.Cell):
     # Compute losses
     def __init__(
-            self,
-            box, obj, cls, anchor_t, label_smoothing, fl_gamma, cls_pw, obj_pw,
-            anchors, stride, nc, **kwargs
+        self, box, obj, cls, anchor_t, label_smoothing, fl_gamma, cls_pw, obj_pw, anchors, stride, nc, **kwargs
     ):
         super(YOLOv5Loss, self).__init__()
 
@@ -44,8 +39,9 @@ class YOLOv5Loss(nn.Cell):
         # Focal loss
         g = fl_gamma  # focal loss gamma
         if g > 0:
-            BCEcls, BCEobj = FocalLoss(bce_pos_weight=Tensor([cls_pw], ms.float32), gamma=g), \
-                             FocalLoss(bce_pos_weight=Tensor([obj_pw], ms.float32), gamma=g)
+            BCEcls, BCEobj = FocalLoss(bce_pos_weight=Tensor([cls_pw], ms.float32), gamma=g), FocalLoss(
+                bce_pos_weight=Tensor([obj_pw], ms.float32), gamma=g
+            )
         else:
             # Define criteria
             BCEcls = BCEWithLogitsLoss(bce_pos_weight=Tensor(np.array([cls_pw]), ms.float32))
@@ -55,16 +51,19 @@ class YOLOv5Loss(nn.Cell):
         self.balance = Parameter(Tensor(_balance, ms.float32), requires_grad=False)
         self.BCEcls, self.BCEobj, self.gr = BCEcls, BCEobj, 1.0
 
-        self._off = Tensor([
-            [0, 0],
-            [1, 0],
-            [0, 1],
-            [-1, 0],
-            [0, -1],  # j,k,l,m
-            # [1, 1], [1, -1], [-1, 1], [-1, -1],  # jk,jm,lk,lm
-        ], dtype=ms.float32)
+        self._off = Tensor(
+            [
+                [0, 0],
+                [1, 0],
+                [0, 1],
+                [-1, 0],
+                [0, -1],  # j,k,l,m
+                # [1, 1], [1, -1], [-1, 1], [-1, -1],  # jk,jm,lk,lm
+            ],
+            dtype=ms.float32,
+        )
 
-        self.loss_item_name = ['loss', 'lbox', 'lobj', 'lcls']  # branch name returned by loss for print
+        self.loss_item_name = ["loss", "lbox", "lobj", "lcls"]  # branch name returned by loss for print
 
     def scatter_index_tensor(self, x, index):
         x_tmp = ops.transpose(x.reshape((-1, x.shape[-1])), (1, 0))
@@ -72,13 +71,18 @@ class YOLOv5Loss(nn.Cell):
         return res
 
     def construct(self, p, targets, imgs):  # predictions, targets
-        lcls, lbox, lobj = 0., 0., 0.
+        lcls, lbox, lobj = 0.0, 0.0, 0.0
 
-        tcls, tbox, indices, anchors, tmasks = self.build_targets(p,
-                                                                  targets)  # class, box, (image, anchor, gridj, gridi), anchors, mask
-        tcls, tbox, indices, anchors, tmasks = ops.stop_gradient(tcls), ops.stop_gradient(tbox), \
-                                               ops.stop_gradient(indices), ops.stop_gradient(anchors), \
-                                               ops.stop_gradient(tmasks)
+        tcls, tbox, indices, anchors, tmasks = self.build_targets(
+            p, targets
+        )  # class, box, (image, anchor, gridj, gridi), anchors, mask
+        tcls, tbox, indices, anchors, tmasks = (
+            ops.stop_gradient(tcls),
+            ops.stop_gradient(tbox),
+            ops.stop_gradient(indices),
+            ops.stop_gradient(anchors),
+            ops.stop_gradient(tmasks),
+        )
 
         # Losses
         for layer_index, pi in enumerate(p):  # layer index, layer predictions
@@ -138,8 +142,9 @@ class YOLOv5Loss(nn.Cell):
         gain = ops.ones(7, ms.int32)  # normalized to gridspace gain
         ai = ops.tile(mnp.arange(na).view(-1, 1), (1, nt))  # shape: (na, nt)
         ai = ops.cast(ai, targets.dtype)
-        targets = ops.concat((ops.tile(targets, (na, 1, 1)), ai[:, :, None]),
-                             2)  # append anchor indices # shape: (na, nt, 7)
+        targets = ops.concat(
+            (ops.tile(targets, (na, 1, 1)), ai[:, :, None]), 2
+        )  # append anchor indices # shape: (na, nt, 7)
 
         g = 0.5  # bias
         off = ops.cast(self._off, targets.dtype) * g  # offsets
@@ -165,7 +170,7 @@ class YOLOv5Loss(nn.Cell):
             j, k = jk[:, 0], jk[:, 1]
             l, m = lm[:, 0], lm[:, 1]
 
-            # # Original
+            # Original
             # j = ops.stack((ops.ones_like(j), j, k, l, m)) # shape: (5, *)
             # t = ops.tile(t, (5, 1, 1)) # shape(5, *, 7)
             # t = t.view(-1, 7)
@@ -174,7 +179,7 @@ class YOLOv5Loss(nn.Cell):
             # offsets = (ops.zeros_like(gxy)[None, :, :] + off[:, None, :]) #(1,*,2) + (5,1,2) -> (5,*,2)
             # offsets = offsets.view(-1, 2)
 
-            # faster,
+            # Faster
             tag1, tag2 = ops.identity(j), ops.identity(k)
             tag1, tag2 = ops.tile(tag1[:, None], (1, 2)), ops.tile(tag2[:, None], (1, 2))
             j_l = ops.logical_or(j, l).astype(ms.int32)
@@ -184,7 +189,7 @@ class YOLOv5Loss(nn.Cell):
             t = ops.tile(t, (3, 1, 1))  # shape(5, *, 7)
             t = t.view(-1, 7)
             mask_m_t = (ops.cast(j, ms.int32) * ops.cast(mask_m_t[None, :], ms.int32)).view(-1)
-            offsets = (ops.zeros_like(gxy)[None, :, :] + off[:, None, :])  # (1,*,2) + (5,1,2) -> (5,na*nt,2)
+            offsets = ops.zeros_like(gxy)[None, :, :] + off[:, None, :]  # (1,*,2) + (5,1,2) -> (5,na*nt,2)
             offsets_new = ops.zeros((3,) + offsets.shape[1:], offsets.dtype)
             offsets_new[1:2, :, :] = ops.select(tag1.astype(ms.bool_), offsets[1, :, :], offsets[3, :, :])
             offsets_new[2:3, :, :] = ops.select(tag2.astype(ms.bool_), offsets[2, :, :], offsets[4, :, :])
@@ -192,11 +197,13 @@ class YOLOv5Loss(nn.Cell):
             offsets = offsets.view(-1, 2)
 
             # Define
-            b, c, gxy, gwh, a = ops.cast(t[:, 0], ms.int32), \
-                                ops.cast(t[:, 1], ms.int32), \
-                                t[:, 2:4], \
-                                t[:, 4:6], \
-                                ops.cast(t[:, 6], ms.int32)  # (image, class), grid xy, grid wh, anchors
+            b, c, gxy, gwh, a = (
+                ops.cast(t[:, 0], ms.int32),
+                ops.cast(t[:, 1], ms.int32),
+                t[:, 2:4],
+                t[:, 4:6],
+                ops.cast(t[:, 6], ms.int32),
+            )  # (image, class), grid xy, grid wh, anchors
             gij = ops.cast(gxy - offsets, ms.int32)
             gij = gij[:]
             gi, gj = gij[:, 0], gij[:, 1]  # grid indices
@@ -210,11 +217,13 @@ class YOLOv5Loss(nn.Cell):
             tcls += (c,)  # class
             tmasks += (mask_m_t,)
 
-        return ops.stack(tcls), \
-               ops.stack(tbox), \
-               ops.stack(indices), \
-               ops.stack(anch), \
-               ops.stack(tmasks)  # class, box, (image, anchor, gridj, gridi), anchors, mask
+        return (
+            ops.stack(tcls),
+            ops.stack(tbox),
+            ops.stack(indices),
+            ops.stack(anch),
+            ops.stack(tmasks),
+        )  # class, box, (image, anchor, gridj, gridi), anchors, mask
 
 
 @ops.constexpr

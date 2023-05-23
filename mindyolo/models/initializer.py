@@ -1,32 +1,29 @@
 import math
+
 from mindspore import nn
 from mindspore.common import initializer as init
 
-__all__ = ['initialize_defult']
+__all__ = ["initialize_defult"]
 
 
 def initialize_defult(model):
     for _, cell in model.cells_and_names():
         if isinstance(cell, nn.Conv2d):
-            cell.weight.set_data(init.initializer(init.HeUniform(negative_slope=math.sqrt(5)),
-                                                  cell.weight.shape,
-                                                  cell.weight.dtype))
+            cell.weight.set_data(
+                init.initializer(init.HeUniform(negative_slope=math.sqrt(5)), cell.weight.shape, cell.weight.dtype)
+            )
             if cell.bias is not None:
                 fan_in, _ = _calculate_fan_in_and_fan_out(cell.weight.shape)
                 bound = 1 / math.sqrt(fan_in)
-                cell.bias.set_data(init.initializer(init.Uniform(bound),
-                                                    cell.bias.shape,
-                                                    cell.bias.dtype))
+                cell.bias.set_data(init.initializer(init.Uniform(bound), cell.bias.shape, cell.bias.dtype))
         elif isinstance(cell, nn.Dense):
-            cell.weight.set_data(init.initializer(init.HeUniform(negative_slope=math.sqrt(5)),
-                                                  cell.weight.shape,
-                                                  cell.weight.dtype))
+            cell.weight.set_data(
+                init.initializer(init.HeUniform(negative_slope=math.sqrt(5)), cell.weight.shape, cell.weight.dtype)
+            )
             if cell.bias is not None:
                 fan_in, _ = _calculate_fan_in_and_fan_out(cell.weight.shape)
                 bound = 1 / math.sqrt(fan_in)
-                cell.bias.set_data(init.initializer(init.Uniform(bound),
-                                                    cell.bias.shape,
-                                                    cell.bias.dtype))
+                cell.bias.set_data(init.initializer(init.Uniform(bound), cell.bias.shape, cell.bias.dtype))
 
 
 def _calculate_fan_in_and_fan_out(shape):

@@ -1,7 +1,5 @@
 """MindSpore Lite Inference"""
 
-import numpy as np
-
 from .model_base import ModelBase
 
 
@@ -17,7 +15,7 @@ class LiteModel(ModelBase):
         import mindspore_lite as mslite
 
         context = mslite.Context()
-        context.target = ['ascend']
+        context.target = ["ascend"]
         context.ascend.device_id = self.device_id
 
         self.model = mslite.Model()

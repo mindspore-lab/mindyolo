@@ -1,29 +1,21 @@
 import numpy as np
 
 import mindspore as ms
-from mindspore import nn, Tensor
+from mindspore import Tensor, nn
 
+from .heads.yolov8_head import YOLOv8Head
+from .initializer import initialize_defult
 from .model_factory import build_model_from_cfg
 from .registry import register_model
-from .initializer import initialize_defult
-from .heads.yolov8_head import YOLOv8Head
 
-__all__ = [
-    'YOLOv8',
-    'yolov8'
-]
+__all__ = ["YOLOv8", "yolov8"]
 
 
-def _cfg(url='', **kwargs):
-    return {
-        'url': url,
-        **kwargs
-    }
+def _cfg(url="", **kwargs):
+    return {"url": url, **kwargs}
 
 
-default_cfgs = {
-    'yolov8': _cfg(url='')
-}
+default_cfgs = {"yolov8": _cfg(url="")}
 
 
 class YOLOv8(nn.Cell):
@@ -57,7 +49,7 @@ class YOLOv8(nn.Cell):
 @register_model
 def yolov8(cfg, in_channels=3, num_classes=None, **kwargs) -> YOLOv8:
     """Get GoogLeNet model.
-     Refer to the base class `models.GoogLeNet` for more details."""
+    Refer to the base class `models.GoogLeNet` for more details."""
     model = YOLOv8(cfg=cfg, in_channels=in_channels, num_classes=num_classes, **kwargs)
     return model
 
@@ -65,14 +57,17 @@ def yolov8(cfg, in_channels=3, num_classes=None, **kwargs) -> YOLOv8:
 # TODO: Preset pre-training model for yolov8-n
 
 
-if __name__ == '__main__':
-    from mindyolo.utils.config import parse_config
+if __name__ == "__main__":
     from mindyolo.models.model_factory import create_model
+    from mindyolo.utils.config import parse_config
+
     opt = parse_config()
-    model = create_model(model_name='yolov8',
-                         model_cfg=opt.net,
-                         num_classes=opt.data.nc,
-                         sync_bn=opt.sync_bn if hasattr(opt, 'sync_bn') else False)
+    model = create_model(
+        model_name="yolov8",
+        model_cfg=opt.net,
+        num_classes=opt.data.nc,
+        sync_bn=opt.sync_bn if hasattr(opt, "sync_bn") else False,
+    )
     x = Tensor(np.random.randn(1, 3, 640, 640), ms.float32)
     out = model(x)
     out = out[0] if isinstance(out, (list, tuple)) else out

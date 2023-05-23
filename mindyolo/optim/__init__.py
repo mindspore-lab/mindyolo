@@ -1,8 +1,8 @@
+from . import ema, group_params, optim_factory, scheduler
 from .ema import *
 from .group_params import *
-from .scheduler import *
 from .optim_factory import *
-from . import ema, group_params, scheduler, optim_factory
+from .scheduler import *
 
 __all__ = []
 __all__.extend(ema.__all__)

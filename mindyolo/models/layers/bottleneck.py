@@ -5,7 +5,9 @@ from .conv import ConvNormAct, DWConvNormAct
 
 class Bottleneck(nn.Cell):
     # Standard bottleneck
-    def __init__(self, c1, c2, shortcut=True, k=(1, 3), g=(1, 1), e=0.5, act=True, momentum=0.97, eps=1e-3, sync_bn=False):  # ch_in, ch_out, shortcut, kernels, groups, expand
+    def __init__(
+        self, c1, c2, shortcut=True, k=(1, 3), g=(1, 1), e=0.5, act=True, momentum=0.97, eps=1e-3, sync_bn=False
+    ):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
         self.conv1 = ConvNormAct(c1, c_, k[0], 1, g=g[0], act=act, momentum=momentum, eps=eps, sync_bn=sync_bn)
@@ -21,7 +23,9 @@ class Bottleneck(nn.Cell):
 
 
 class Residualblock(nn.Cell):
-    def __init__(self, c1, c2, k=(1, 3), g=(1, 1), momentum=0.97, eps=1e-3, sync_bn=False):  # ch_in, ch_out, kernels, groups, expand
+    def __init__(
+        self, c1, c2, k=(1, 3), g=(1, 1), momentum=0.97, eps=1e-3, sync_bn=False
+    ):  # ch_in, ch_out, kernels, groups, expand
         super().__init__()
         self.conv1 = ConvNormAct(c1, c2, k[0], 1, g=g[0], momentum=momentum, eps=eps, sync_bn=sync_bn)
         self.conv2 = ConvNormAct(c2, c2, k[1], 1, g=g[1], momentum=momentum, eps=eps, sync_bn=sync_bn)
@@ -40,7 +44,11 @@ class C3(nn.Cell):
         self.conv2 = ConvNormAct(c1, c_, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
         self.conv3 = ConvNormAct(2 * c_, c2, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)  # act=FReLU(c2)
         self.m = nn.SequentialCell(
-            [Bottleneck(c_, c_, shortcut, k=(1, 3), e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn) for _ in range(n)])
+            [
+                Bottleneck(c_, c_, shortcut, k=(1, 3), e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn)
+                for _ in range(n)
+            ]
+        )
         self.concat = ops.Concat(axis=1)
 
     def construct(self, x):
@@ -55,14 +63,21 @@ class C3(nn.Cell):
 
 class C2f(nn.Cell):
     # CSP Bottleneck with 2 convolutions
-    def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5, momentum=0.97, eps=1e-3, sync_bn=False):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(
+        self, c1, c2, n=1, shortcut=False, g=1, e=0.5, momentum=0.97, eps=1e-3, sync_bn=False
+    ):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         _c = int(c2 * e)  # hidden channels
         self.cv1 = ConvNormAct(c1, 2 * _c, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
-        self.cv2 = ConvNormAct((2 + n) * _c, c2, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)  # optional act=FReLU(c2)
-        self.m = nn.CellList([
-            Bottleneck(_c, _c, shortcut, k=(3, 3), g=(1, g), e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn) for _ in range(n)
-        ])
+        self.cv2 = ConvNormAct(
+            (2 + n) * _c, c2, 1, momentum=momentum, eps=eps, sync_bn=sync_bn
+        )  # optional act=FReLU(c2)
+        self.m = nn.CellList(
+            [
+                Bottleneck(_c, _c, shortcut, k=(3, 3), g=(1, g), e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn)
+                for _ in range(n)
+            ]
+        )
 
     def construct(self, x):
         y = ()
@@ -79,7 +94,9 @@ class C2f(nn.Cell):
 
 class DWBottleneck(nn.Cell):
     # depthwise bottleneck used in yolox nano scale
-    def __init__(self, c1, c2, shortcut=True, k=(1, 3), e=0.5, act=True, momentum=0.97, eps=1e-3, sync_bn=False):  # ch_in, ch_out, shortcut, groups, kernels, expand
+    def __init__(
+        self, c1, c2, shortcut=True, k=(1, 3), e=0.5, act=True, momentum=0.97, eps=1e-3, sync_bn=False
+    ):  # ch_in, ch_out, shortcut, groups, kernels, expand
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
         self.conv1 = ConvNormAct(c1, c_, k[0], 1, act=True, momentum=momentum, eps=eps, sync_bn=sync_bn)
@@ -103,7 +120,11 @@ class DWC3(nn.Cell):
         self.conv2 = ConvNormAct(c1, c_, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
         self.conv3 = ConvNormAct(2 * c_, c2, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)  # act=FReLU(c2)
         self.m = nn.SequentialCell(
-            [DWBottleneck(c_, c_, shortcut, k=(1, 3), e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn) for _ in range(n)])
+            [
+                DWBottleneck(c_, c_, shortcut, k=(1, 3), e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn)
+                for _ in range(n)
+            ]
+        )
         self.concat = ops.Concat(axis=1)
 
     def construct(self, x):

@@ -1,5 +1,6 @@
 import mindspore as ms
 
+
 # TODO: Delete this code when publish
 def compare_version(v1, v2="2.0.0"):
     """
@@ -24,6 +25,7 @@ def compare_version(v1, v2="2.0.0"):
     else:
         return 1
 
+
 if compare_version(ms.__version__) < 0:
     from mindspore import context, ops
 
@@ -38,7 +40,6 @@ if compare_version(ms.__version__) < 0:
         _status = None
     _hypermap = ops.HyperMap()
     _partial = ops.Partial()
-
 
     def _is_finite(inputs):
         if _gpu_target:
@@ -56,5 +57,6 @@ if compare_version(ms.__version__) < 0:
             return status_finite
         outputs = _hypermap(_partial(_is_finite), inputs)
         return ops.stack(outputs).all()
+
 else:
     from mindspore.amp import all_finite
