@@ -4,11 +4,11 @@ __BASE__: [
   './yolox-s-2nd.yaml'
 ]
 
-weight: ./runs/2023.04.28-17:46:25/weights/yolox-darknet53-285_1848.ckpt
-ema_weight: ./runs/2023.04.28-17:46:25/weights/EMA_yolox-darknet53-285_1848.ckpt
+weight: ./runs/exp_name/weights/yolox-darknet53-285_1848.ckpt
+ema_weight: ./runs/exp_name/weights/EMA_yolox-darknet53-285_1848.ckpt
 
 optimizer:
-  checkpoint_path: ./runs/2023.04.28-17:46:25/weights/optim_yolox-darknet53.ckpt
+  checkpoint_path: ./runs/exp_name/weights/optim_yolox-darknet53.ckpt
 
 network:
   depth_multiple: 1.0

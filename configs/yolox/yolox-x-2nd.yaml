@@ -4,11 +4,11 @@ __BASE__: [
   './yolox-s-2nd.yaml'
 ]
 
-weight: ./runs/2023.04.24-09:35:19/weights/yolox-s-285_1848.ckpt
-ema_weight: ./runs/2023.04.24-09:35:19/weights/EMA_yolox-s-285_1848.ckpt
+weight: ./runs/exp_name/weights/yolox-s-285_1848.ckpt
+ema_weight: ./runs/exp_name/weights/EMA_yolox-s-285_1848.ckpt
 
 optimizer:
-  checkpoint_path: ./runs/2023.04.24-09:35:19/weights/optim_yolox-s.ckpt
+  checkpoint_path: ./runs/exp_name/weights/optim_yolox-s.ckpt
 
 network:
   depth_multiple: 1.33
