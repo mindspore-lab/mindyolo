@@ -66,6 +66,11 @@ to understand their behavior. Some common arguments are:
 * For more options, see `train/test.py -h`.
 
 
+### Deployment
+
+See [here](./deploy/README.md).
+
+
 ### To use MindYOLO APIs in Your Code
 
 To be supplemented.

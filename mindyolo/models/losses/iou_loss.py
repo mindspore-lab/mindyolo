@@ -60,7 +60,6 @@ def box_iou(box1, box2):
     inter = ops.minimum(box1[..., 2:], box2[..., 2:]) - ops.maximum(box1[..., :2], box2[..., :2])
     inter = inter.clip(0.0, None)
     inter = inter[:, :, 0] * inter[:, :, 1]
-    # zhy_test
     return inter / (area1[:, None] + area2[None, :] - inter).clip(EPS, None)  # iou = inter / (area1 + area2 - inter)
 
 

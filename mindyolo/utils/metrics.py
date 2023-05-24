@@ -152,7 +152,6 @@ def _nms(xyxys, scores, threshold):
     x2 = xyxys[:, 2]
     y2 = xyxys[:, 3]
     scores = scores
-    # zhy_test
     # areas = (x2 - x1 + 1) * (y2 - y1 + 1)
     areas = (x2 - x1) * (y2 - y1)
     order = scores.argsort()[::-1]
@@ -165,7 +164,6 @@ def _nms(xyxys, scores, threshold):
         min_x2 = np.minimum(x2[i], x2[order[1:]])
         min_y2 = np.minimum(y2[i], y2[order[1:]])
 
-        # zhy_test
         # intersect_w = np.maximum(0.0, min_x2 - max_x1 + 1)
         # intersect_h = np.maximum(0.0, min_y2 - max_y1 + 1)
         intersect_w = np.maximum(0.0, min_x2 - max_x1)
