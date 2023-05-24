@@ -8,7 +8,7 @@ This document provides a brief introduction to the usage of built-in command-lin
   [model zoo](MODEL_ZOO.md),
   such as, `./configs/yolov7/yolov7.yaml`.
 2. Download the corresponding pre-trained checkpoint from the [model zoo](MODEL_ZOO.md) of each model.
-3. To run YOLO object detection with the built-in configs, please run::
+3. To run YOLO object detection with the built-in configs, please run:
 
 ```
 # Run with Ascend (By default)
