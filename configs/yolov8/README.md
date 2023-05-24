@@ -11,10 +11,13 @@ Ultralytics YOLOv8, developed by Ultralytics, is a cutting-edge, state-of-the-ar
 
 <div align="center">
 
-| Name   | Scale | Arch | Context  | ImageSize | Dataset      | Box mAP (%) | Params | FLOPs   | Recipe                                                                                    | Download                                                                                              |
-|--------|-------|------|----------|-----------|--------------|-------------|--------|---------|-------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| YOLOv8 | N     | P5   | D910x8-G | 640       | MS COCO 2017 | 37.2        | 3.2M   | 8.7G    | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov8/yolov8n.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-n_500e_mAP372-cc07f5bd.ckpt)  |
-| YOLOv8 | X     | P5   | D910x8-G | 640       | MS COCO 2017 | 53.7        | 68.2M  | 257.8G  | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov8/yolov8x.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-x_500e_mAP537-b958e1c7.ckpt)  |
+| Name   | Scale | Arch | Context  | ImageSize | Dataset      | Box mAP (%) | Params | FLOPs  | Recipe                                                                                    | Download                                                                                              |
+|--------|-------|------|----------|-----------|--------------|-------------|--------|--------|-------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| YOLOv8 | N     | P5   | D910x8-G | 640       | MS COCO 2017 | 37.2        | 3.2M   | 8.7G   | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov8/yolov8n.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-n_500e_mAP372-cc07f5bd.ckpt)  |
+| YOLOv8 | S     | P5   | D910x8-G | 640       | MS COCO 2017 | 44.6        | 11.2M  | 28.6G  | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov8/yolov8s.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-s_500e_mAP446-3086f0c9.ckpt)  |
+| YOLOv8 | M     | P5   | D910x8-G | 640       | MS COCO 2017 | 50.5        | 25.9M  | 78.9G  | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov8/yolov8m.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-m_500e_mAP505-8ff7a728.ckpt)  |
+| YOLOv8 | L     | P5   | D910x8-G | 640       | MS COCO 2017 | 52.8        | 43.7M  | 165.2G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov8/yolov8l.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-l_500e_mAP528-6e96d6bb.ckpt)  |
+| YOLOv8 | X     | P5   | D910x8-G | 640       | MS COCO 2017 | 53.7        | 68.2M  | 257.8G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov8/yolov8x.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-x_500e_mAP537-b958e1c7.ckpt)  |
 
 </div>
 <br>
@@ -66,6 +69,10 @@ To validate the accuracy of the trained model, you can use `test.py` and parse t
 ```
 python test.py --config ./configs/yolov8/yolov8n.yaml --device_target Ascend --weight /PATH/TO/WEIGHT.ckpt
 ```
+
+### Deployment
+
+See [here](./deploy/README.md).
 
 ## References
 

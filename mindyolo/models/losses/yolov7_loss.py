@@ -153,7 +153,6 @@ class YOLOv7Loss(nn.Cell):
             _this_anch = anch[i].view(3 * na, batch_size, n_gt_max * 2).transpose(1, 0, 2).view(-1, 2)
             _this_mask = tmasks[i].view(3 * na, batch_size, n_gt_max).transpose(1, 0, 2).view(-1)
 
-            # zhy_test
             _this_indices *= _this_mask[None, :]
             _this_anch *= _this_mask[:, None]
 
@@ -262,13 +261,11 @@ class YOLOv7Loss(nn.Cell):
             mnp.arange(batch_size)[:, None], (1, matching_matrix.shape[2])
         )  # (bs, nl*5*na*gt_max)
         matched_inds = ops.stack((matched_bs_inds.view(-1), matched_gt_inds.view(-1)), 1)  # (bs*nl*5*na*gt_max, 2)
-        # zhy_test
         matched_inds *= all_tmasks.view(-1)[:, None]
         this_target = ops.gather_nd(this_target, matched_inds)  # (bs*nl*5*na*gt_max, 6)
         # this_target = this_target.view(-1, 6)[matched_gt_inds.view(-1,)] # (bs*nl*5*na*gt_max, 6)
 
         # (bs, nl*5*na*gt_max,) -> (bs, nl, 5*na*gt_max) -> (nl, bs*5*na*gt_max)
-        # zhy_test
         matching_tmasks = all_tmasks.view(batch_size, nl, -1).transpose(1, 0, 2).view(nl, -1)
         matching_bs = all_b.view(batch_size, nl, -1).transpose(1, 0, 2).view(nl, -1) * matching_tmasks
         matching_as = all_a.view(batch_size, nl, -1).transpose(1, 0, 2).view(nl, -1) * matching_tmasks
@@ -555,7 +552,6 @@ class YOLOv7AuxLoss(nn.Cell):
             _this_anch = anch[i].view(3 * na, batch_size, n_gt_max * 2).transpose(1, 0, 2).view(-1, 2)
             _this_mask = tmasks[i].view(3 * na, batch_size, n_gt_max).transpose(1, 0, 2).view(-1)
 
-            # zhy_test
             _this_indices *= _this_mask[None, :]
             _this_anch *= _this_mask[:, None]
 
@@ -715,7 +711,6 @@ class YOLOv7AuxLoss(nn.Cell):
             _this_anch = anch[i].view(5 * na, batch_size, n_gt_max * 2).transpose(1, 0, 2).view(-1, 2)
             _this_mask = tmasks[i].view(5 * na, batch_size, n_gt_max).transpose(1, 0, 2).view(-1)
 
-            # zhy_test
             _this_indices *= _this_mask[None, :]
             _this_anch *= _this_mask[:, None]
 

@@ -70,6 +70,10 @@ To validate the accuracy of the trained model, you can use `test.py` and parse t
 python test.py --config ./configs/yolov5/yolov5n.yaml --device_target Ascend --weight /PATH/TO/WEIGHT.ckpt
 ```
 
+### Deployment
+
+See [here](./deploy/README.md).
+
 ## References
 
 <!--- Guideline: Citation format should follow GB/T 7714. -->

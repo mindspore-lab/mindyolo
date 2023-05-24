@@ -65,6 +65,10 @@ python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_c
 *注意：默认超参为8卡训练，单卡情况需调整部分参数。 默认设备为Ascend，您可以指定'device_target'的值为Ascend/GPU/CPU。*
 * 有关更多选项，请参阅 `train/test.py -h`.
 
+### 部署
+
+请在[这里](./deploy/README.md)查看.
+
 
 ### 在代码中使用MindYOLO API
 
