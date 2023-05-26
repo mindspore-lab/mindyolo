@@ -83,8 +83,10 @@ def get_parser_train(parents=None):
     # args for ModelArts
     parser.add_argument("--enable_modelarts", type=ast.literal_eval, default=False, help="enable modelarts")
     parser.add_argument("--data_url", type=str, default="", help="ModelArts: obs path to dataset folder")
-    parser.add_argument("--ckpt_url", type=str, default="", help="ModelArts: obs path to checkpoint folder")
-    parser.add_argument("--train_url", type=str, default="", help="ModelArts: obs path to dataset folder")
+    parser.add_argument("--ckpt_url", type=str, default="", help="ModelArts: obs path to pretrain model checkpoint file")
+    parser.add_argument("--multi_data_url", type=str, default="", help="ModelArts: list of obs paths to multi-dataset folders")
+    parser.add_argument("--pretrain_url", type=str, default="", help="ModelArts: list of obs paths to multi-pretrain model files")
+    parser.add_argument("--train_url", type=str, default="", help="ModelArts: obs path to output folder")
     parser.add_argument(
         "--data_dir", type=str, default="/cache/data/", help="ModelArts: local device path to dataset folder"
     )
