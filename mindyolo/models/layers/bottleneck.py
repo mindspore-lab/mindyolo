@@ -21,14 +21,14 @@ class Bottleneck(nn.Cell):
             out = self.conv2(self.conv1(x))
         return out
 
-
+    
 class Residualblock(nn.Cell):
     def __init__(
-        self, c1, c2, k=(1, 3), g=(1, 1), momentum=0.97, eps=1e-3, sync_bn=False
+        self, c1, c2, k=(1, 3), g=(1, 1), act=True, momentum=0.97, eps=1e-3, sync_bn=False
     ):  # ch_in, ch_out, kernels, groups, expand
         super().__init__()
-        self.conv1 = ConvNormAct(c1, c2, k[0], 1, g=g[0], momentum=momentum, eps=eps, sync_bn=sync_bn)
-        self.conv2 = ConvNormAct(c2, c2, k[1], 1, g=g[1], momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.conv1 = ConvNormAct(c1, c2, k[0], 1, g=g[0], act=act, momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.conv2 = ConvNormAct(c2, c2, k[1], 1, g=g[1], act=act, momentum=momentum, eps=eps, sync_bn=sync_bn)
 
     def construct(self, x):
         out = x + self.conv2(self.conv1(x))
