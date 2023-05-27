@@ -37,7 +37,7 @@ When importing local models, specify the framework as MindSpore.
 
 ### Create a New Training Task
 
-select "Training Tasks," and then click "New Training Task."
+select "Train Task", and then click "New Train Task."
 <div align=center>
 <img width='600' src="https://github.com/chenyang23333/images/raw/main/img_5.png"/>
 </div>
@@ -67,7 +67,7 @@ Click on the "Modify" button for an existing training task to make parameter mod
 <img width='600' src="https://github.com/chenyang23333/images/raw/main/img_8.png"/>
 </div>
 
-Note: The runtime version number should be the base version number + 1.
+Note: The runtime version number should be the parents version number + 1.
 <div align=center>
 <img width='600' src="https://github.com/chenyang23333/images/raw/main/img_9.png"/>
 </div>
