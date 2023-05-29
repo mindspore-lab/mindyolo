@@ -37,7 +37,7 @@ When importing local models, specify the framework as MindSpore.
 
 ### Create a New Training Task
 
-select "Train Task", and then click "New Train Task."
+Select "Train Task", and then click "New Train Task."
 <div align=center>
 <img width='600' src="https://github.com/chenyang23333/images/raw/main/img_5.png"/>
 </div>
