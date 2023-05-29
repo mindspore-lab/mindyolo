@@ -1,6 +1,6 @@
 ## MindYOLO 云上训练快速入门
 
-本文主要介绍MindYOLO借助OPENI启智平台(https://openi.pcl.ac.cn/)的训练方法。
+本文主要介绍MindYOLO借助OPENI[启智](https://openi.pcl.ac.cn/)平台的训练方法。
 
 ### 迁移外部项目
 
