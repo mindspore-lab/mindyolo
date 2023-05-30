@@ -113,7 +113,6 @@ class Config(dict):
         super(Config, self).__init__()
         for k, v in cfg_dict.items():
             setattr(self, k, Config(v) if isinstance(v, dict) else v)
-        self.__dict__.update(cfg_dict)
 
     def __setattr__(self, name, value):
         self[name] = value
