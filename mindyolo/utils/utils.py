@@ -59,6 +59,9 @@ def set_default(args):
         with open(os.path.join(args.save_dir, "cfg.yaml"), "w") as f:
             yaml.dump(vars(args), f, sort_keys=False)
 
+    # callback
+    args.callback = args.get('callback', [])
+
     # Set Logger
     logger.setup_logging(
         logger_name="MindYOLO", log_level=args.log_level, rank_id=args.rank, device_per_servers=args.rank_size

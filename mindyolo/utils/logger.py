@@ -9,6 +9,19 @@ __all__ = ["get_logger"]
 GLOBAL_LOGGER = None
 
 
+class CustomStreamHandler(logging.StreamHandler):
+    def __init__(self, stream=None):
+        super().__init__(stream)
+
+    def emit(self, record):
+        # to start with logger header at every newline
+        # use __str__ to enable record.msg to be non-str object
+        messages = record.msg.__str__().split("\n")
+        for msg in messages:
+            record.msg = msg
+            super(CustomStreamHandler, self).emit(record)
+
+
 class Logger(logging.Logger):
     """
     Logger classes and functions, support print information on console and files.
@@ -42,7 +55,7 @@ def setup_logging(logger_name="MindYOLO", log_level="INFO", rank_id=None, device
 
     # In the distributed scenario, only one card is printed on the console.
     if logger.rank_id % logger.device_per_servers == 0:
-        console = logging.StreamHandler(sys.stdout)
+        console = CustomStreamHandler(sys.stdout)
         console.setLevel(logger.log_level)
         console.setFormatter(logger.formatter)
         logger.addHandler(console)
