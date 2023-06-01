@@ -472,7 +472,7 @@ class Trainer:
                 f"expect callback element to be subclass of BaseCallback, " f"but got {type(cb)} instead"
             )
         # log callback base info
-        logger.info(f"got {len(callback)} registered callback as follows:")
+        logger.info(f"got {len(callback)} active callback as follows:")
         for cb in self.callback:
             logger.info(cb)
 
