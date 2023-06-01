@@ -10,15 +10,15 @@ YOLOX is a new high-performance detector with some experienced improvements to Y
 
 <div align="center">
 
-| Name   | Scale     | Context  | ImageSize | Dataset      | Box mAP (%) | Params | FLOPs  | Recipe                                                                                                                                                                                                 | Download                                                                                                             |
-|--------|-----------|----------|-----------|--------------|-------------|--------|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
-| YOLOX  | N         | D910x8-G | 416       | MS COCO 2017 | 24.1        | 0.9M   | 1.1G   | [yaml1](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-nano.yaml)  [yaml2](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-nano-2nd.yaml)         | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-n_300e_map241-ec9815e3.ckpt)                |
-| YOLOX  | Tiny      | D910x8-G | 416       | MS COCO 2017 | 33.3        | 5.1M   | 6.5G   | [yaml1](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-tiny.yaml)  [yaml2](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-tiny-2nd.yaml)         | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-tiny_300e_map333-e5ae3a2e.ckpt)                |
-| YOLOX  | S         | D910x8-G | 640       | MS COCO 2017 | 40.7        | 9.0M   | 26.8G  | [yaml1](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-s.yaml)    [yaml2](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-s-2nd.yaml)             | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-s_300e_map407-0983e07f.ckpt)                   |
-| YOLOX  | M         | D910x8-G | 640       | MS COCO 2017 | 46.7        | 25.3M  | 73.8G  | [yaml1](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-m.yaml)    [yaml2](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-m-2nd.yaml)             | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-m_300e_map467-1db321ee.ckpt)                   |
-| YOLOX  | L         | D910x8-G | 640       | MS COCO 2017 | 49.2        | 54.2M  | 155.6G | [yaml1](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-l.yaml)    [yaml2](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-l-2nd.yaml)             | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-l_300e_map492-52a4ab80.ckpt)                   |
-| YOLOX  | X         | D910x8-G | 640       | MS COCO 2017 | 51.6        | 99.1M  | 281.9G | [yaml1](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-x.yaml)    [yaml2](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-x-2nd.yaml)             | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-x_300e_map516-52216d90.ckpt)                   |
-| YOLOX  | Darknet53 | D910x8-G | 640       | MS COCO 2017 | 47.7        | 63.7M  | 185.3G | [yaml1](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-darknet53.yaml)    [yaml2](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-darknet53-2nd.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-darknet53_300e_map477-b5fcaba9.ckpt)                   |
+| Name   | Scale     | Context  | ImageSize | Dataset      | Box mAP (%) | Params | FLOPs  | Recipe                                                                                       | Download                                                                                                             |
+|--------|-----------|----------|-----------|--------------|-------------|--------|--------|----------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
+| YOLOX  | N         | D910x8-G | 416       | MS COCO 2017 | 24.1        | 0.9M   | 1.1G   | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-nano.yaml)  | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-n_300e_map241-ec9815e3.ckpt)                |
+| YOLOX  | Tiny      | D910x8-G | 416       | MS COCO 2017 | 33.3        | 5.1M   | 6.5G   | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-tiny.yaml)  | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-tiny_300e_map333-e5ae3a2e.ckpt)                |
+| YOLOX  | S         | D910x8-G | 640       | MS COCO 2017 | 40.7        | 9.0M   | 26.8G  | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-s.yaml)     | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-s_300e_map407-0983e07f.ckpt)                   |
+| YOLOX  | M         | D910x8-G | 640       | MS COCO 2017 | 46.7        | 25.3M  | 73.8G  | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-m.yaml)     | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-m_300e_map467-1db321ee.ckpt)                   |
+| YOLOX  | L         | D910x8-G | 640       | MS COCO 2017 | 49.2        | 54.2M  | 155.6G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-l.yaml)     | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-l_300e_map492-52a4ab80.ckpt)                   |
+| YOLOX  | X         | D910x8-G | 640       | MS COCO 2017 | 51.6        | 99.1M  | 281.9G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-x.yaml)     | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-x_300e_map516-52216d90.ckpt)                   |
+| YOLOX  | Darknet53 | D910x8-G | 640       | MS COCO 2017 | 47.7        | 63.7M  | 185.3G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-darknet53.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-darknet53_300e_map477-b5fcaba9.ckpt)                   |
 
 </div>
 <br>
@@ -39,24 +39,12 @@ Please refer to the [GETTING_STARTED](https://github.com/mindspore-lab/mindyolo/
 
 #### - Distributed Training
 
-Yolox changes its data pre-processing and loss items in the last few epochs to achieve better performance. A two stage training stratage is required to reproduce the reported results with the pre-defined training recipe. For distributed training on multiple Ascend 910 devices, firstly run the 1st stage training,
+It is easy to reproduce the reported results with the pre-defined training recipe. For distributed training on multiple Ascend 910 devices, please run
 ```shell
 # distributed training on multiple GPU/Ascend devices
 mpirun -n 8 python train.py --config ./configs/yolox/yolox-s.yaml --device_target Ascend --is_parallel True
 ```
-Modify the 2nd stage training recipe by filling the checkpoint path of normal weight, ema weight and optimizer with the result of 1st stage
-```yaml
-# checkpoint path
-weight: /PATH/TO/WEIGHT.ckpt
-ema_weight: /PATH/TO/EMA_WEIGHT.ckpt
-optimizer:
-  checkpoint_path: /PATH/TO/OPTIMIZER.ckpt
-```
-Finally, run the 2nd stage training,
-```shell
-# distributed training on multiple GPU/Ascend devices
-mpirun -n 8 python train.py --config ./configs/yolox/yolox-s-2nd.yaml --device_target Ascend --is_parallel True
-```
+
 > If the script is executed by the root user, the `--allow-run-as-root` parameter must be added to `mpirun`.
 
 
@@ -74,19 +62,7 @@ If you want to train or finetune the model on a smaller dataset without distribu
 # standalone 1st stage training on a CPU/GPU/Ascend device
 python train.py --config ./configs/yolox/yolox-s.yaml --device_target Ascend
 ```
-Modify the 2nd stage training recipe by filling the checkpoint path of normal weight, ema weight and optimizer with the result of 1st stage,
-```yaml
-# checkpoint path
-weight: /PATH/TO/WEIGHT.ckpt
-ema_weight: /PATH/TO/EMA_WEIGHT.ckpt
-optimizer:
-  checkpoint_path: /PATH/TO/OPTIMIZER.ckpt
-```
-Finally, run the 2nd stage training,
-```shell
-# standalone 2nd stage training on a CPU/GPU/Ascend device
-python train.py --config ./configs/yolox/yolox-s-2nd.yaml --device_target Ascend
-```
+
 </details>
 
 ### Validation and Test

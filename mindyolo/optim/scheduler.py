@@ -24,16 +24,27 @@ def create_lr_scheduler(lr_init, lr_scheduler=None, by_epoch=True, **kwargs):
 
 
 def create_yolox_lr_scheduler(
-    start_factor, end_factor, lr_init, steps_per_epoch, warmup_epochs, epochs, by_epoch, **kwargs
+    start_factor, end_factor, lr_init, steps_per_epoch, warmup_epochs, epochs, by_epoch, cooldown_epochs=0, **kwargs
 ):
+    assert epochs - warmup_epochs - cooldown_epochs > 0, f"the sum of warmup({warmup_epochs}) and " \
+                                                         f"cooldown{cooldown_epochs} epoch should " \
+                                                         f"be less than total epoch{epochs}"
     # quadratic
     lrs_qua = quadratic_lr(0.01, start_factor, lr_init, steps_per_epoch, epochs=warmup_epochs, by_epoch=by_epoch)
+
     # cosine
-    cosine_epochs = epochs - warmup_epochs
+    cosine_epochs = epochs - warmup_epochs - cooldown_epochs
     lrs_cos = cosine_decay_lr(
         start_factor, end_factor, lr_init, steps_per_epoch, epochs=cosine_epochs, by_epoch=by_epoch
     )
-    lrs = lrs_qua + lrs_cos
+
+    # constant
+    lrs_col = []
+    if cooldown_epochs > 0:
+        cool_down_lr = lr_init * end_factor
+        lrs_col = [cool_down_lr] * cooldown_epochs * steps_per_epoch
+
+    lrs = lrs_qua + lrs_cos + lrs_col
     return lrs
 
 

@@ -2,6 +2,8 @@ import argparse
 import ast
 import os
 from functools import partial
+
+from mindyolo.utils.callback import create_callback
 from test import test
 
 import mindspore as ms
@@ -11,10 +13,8 @@ from mindyolo.models import create_loss, create_model
 from mindyolo.optim import (EMA, create_group_param, create_lr_scheduler,
                             create_optimizer, create_warmup_momentum_scheduler)
 from mindyolo.utils import logger
-from mindyolo.utils.config import config_format_func, parse_args
-from mindyolo.utils.train_step_factory import (create_train_step_fn,
-                                               get_gradreducer,
-                                               get_loss_scaler)
+from mindyolo.utils.config import parse_args
+from mindyolo.utils.train_step_factory import get_gradreducer, get_loss_scaler, create_train_step_fn
 from mindyolo.utils.trainer_factory import create_trainer
 from mindyolo.utils.utils import (freeze_layers, load_pretrain, set_default,
                                   set_seed)
@@ -59,7 +59,6 @@ def get_parser_train(parents=None):
     )
     parser.add_argument("--auto_accumulate", type=ast.literal_eval, default=False, help="auto accumulate")
     parser.add_argument("--log_interval", type=int, default=100, help="log interval")
-    parser.add_argument("--eval_interval", type=int, default=1, help="eval interval")
     parser.add_argument(
         "--single_cls", type=ast.literal_eval, default=False, help="train multi-class data as single-class"
     )
@@ -105,8 +104,7 @@ def train(args):
     set_default(args)
     main_device = args.rank % args.rank_size == 0
 
-    logger.info("parse_args:")
-    logger.info("\n" + str(args))
+    logger.info(f"parse_args:\n{args}")
     logger.info("Please check the above information for the configurations")
 
     # Create Network
@@ -225,6 +223,9 @@ def train(args):
         ms_jit=args.ms_jit,
     )
 
+    # create callbacks
+    callback_fns = create_callback(args.callback)
+
     # Create test function for run eval while train
     if args.run_eval:
         is_coco_dataset = "coco" in args.data.dataset_name
@@ -256,9 +257,12 @@ def train(args):
         dataloader=dataloader,
         steps_per_epoch=steps_per_epoch,
         network=network,
+        loss_fn=loss_fn,
         ema=ema,
         optimizer=optimizer,
         summary=args.summary,
+        callback=callback_fns,
+        reducer=reducer,
     )
     if not args.ms_datasink:
         trainer.train(
@@ -270,13 +274,14 @@ def train(args):
             overflow_still_update=args.overflow_still_update,
             keep_checkpoint_max=args.keep_checkpoint_max,
             log_interval=args.log_interval,
-            eval_interval=args.eval_interval,
             loss_item_name=[] if not hasattr(loss_fn, "loss_item_name") else loss_fn.loss_item_name,
             save_dir=args.save_dir,
             enable_modelarts=args.enable_modelarts,
             train_url=args.train_url,
             run_eval=args.run_eval,
             test_fn=test_fn,
+            rank_size=args.rank_size,
+            ms_jit=args.ms_jit
         )
     else:
         logger.warning("DataSink is an experimental interface under development.")

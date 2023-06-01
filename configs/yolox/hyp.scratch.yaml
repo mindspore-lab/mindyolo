@@ -1,10 +1,25 @@
-optimizer:  # TODO align with yolox official
+optimizer:
   optimizer: momentum
   momentum: 0.9  # SGD momentum/Adam beta1
   nesterov: True # update gradients with NAG(Nesterov Accelerated Gradient) algorithm
   loss_scale: 1.0 # loss scale for optimizer
   group_param: filter_bias_and_bn # group param strategy
   gp_weight_decay: 0.0005  # group param weight decay 5e-4
+
+  # learning rate
+  lr_scheduler: yolox  # quadratic warmup + cosine decay
+  lr_init: 0.01  # initial learning rate (SGD=1E-2, Adam=1E-3)
+  start_factor: 1.0
+  end_factor: 0.05
+  warmup_epochs: 5  # warmup epochs (fractions ok)
+  cooldown_epochs: 15
+  by_epoch: False # update lr by step
+
+epochs: 300
+
+callback:
+  - { name: YoloxSwitchTrain, switch_epoch_num: 285 }
+  - { name: EvalWhileTrain, stage_epochs: [ 285, 15 ], stage_intervals: [25, 5], isolated_epochs: 286}
 
 loss:
    name: YOLOXLoss
@@ -16,21 +31,34 @@ iou_thres: 0.65
 per_batch_size: 8  # 8 * 8 = 64
 img_size: 640
 sync_bn: False
-ms_amp_level: O0
-keep_loss_fp32: True
 
 data:
   num_parallel_workers: 4
 
-  train_transforms:
-    - {func_name: mosaic, prob: 1.0, mosaic9_prob: 0.0, translate: 0.1, scale: 0.9, degrees: 10.0, shear: 2.0}
-    - {func_name: mixup, prob: 1.0, alpha: 8.0, beta: 8.0, needed_mosaic: True }
-    - {func_name: hsv_augment, prob: 1.0, hgain: 0.015, sgain: 0.7, vgain: 0.4}
-    - {func_name: label_norm, xyxy2xywh_: True}
-    - {func_name: fliplr, prob: 0.5}
-    - {func_name: label_pad, padding_size: 160, padding_value: -1}
-    - {func_name: image_norm, scale: 255.}
-    - {func_name: image_transpose, bgr2rgb: True, hwc2chw: True}
+  train_transforms: {
+    stage_epochs: [ 285, 15 ],
+    trans_list: [
+      [
+        { func_name: mosaic, prob: 1.0, mosaic9_prob: 0.0, translate: 0.1, scale: 0.9, degrees: 10.0, shear: 2.0 },
+        { func_name: mixup, prob: 1.0, alpha: 8.0, beta: 8.0, needed_mosaic: True },
+        { func_name: hsv_augment, prob: 1.0, hgain: 0.015, sgain: 0.7, vgain: 0.4 },
+        { func_name: label_norm, xyxy2xywh_: True },
+        { func_name: fliplr, prob: 0.5 },
+        { func_name: label_pad, padding_size: 160, padding_value: -1 },
+        { func_name: image_norm, scale: 255. },
+        { func_name: image_transpose, bgr2rgb: True, hwc2chw: True },
+      ],
+      [
+        { func_name: letterbox, scaleup: False },
+        { func_name: hsv_augment, prob: 1.0, hgain: 0.015, sgain: 0.7, vgain: 0.4 },
+        { func_name: label_norm, xyxy2xywh_: True },
+        { func_name: fliplr, prob: 0.5 },
+        { func_name: label_pad, padding_size: 160, padding_value: -1 },
+        { func_name: image_norm, scale: 255. },
+        { func_name: image_transpose, bgr2rgb: True, hwc2chw: True },
+      ]
+    ]
+  }
 
   test_transforms:
     - {func_name: letterbox, scaleup: False}
@@ -38,4 +66,3 @@ data:
     - {func_name: label_pad, padding_size: 160, padding_value: -1}
     - {func_name: image_norm, scale: 255. }
     - {func_name: image_transpose, bgr2rgb: True, hwc2chw: True }
-
