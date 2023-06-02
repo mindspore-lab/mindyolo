@@ -7,8 +7,6 @@ from mindspore import Parameter, Tensor, nn, ops
 
 from mindyolo.utils import logger
 
-from ..layers.utils import meshgrid
-
 
 class YOLOv3Head(nn.Cell):
     """
@@ -77,7 +75,7 @@ class YOLOv3Head(nn.Cell):
     @staticmethod
     def _make_grid(nx=20, ny=20, dtype=ms.float32):
         # FIXME: Not supported on a specific model of machine
-        xv, yv = meshgrid((mnp.arange(nx), mnp.arange(ny)))  # ops.meshgrid((mnp.arange(nx), mnp.arange(ny)))
+        xv, yv = ops.meshgrid(mnp.arange(nx), mnp.arange(ny))
         return ops.cast(ops.stack((xv, yv), 2).view((1, 1, ny, nx, 2)), dtype)
 
     @staticmethod

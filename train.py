@@ -27,23 +27,17 @@ def get_parser_train(parents=None):
     parser.add_argument("--device_per_servers", type=int, default=8, help="device number on a server")
     parser.add_argument("--log_level", type=str, default="INFO", help="save dir")
     parser.add_argument("--is_parallel", type=ast.literal_eval, default=False, help="Distribute train or not")
-    parser.add_argument(
-        "--ms_mode", type=int, default=0, help="Running in GRAPH_MODE(0) or PYNATIVE_MODE(1) (default=0)"
-    )
+    parser.add_argument("--ms_mode", type=int, default=0,
+                        help="Running in GRAPH_MODE(0) or PYNATIVE_MODE(1) (default=0)")
     parser.add_argument("--ms_amp_level", type=str, default="O0", help="amp level, O0/O1/O2/O3")
-    parser.add_argument(
-        "--keep_loss_fp32",
-        type=ast.literal_eval,
-        default=True,
-        help="Whether to maintain loss using fp32/O0-level calculation",
-    )
+    parser.add_argument("--keep_loss_fp32", type=ast.literal_eval, default=True,
+                        help="Whether to maintain loss using fp32/O0-level calculation")
     parser.add_argument("--ms_loss_scaler", type=str, default="static", help="train loss scaler, static/dynamic/none")
     parser.add_argument("--ms_loss_scaler_value", type=float, default=1024.0, help="static loss scale value")
     parser.add_argument("--ms_grad_sens", type=float, default=1024.0, help="gard sens")
     parser.add_argument("--ms_jit", type=ast.literal_eval, default=True, help="use jit or not")
-    parser.add_argument(
-        "--ms_enable_graph_kernel", type=ast.literal_eval, default=False, help="use enable_graph_kernel or not"
-    )
+    parser.add_argument("--ms_enable_graph_kernel", type=ast.literal_eval, default=False,
+                        help="use enable_graph_kernel or not")
     parser.add_argument("--ms_datasink", type=ast.literal_eval, default=False, help="Train with datasink.")
     parser.add_argument("--overflow_still_update", type=ast.literal_eval, default=True, help="overflow still update")
     parser.add_argument("--ema", type=ast.literal_eval, default=True, help="ema")
@@ -54,30 +48,27 @@ def get_parser_train(parents=None):
     parser.add_argument("--per_batch_size", type=int, default=32, help="per batch size for each device")
     parser.add_argument("--img_size", type=list, default=640, help="train image sizes")
     parser.add_argument("--nbs", type=list, default=64, help="nbs")
-    parser.add_argument(
-        "--accumulate", type=int, default=1, help="grad accumulate step, recommended when batch-size is less than 64"
-    )
+    parser.add_argument("--accumulate", type=int, default=1,
+                        help="grad accumulate step, recommended when batch-size is less than 64")
     parser.add_argument("--auto_accumulate", type=ast.literal_eval, default=False, help="auto accumulate")
     parser.add_argument("--log_interval", type=int, default=100, help="log interval")
-    parser.add_argument(
-        "--single_cls", type=ast.literal_eval, default=False, help="train multi-class data as single-class"
-    )
-    parser.add_argument(
-        "--sync_bn", type=ast.literal_eval, default=False, help="use SyncBatchNorm, only available in DDP mode"
-    )
+    parser.add_argument("--single_cls", type=ast.literal_eval, default=False,
+                        help="train multi-class data as single-class")
+    parser.add_argument("--sync_bn", type=ast.literal_eval, default=False,
+                        help="use SyncBatchNorm, only available in DDP mode")
     parser.add_argument("--keep_checkpoint_max", type=int, default=100)
     parser.add_argument("--run_eval", type=ast.literal_eval, default=False, help="Whether to run eval during training")
     parser.add_argument("--conf_thres", type=float, default=0.001, help="object confidence threshold for run_eval")
     parser.add_argument("--iou_thres", type=float, default=0.65, help="IOU threshold for NMS for run_eval")
-    parser.add_argument(
-        "--conf_free", type=ast.literal_eval, default=False, help="Whether the prediction result include conf"
-    )
+    parser.add_argument("--conf_free", type=ast.literal_eval, default=False,
+                        help="Whether the prediction result include conf")
     parser.add_argument("--rect", type=ast.literal_eval, default=False, help="rectangular training")
     parser.add_argument("--nms_time_limit", type=float, default=20.0, help="time limit for NMS")
     parser.add_argument("--recompute", type=ast.literal_eval, default=False, help="Recompute")
     parser.add_argument("--recompute_layers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=2, help="set global seed")
     parser.add_argument("--summary", type=ast.literal_eval, default=True, help="collect train loss scaler or not")
+    parser.add_argument("--opencv_threads_num", type=int, default=2, help="set the number of threads for opencv")
 
     # args for ModelArts
     parser.add_argument("--enable_modelarts", type=ast.literal_eval, default=False, help="enable modelarts")
@@ -86,15 +77,10 @@ def get_parser_train(parents=None):
     parser.add_argument("--multi_data_url", type=str, default="", help="ModelArts: list of obs paths to multi-dataset folders")
     parser.add_argument("--pretrain_url", type=str, default="", help="ModelArts: list of obs paths to multi-pretrain model files")
     parser.add_argument("--train_url", type=str, default="", help="ModelArts: obs path to output folder")
-    parser.add_argument(
-        "--data_dir", type=str, default="/cache/data/", help="ModelArts: local device path to dataset folder"
-    )
-    parser.add_argument(
-        "--ckpt_dir",
-        type=str,
-        default="/cache/pretrain_ckpt/",
-        help="ModelArts: local device path to checkpoint folder",
-    )
+    parser.add_argument("--data_dir", type=str, default="/cache/data/",
+                        help="ModelArts: local device path to dataset folder")
+    parser.add_argument("--ckpt_dir", type=str, default="/cache/pretrain_ckpt/",
+                        help="ModelArts: local device path to checkpoint folder")
     return parser
 
 
@@ -292,6 +278,7 @@ def train(args):
             warmup_epoch=max(args.optimizer.warmup_epochs, args.optimizer.min_warmup_step // steps_per_epoch),
             warmup_momentum=warmup_momentum,
             keep_checkpoint_max=args.keep_checkpoint_max,
+            log_interval=args.log_interval,
             loss_item_name=[] if not hasattr(loss_fn, "loss_item_name") else loss_fn.loss_item_name,
             save_dir=args.save_dir,
             enable_modelarts=args.enable_modelarts,

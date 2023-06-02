@@ -6,7 +6,6 @@ import mindspore.numpy as mnp
 from mindspore import Parameter, Tensor, nn, ops
 
 from ..layers import DFL, ConvNormAct, Identity
-from ..layers.utils import meshgrid
 
 
 class YOLOv8Head(nn.Cell):
@@ -83,7 +82,7 @@ class YOLOv8Head(nn.Cell):
             sx = mnp.arange(w, dtype=dtype) + grid_cell_offset  # shift x
             sy = mnp.arange(h, dtype=dtype) + grid_cell_offset  # shift y
             # FIXME: Not supported on a specific model of machine
-            sy, sx = meshgrid((sy, sx), indexing="ij")  # ops.meshgrid((sy, sx), indexing='ij')
+            sy, sx = ops.meshgrid(sy, sx, indexing='ij')
             anchor_points += (ops.stack((sx, sy), -1).view(-1, 2),)
             stride_tensor += (ops.ones((h * w, 1), dtype) * stride,)
         return ops.concat(anchor_points), ops.concat(stride_tensor)
@@ -91,7 +90,7 @@ class YOLOv8Head(nn.Cell):
     @staticmethod
     def dist2bbox(distance, anchor_points, xywh=True, axis=-1):
         """Transform distance(ltrb) to box(xywh or xyxy)."""
-        lt, rb = ops.split(distance, output_num=2, axis=axis)
+        lt, rb = ops.split(distance, split_size_or_sections=2, axis=axis)
         x1y1 = anchor_points - lt
         x2y2 = anchor_points + rb
         if xywh:

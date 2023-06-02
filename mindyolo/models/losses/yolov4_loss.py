@@ -78,7 +78,7 @@ class YOLOv4Loss(nn.Cell):
         for layer_index, yolo_out in enumerate(p):  # layer index, layer predictions
             pi = yolo_out[0]
             tmask = tmasks[layer_index]
-            b, a, gj, gi = ops.split(indices[layer_index] * tmask[None, :], 0, 4)  # image, anchor, gridy, gridx
+            b, a, gj, gi = ops.split(indices[layer_index] * tmask[None, :], split_size_or_sections=1, axis=0)  # image, anchor, gridy, gridx
             b, a, gj, gi = b.view(-1), a.view(-1), gj.view(-1), gi.view(-1)
 
             pi_shape = pi.shape

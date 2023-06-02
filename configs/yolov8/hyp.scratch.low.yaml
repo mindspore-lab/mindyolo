@@ -1,6 +1,4 @@
-epochs: 500  # total train epochs
-conf_free: True
-iou_thres: 0.7
+
 
 optimizer:
   optimizer: momentum

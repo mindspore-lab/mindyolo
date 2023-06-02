@@ -45,7 +45,6 @@ def create_loader(
     Returns:
         BatchDataset, dataset batched.
     """
-    cv2.setNumThreads(2)
     de.config.set_seed(1236517205 + rank)
     cores = multiprocessing.cpu_count()
     num_parallel_workers = min(int(cores / rank_size), num_parallel_workers)
