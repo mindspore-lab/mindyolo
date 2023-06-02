@@ -80,7 +80,7 @@ class YOLOv3Loss(nn.Cell):
         # Losses
         for layer_index, pi in enumerate(p):  # layer index, layer predictions
             tmask = tmasks[layer_index]
-            b, a, gj, gi = ops.split(indices[layer_index] * tmask[None, :], 0, 4)  # image, anchor, gridy, gridx
+            b, a, gj, gi = ops.split(indices[layer_index] * tmask[None, :], split_size_or_sections=1, axis=0)  # image, anchor, gridy, gridx
             b, a, gj, gi = b.view(-1), a.view(-1), gj.view(-1), gi.view(-1)
             tobj = ops.zeros(pi.shape[:4], pi.dtype)  # target obj
 

@@ -74,8 +74,7 @@ class YOLOXLoss(nn.Cell):
         for stride in self.strides:
             size_x = self.input_size[0] // stride
             size_y = self.input_size[1] // stride
-            grid_x, grid_y = ops.meshgrid((mnp.arange(size_y), mnp.arange(size_x)))
-            # TODO check meshgrid
+            grid_x, grid_y = ops.meshgrid(mnp.arange(size_x), mnp.arange(size_y))
             grids = ops.stack((grid_x, grid_y), 2).reshape(-1, 2)
             anchor_center_pos_list.append(grids)
 
@@ -199,11 +198,7 @@ class YOLOXLoss(nn.Cell):
         ious_in_boxes_matrix = ops.cast(pre_fg_mask * ious_in_boxes_matrix, ms.float16)
         topk_ious, _ = ops.top_k(ious_in_boxes_matrix, self.n_candidate_k, sorted=True)
 
-        dynamic_ks = (
-            ops.reduce_sum(topk_ious, 2)
-            .astype(ms.int32)
-            .clip(xmin=1, xmax=total_num_anchors - 1, dtype=ms.int32)
-        )
+        dynamic_ks = ops.reduce_sum(topk_ious, 2).astype(ms.int32).clip(min=1, max=total_num_anchors - 1)
 
         # (1, batch_size * gt_max, 2)
         batch_iter = Tensor(np.arange(0, batch_size * gt_max), ms.int32)

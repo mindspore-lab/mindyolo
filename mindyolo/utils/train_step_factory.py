@@ -62,7 +62,7 @@ def create_train_step_fn(
 
         return scaler.unscale(loss), loss_items, unscaled_grads, grads_finite
 
-    @ms.ms_function
+    @ms.jit
     def jit_warpper(*args):
         return train_step_func(*args)
 

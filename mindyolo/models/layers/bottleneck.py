@@ -82,7 +82,8 @@ class C2f(nn.Cell):
     def construct(self, x):
         y = ()
         x = self.cv1(x)
-        x_tuple = ops.split(x, axis=1, output_num=2)
+        _c = x.shape[1] // 2
+        x_tuple = ops.split(x, axis=1, split_size_or_sections=_c)
         y += x_tuple
         for i in range(len(self.m)):
             m = self.m[i]

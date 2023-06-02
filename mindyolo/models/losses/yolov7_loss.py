@@ -108,7 +108,7 @@ class YOLOv7Loss(nn.Cell):
             selected_tcls = ops.cast(targets[i][:, 1], ms.int32)
             if self.nc > 1:  # cls loss (only if multiple classes)
                 t = ops.ones_like(ps[:, 5:]) * self.cn  # targets
-                t[mnp.arange(n), selected_tcls] = self.cp
+                t[mnp.arange(n, dtype=ms.int32), selected_tcls] = self.cp
                 lcls += self.BCEcls(ps[:, 5:], t, ops.tile(tmask[:, None], (1, t.shape[1])))  # BCE
 
             obji = self.BCEobj(pi[..., 4], tobj)
@@ -156,7 +156,7 @@ class YOLOv7Loss(nn.Cell):
             _this_indices *= _this_mask[None, :]
             _this_anch *= _this_mask[:, None]
 
-            b, a, gj, gi = ops.split(_this_indices, 0, 4)
+            b, a, gj, gi = ops.split(_this_indices, split_size_or_sections=1, axis=0)
             b, a, gj, gi = b.view(-1), a.view(-1), gj.view(-1), gi.view(-1)
 
             fg_pred = pi[b, a, gj, gi]
@@ -239,7 +239,7 @@ class YOLOv7Loss(nn.Cell):
 
         sort_cost, sort_idx = ops.top_k(-cost, 10, sorted=True)  # (bs, gt_max, 10)
         sort_cost = -sort_cost
-        pos_idx = ops.stack((mnp.arange(batch_size * n_gt_max), dynamic_ks.view(-1) - 1), -1)
+        pos_idx = ops.stack((mnp.arange(batch_size * n_gt_max, dtype=ms.int32), dynamic_ks.view(-1) - 1), -1)
         pos_v = ops.gather_nd(sort_cost.view(batch_size * n_gt_max, 10), pos_idx).view(batch_size, n_gt_max)
         matching_matrix = ops.cast(cost <= pos_v[:, :, None], ms.int32) * this_mask
 
@@ -256,9 +256,9 @@ class YOLOv7Loss(nn.Cell):
             matching_matrix.astype(ms.float16).sum(1) > 0.0
         )  # (bs, gt_max, nl*5*na*gt_max) -> (bs, nl*5*na*gt_max)
         all_tmasks = all_tmasks * ops.cast(fg_mask_inboxes, ms.int32)  # (bs, nl*5*na*gt_max)
-        matched_gt_inds = matching_matrix.argmax(1)  # (bs, gt_max, nl*5*na*gt_max) -> (bs, nl*5*na*gt_max)
+        matched_gt_inds = matching_matrix.argmax(1).astype(ms.int32)  # (bs, gt_max, nl*5*na*gt_max) -> (bs, nl*5*na*gt_max)
         matched_bs_inds = ops.tile(
-            mnp.arange(batch_size)[:, None], (1, matching_matrix.shape[2])
+            mnp.arange(batch_size, dtype=ms.int32)[:, None], (1, matching_matrix.shape[2])
         )  # (bs, nl*5*na*gt_max)
         matched_inds = ops.stack((matched_bs_inds.view(-1), matched_gt_inds.view(-1)), 1)  # (bs*nl*5*na*gt_max, 2)
         matched_inds *= all_tmasks.view(-1)[:, None]
@@ -481,7 +481,7 @@ class YOLOv7AuxLoss(nn.Cell):
             selected_tcls = ops.cast(targets[i][:, 1], ms.int32)
             if self.nc > 1:  # cls loss (only if multiple classes)
                 t = ops.ones_like(ps[:, 5:]) * self.cn  # targets
-                t[mnp.arange(n), selected_tcls] = self.cp
+                t[mnp.arange(n, dtype=ms.int32), selected_tcls] = self.cp
                 lcls += self.BCEcls(ps[:, 5:], t, ops.tile(tmask[:, None], (1, t.shape[1])))  # BCE
 
             # 2. Branch2, Compute Aux branch loss
@@ -508,7 +508,7 @@ class YOLOv7AuxLoss(nn.Cell):
             selected_tcls_aux = ops.cast(targets_aux[i][:, 1], ms.int32)
             if self.nc > 1:  # cls loss (only if multiple classes)
                 t_aux = ops.ones_like(ps_aux[:, 5:]) * self.cn  # targets
-                t_aux[mnp.arange(n_aux), selected_tcls_aux] = self.cp
+                t_aux[mnp.arange(n_aux, dtype=ms.int32), selected_tcls_aux] = self.cp
                 lcls += 0.25 * self.BCEcls(
                     ps_aux[:, 5:], t_aux, ops.tile(tmask_aux[:, None], (1, t_aux.shape[1]))
                 )  # BCE
@@ -555,7 +555,7 @@ class YOLOv7AuxLoss(nn.Cell):
             _this_indices *= _this_mask[None, :]
             _this_anch *= _this_mask[:, None]
 
-            b, a, gj, gi = ops.split(_this_indices, 0, 4)
+            b, a, gj, gi = ops.split(_this_indices, split_size_or_sections=1, axis=0)
             b, a, gj, gi = b.view(-1), a.view(-1), gj.view(-1), gi.view(-1)
 
             fg_pred = pi[b, a, gj, gi]
@@ -639,7 +639,7 @@ class YOLOv7AuxLoss(nn.Cell):
 
         sort_cost, sort_idx = ops.top_k(-cost, 20, sorted=True)  # (bs, gt_max, 20)
         sort_cost = -sort_cost
-        pos_idx = ops.stack((mnp.arange(batch_size * n_gt_max), dynamic_ks.view(-1) - 1), -1)
+        pos_idx = ops.stack((mnp.arange(batch_size * n_gt_max, dtype=ms.int32), dynamic_ks.view(-1) - 1), -1)
         pos_v = ops.gather_nd(sort_cost.view(batch_size * n_gt_max, 20), pos_idx).view(batch_size, n_gt_max)
         matching_matrix = ops.cast(cost <= pos_v[:, :, None], ms.int32) * this_mask
 
@@ -656,9 +656,9 @@ class YOLOv7AuxLoss(nn.Cell):
             matching_matrix.astype(ms.float16).sum(1) > 0.0
         )  # (bs, gt_max, nl*5*na*gt_max) -> (bs, nl*5*na*gt_max)
         all_tmasks = all_tmasks * ops.cast(fg_mask_inboxes, ms.int32)  # (bs, nl*5*na*gt_max)
-        matched_gt_inds = matching_matrix.argmax(1)  # (bs, gt_max, nl*5*na*gt_max) -> (bs, nl*5*na*gt_max)
+        matched_gt_inds = matching_matrix.argmax(1).astype(ms.int32)  # (bs, gt_max, nl*5*na*gt_max) -> (bs, nl*5*na*gt_max)
         matched_bs_inds = ops.tile(
-            mnp.arange(batch_size)[:, None], (1, matching_matrix.shape[2])
+            mnp.arange(batch_size, dtype=ms.int32)[:, None], (1, matching_matrix.shape[2])
         )  # (bs, nl*5*na*gt_max)
         matched_inds = ops.stack((matched_bs_inds.view(-1), matched_gt_inds.view(-1)), 1)  # (bs*nl*5*na*gt_max, 2)
         matched_inds *= all_tmasks.view(-1)[:, None]
@@ -714,7 +714,7 @@ class YOLOv7AuxLoss(nn.Cell):
             _this_indices *= _this_mask[None, :]
             _this_anch *= _this_mask[:, None]
 
-            b, a, gj, gi = ops.split(_this_indices, 0, 4)
+            b, a, gj, gi = ops.split(_this_indices, split_size_or_sections=1, axis=0)
             b, a, gj, gi = b.view(-1), a.view(-1), gj.view(-1), gi.view(-1)
 
             fg_pred = pi[b, a, gj, gi]
@@ -798,7 +798,7 @@ class YOLOv7AuxLoss(nn.Cell):
 
         sort_cost, sort_idx = ops.top_k(-cost, 20, sorted=True)  # (bs, gt_max, 20)
         sort_cost = -sort_cost
-        pos_idx = ops.stack((mnp.arange(batch_size * n_gt_max), dynamic_ks.view(-1) - 1), -1)
+        pos_idx = ops.stack((mnp.arange(batch_size * n_gt_max, dtype=ms.int32), dynamic_ks.view(-1) - 1), -1)
         pos_v = ops.gather_nd(sort_cost.view(batch_size * n_gt_max, 20), pos_idx).view(batch_size, n_gt_max)
         matching_matrix = ops.cast(cost <= pos_v[:, :, None], ms.int32) * this_mask
 
@@ -815,9 +815,9 @@ class YOLOv7AuxLoss(nn.Cell):
             matching_matrix.astype(ms.float16).sum(1) > 0.0
         )  # (bs, gt_max, nl*5*na*gt_max) -> (bs, nl*5*na*gt_max)
         all_tmasks = all_tmasks * ops.cast(fg_mask_inboxes, ms.int32)  # (bs, nl*5*na*gt_max)
-        matched_gt_inds = matching_matrix.argmax(1)  # (bs, gt_max, nl*5*na*gt_max) -> (bs, nl*5*na*gt_max)
+        matched_gt_inds = matching_matrix.argmax(1).astype(ms.int32)  # (bs, gt_max, nl*5*na*gt_max) -> (bs, nl*5*na*gt_max)
         matched_bs_inds = ops.tile(
-            mnp.arange(batch_size)[:, None], (1, matching_matrix.shape[2])
+            mnp.arange(batch_size, dtype=ms.int32)[:, None], (1, matching_matrix.shape[2])
         )  # (bs, nl*5*na*gt_max)
         matched_inds = ops.stack((matched_bs_inds.view(-1), matched_gt_inds.view(-1)), 1)  # (bs*nl*5*na*gt_max, 2)
         matched_inds *= all_tmasks.view(-1)[:, None]

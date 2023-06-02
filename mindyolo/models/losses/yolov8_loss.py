@@ -129,7 +129,7 @@ class YOLOv8Loss(nn.Cell):
     @staticmethod
     def dist2bbox(distance, anchor_points, xywh=True, axis=-1):
         """Transform distance(ltrb) to box(xywh or xyxy)."""
-        lt, rb = ops.split(distance, output_num=2, axis=axis)
+        lt, rb = ops.split(distance, split_size_or_sections=2, axis=axis)
         x1y1 = anchor_points - lt
         x2y2 = anchor_points + rb
         if xywh:
@@ -147,8 +147,7 @@ class YOLOv8Loss(nn.Cell):
             _, _, h, w = feats[i].shape
             sx = mnp.arange(w, dtype=dtype) + grid_cell_offset  # shift x
             sy = mnp.arange(h, dtype=dtype) + grid_cell_offset  # shift y
-            sy, sx = ops.meshgrid((sy, sx), indexing="ij")
-            # sy, sx = torch.meshgrid(sy, sx, indexing='ij') if TORCH_1_10 else torch.meshgrid(sy, sx)
+            sy, sx = ops.meshgrid(sy, sx, indexing="ij")
             anchor_points += (ops.stack((sx, sy), -1).view(-1, 2),)
             stride_tensor += (ops.ones((h * w, 1), dtype) * stride,)
         return ops.concat(anchor_points), ops.concat(stride_tensor)
@@ -191,7 +190,7 @@ class BboxLoss(nn.Cell):
     @staticmethod
     def bbox2dist(anchor_points, bbox, reg_max):
         """Transform bbox(xyxy) to dist(ltrb)."""
-        x1y1, x2y2 = ops.split(bbox, axis=-1, output_num=2)
+        x1y1, x2y2 = ops.split(bbox, split_size_or_sections=2, axis=-1)
         return ops.concat((anchor_points - x1y1, x2y2 - anchor_points), -1).clip(0, reg_max - 0.01)  # dist (lt, rb)
 
     @staticmethod
@@ -357,9 +356,9 @@ class TaskAlignedAssigner(nn.Cell):
         """
         n_anchors = xy_centers.shape[0]
         bs, n_boxes, _ = gt_bboxes.shape
-        x, y = ops.split(xy_centers.view(1, -1, 2), axis=-1, output_num=2)  # (1, N, 2) -> (1, N, 1)
+        x, y = ops.split(xy_centers.view(1, -1, 2), split_size_or_sections=1, axis=-1)  # (1, N, 2) -> (1, N, 1)
         left, top, right, bottom = ops.split(
-            gt_bboxes.view(-1, 1, 4), axis=-1, output_num=4
+            gt_bboxes.view(-1, 1, 4), split_size_or_sections=1, axis=-1
         )  # (bs, n_gt, 4)->(bs*n_gt, 1, 4)->(bs*n_gt, 1, 1)
         select = ops.logical_and(
             ops.logical_and((x - left) > eps, (y - top) > eps), ops.logical_and((right - x) > eps, (bottom - y) > eps)

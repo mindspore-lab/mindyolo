@@ -220,6 +220,7 @@ class Trainer:
         warmup_epoch: int = 0,
         warmup_momentum: Union[list, None] = None,
         keep_checkpoint_max: int = 10,
+        log_interval: int = 1,
         loss_item_name: list = [],
         save_dir: str = "",
         enable_modelarts: bool = False,
@@ -231,15 +232,7 @@ class Trainer:
         rank_size: int = 8,
     ):
         # Modify dataset columns name for data sink mode, because dataloader could not send string data to device.
-        def modify_dataset_columns(image, labels, img_files):
-            return image, labels
-
-        loader = self.dataloader.map(
-            modify_dataset_columns,
-            input_columns=["image", "labels", "img_files"],
-            output_columns=["image", "labels"],
-            column_order=["image", "labels"],
-        )
+        loader = self.dataloader.project(["image", "labels"])
 
         # to be compatible with old interface
         has_eval_mask = list(isinstance(c, EvalWhileTrain) for c in self.callback)
@@ -252,12 +245,7 @@ class Trainer:
         # Change warmup_momentum, list of step -> list of epoch
         warmup_momentum = (
             [warmup_momentum[_i * self.steps_per_epoch] for _i in range(warmup_epoch)]
-            + [
-                warmup_momentum[-1],
-            ]
-            * (epochs - warmup_epoch)
-            if warmup_momentum
-            else None
+            + [warmup_momentum[-1],] * (epochs - warmup_epoch) if warmup_momentum else None
         )
 
         # Build train epoch func with sink process
@@ -265,13 +253,13 @@ class Trainer:
             fn=self.train_step_fn,
             dataset=loader,
             sink_size=self.steps_per_epoch,
-            steps=epochs * self.steps_per_epoch,
-            jit=True,
+            jit_config=ms.JitConfig()
         )
 
         # Attr
         self.epochs = epochs
         self.main_device = main_device
+        self.log_interval = log_interval
         self.loss_item_name = loss_item_name
 
         # Directories
@@ -287,8 +275,6 @@ class Trainer:
         # Set Checkpoint Manager
         manager = CheckpointManager(ckpt_save_policy="latest_k")
         manager_ema = CheckpointManager(ckpt_save_policy="latest_k") if self.ema else None
-        manager_best = CheckpointManager(ckpt_save_policy="top_k") if run_eval else None
-        ckpt_filelist_best = []
 
         run_context = RunContext(
             epoch_num=epochs,

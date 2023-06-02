@@ -28,7 +28,7 @@ class EMA(nn.Cell):
         # decay exponential ramp (to help early epochs)
         return self.decay_value * (1 - ops.exp(ops.neg(x) / 2000))
 
-    @ms.ms_function
+    @ms.jit
     def update(self):
         # Update EMA parameters
         def update_param(d, ema_v, weight):
@@ -38,16 +38,14 @@ class EMA(nn.Cell):
                 tep_v = ema_v * d
                 return self.assign(ema_v, weight * (1.0 - d) + tep_v)
 
-        updates = ops.assign_add(self.updates, 1)
+        ops.assign_add(self.updates, 1)
         d = self.decay(self.updates)
         success = self.hyper_map(ops.partial(update_param, d), self.ema_weight, self.weight)
-        updates = ops.depend(updates, success)
 
-        return updates
+        return success
 
-    @ms.ms_function
+    @ms.jit
     def clone_from_model(self):
-        updates = ops.assign_add(self.updates, 1)
+        ops.assign_add(self.updates, 1)
         success = self.hyper_map(ops.assign, self.ema_weight, self.weight)
-        updates = ops.depend(updates, success)
-        return updates
+        return success

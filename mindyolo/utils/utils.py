@@ -1,6 +1,7 @@
 import os
 import random
 import yaml
+import cv2
 from datetime import datetime
 import numpy as np
 
@@ -45,6 +46,7 @@ def set_default(args):
     args.optimizer.accumulate = args.accumulate
     args.optimizer.total_batch_size = args.total_batch_size
     # data
+    cv2.setNumThreads(args.opencv_threads_num)  # Set the number of threads for opencv.
     args.data.nc = 1 if args.single_cls else int(args.data.nc)  # number of classes
     args.data.names = ["item"] if args.single_cls and len(args.names) != 1 else args.data.names  # class names
     assert len(args.data.names) == args.data.nc, "%g names found for nc=%g dataset in %s" % (
