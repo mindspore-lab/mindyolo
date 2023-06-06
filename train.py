@@ -68,6 +68,8 @@ def get_parser_train(parents=None):
     parser.add_argument("--recompute_layers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=2, help="set global seed")
     parser.add_argument("--summary", type=ast.literal_eval, default=True, help="collect train loss scaler or not")
+    parser.add_argument("--profiler", type=ast.literal_eval, default=False, help="collect profiling data or not")
+    parser.add_argument("--profiler_step_num", type=int, default=1, help="collect profiler data for how many steps.")
     parser.add_argument("--opencv_threads_num", type=int, default=2, help="set the number of threads for opencv")
 
     # args for ModelArts
@@ -210,6 +212,10 @@ def train(args):
     )
 
     # create callbacks
+    if args.summary:
+        args.callback.append({"name": "SummaryCallback"})
+    if args.profiler:
+        args.callback.append({"name": "ProfilerCallback", "profiler_step_num": args.profiler_step_num})
     callback_fns = create_callback(args.callback)
 
     # Create test function for run eval while train
@@ -246,9 +252,10 @@ def train(args):
         loss_fn=loss_fn,
         ema=ema,
         optimizer=optimizer,
-        summary=args.summary,
         callback=callback_fns,
         reducer=reducer,
+        data_sink=args.ms_datasink,
+        profiler=args.profiler
     )
     if not args.ms_datasink:
         trainer.train(
@@ -267,7 +274,8 @@ def train(args):
             run_eval=args.run_eval,
             test_fn=test_fn,
             rank_size=args.rank_size,
-            ms_jit=args.ms_jit
+            ms_jit=args.ms_jit,
+            profiler_step_num=args.profiler_step_num
         )
     else:
         logger.warning("DataSink is an experimental interface under development.")
@@ -285,6 +293,7 @@ def train(args):
             train_url=args.train_url,
             run_eval=args.run_eval,
             test_fn=test_fn,
+            profiler_step_num=args.profiler_step_num
         )
     logger.info("Training completed.")
 

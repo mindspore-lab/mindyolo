@@ -55,7 +55,7 @@ def set_default(args):
         args.config,
     )
     # Directories and Save run settings
-    args.save_dir = os.path.join(args.save_dir, datetime.now().strftime("%Y.%m.%d-%H:%M:%S"))
+    args.save_dir = os.path.join(args.save_dir, datetime.now().strftime("%Y.%m.%d-%H_%M_%S"))
     os.makedirs(args.save_dir, exist_ok=True)
     if args.rank % args.rank_size == 0:
         with open(os.path.join(args.save_dir, "cfg.yaml"), "w") as f:
