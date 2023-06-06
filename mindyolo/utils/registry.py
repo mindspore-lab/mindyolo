@@ -1,4 +1,5 @@
 import inspect
+import os
 
 
 class Registry:
@@ -21,7 +22,11 @@ class Registry:
         return self.get(key) is not None
 
     def __repr__(self):
-        format_str = self.__class__.__name__ + f"(name={self._name}), items={self._module_dict}"
+        format_str = self.__class__.__name__ + f"(name={self._name}, total={len(self._module_dict)})\n"
+        class2path = lambda c: os.path.sep.join(c.__module__.split('.')) + '.py'
+        format_str += ''.join(
+            [f"  ({i}): {k} in {class2path(v)}\n" for i, (k, v) in enumerate(self._module_dict.items())]
+                              )
         return format_str
 
     @property

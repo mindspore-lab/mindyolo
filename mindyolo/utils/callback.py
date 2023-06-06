@@ -6,7 +6,7 @@ from typing import Union, Tuple, List
 
 import numpy as np
 
-from mindyolo import sync_data
+from mindyolo.utils.modelarts import sync_data
 from mindyolo.utils import CheckpointManager, logger
 from mindyolo.utils.registry import Registry
 from mindyolo.utils.train_step_factory import create_train_step_fn
@@ -25,6 +25,7 @@ def create_callback(arg_callback):
     for i, cb in enumerate(arg_callback):
         assert isinstance(cb, dict) and 'name' in cb, f'callback[{i}] is not a dict or does not contain key [name]'
 
+    logger.info(CALLBACK_REGISTRY)
     return [_create_callback_worker(**kw) for kw in arg_callback]
 
 
