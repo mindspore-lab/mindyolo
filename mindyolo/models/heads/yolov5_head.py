@@ -4,6 +4,8 @@ import mindspore as ms
 import mindspore.numpy as mnp
 from mindspore import Parameter, Tensor, nn, ops
 
+from ..layers.utils import meshgrid
+
 
 class YOLOv5Head(nn.Cell):
     def __init__(self, nc=80, anchors=(), stride=(), ch=()):  # detection layer
@@ -49,7 +51,7 @@ class YOLOv5Head(nn.Cell):
     @staticmethod
     def _make_grid(nx=20, ny=20, dtype=ms.float32):
         # FIXME: Not supported on a specific model of machine
-        xv, yv = ops.meshgrid(mnp.arange(nx), mnp.arange(ny))
+        xv, yv = meshgrid((mnp.arange(nx), mnp.arange(ny)))
         return ops.cast(ops.stack((xv, yv), 2).view((1, 1, ny, nx, 2)), dtype)
 
     def convert(self, z):

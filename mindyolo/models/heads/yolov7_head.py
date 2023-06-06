@@ -7,6 +7,7 @@ from mindspore import Parameter, Tensor, nn, ops
 
 from mindyolo.utils import logger
 from ..layers.implicit import ImplicitA, ImplicitM
+from ..layers.utils import meshgrid
 
 
 class YOLOv7Head(nn.Cell):
@@ -190,7 +191,7 @@ class YOLOv7AuxHead(nn.Cell):
 
     @staticmethod
     def _make_grid(nx=20, ny=20, dtype=ms.float32):
-        xv, yv = ops.meshgrid(mnp.arange(nx), mnp.arange(ny))
+        xv, yv = meshgrid((mnp.arange(nx), mnp.arange(ny)))
         return ops.stack((xv, yv), 2).view((1, 1, ny, nx, 2)).astype(dtype)
 
     @staticmethod

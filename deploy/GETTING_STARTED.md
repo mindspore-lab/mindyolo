@@ -62,13 +62,15 @@ MindYOLO支持MindX推理（mindspore1.9）和 Lite推理（mindspore2.0）
    * 注意：此步骤会同时产生om格式的文件，如果遇到tvm相关报错，请卸载mindspore-ascend或安装mindspore lite2.0后重启环境再次尝试
 
 ### Lite Test
+   使用lite版本的mindir进行推理
    ```shell
-   python deploy/test.py --model_type Lite --model_path ./path_to_mindir/weight.mindir --conifg ./path_to_config/yolo.yaml
+   python deploy/test.py --model_type Lite --model_path ./path_to_mindir/weight.mindir --config ./path_to_config/yolo.yaml
    e.g.
-   python deploy/test.py --model_type Lite --model_path ./yolov5n.mindir --conifg ./configs/yolov5/yolov5n.yaml
+   python deploy/test.py --model_type Lite --model_path ./yolov5n.mindir --config ./configs/yolov5/yolov5n.yaml
    ```
 
 ### Lite Predict
+   使用lite版本的mindir进行预测
    ```shell
    python ./deploy/predict.py --model_type Lite --model_path ./path_to_mindir/weight.mindir --config ./path_to_conifg/yolo.yaml --image_path ./path_to_image/image.jpg
    e.g.
