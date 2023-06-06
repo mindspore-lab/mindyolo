@@ -68,6 +68,8 @@ def get_parser_train(parents=None):
     parser.add_argument("--recompute_layers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=2, help="set global seed")
     parser.add_argument("--summary", type=ast.literal_eval, default=True, help="collect train loss scaler or not")
+    parser.add_argument("--profiler", type=ast.literal_eval, default=False, help="collect profiling data or not.")
+    parser.add_argument("--prof_range", type=ast.literal_eval, default=[1, 2], help="step or epoch range num.")
     parser.add_argument("--opencv_threads_num", type=int, default=2, help="set the number of threads for opencv")
 
     # args for ModelArts
@@ -247,8 +249,11 @@ def train(args):
         ema=ema,
         optimizer=optimizer,
         summary=args.summary,
+        profiler=args.profiler,
+        prof_range=args.prof_range,
         callback=callback_fns,
         reducer=reducer,
+        data_sink=args.ms_datasink
     )
     if not args.ms_datasink:
         trainer.train(

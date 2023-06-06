@@ -54,6 +54,8 @@ class RunContext:
         enable_modelarts=False,
         sync_lock_dir="",
         ckpt_save_dir="",
+        summary_dir="",
+        prof_dir="",
         train_url="",
         overflow_still_update=False,
         ms_jit=True,
@@ -66,6 +68,8 @@ class RunContext:
         self.trainer = trainer
         self.test_fn = test_fn
         self.ckpt_save_dir = ckpt_save_dir
+        self.summary_dir = summary_dir
+        self.prof_dir = prof_dir
         self.sync_lock_dir = sync_lock_dir
         self.enable_modelarts = enable_modelarts
         self.train_url = train_url

@@ -4,7 +4,7 @@ import types
 from typing import Union, List
 
 import mindspore as ms
-from mindspore import SummaryRecord, Tensor, nn, ops
+from mindspore import Profiler, SummaryRecord, Tensor, nn, ops
 
 from mindyolo.utils import logger
 from mindyolo.utils.callback import BaseCallback, EvalWhileTrain, RunContext
@@ -29,8 +29,11 @@ def create_trainer(
     dataloader: ms.dataset.Dataset,
     steps_per_epoch: int,
     summary,
+    profiler,
+    prof_range,
     callback: List[BaseCallback],
     reducer,
+    data_sink,
 ):
     return Trainer(
         model_name=model_name,
@@ -43,8 +46,11 @@ def create_trainer(
         dataloader=dataloader,
         steps_per_epoch=steps_per_epoch,
         summary=summary,
+        profiler=profiler,
+        prof_range=prof_range,
         callback=callback,
         reducer=reducer,
+        data_sink=data_sink,
     )
 
 
@@ -61,11 +67,16 @@ class Trainer:
         dataloader,
         steps_per_epoch,
         summary,
+        profiler,
+        prof_range,
         callback,
         reducer,
+        data_sink
     ):
         self.summary_record = None
         self.summary = summary
+        self.profiler = profiler
+        self.prof_range = prof_range
         self.model_name = model_name
         self.train_step_fn = train_step_fn
         self.scaler = scaler
@@ -78,6 +89,7 @@ class Trainer:
         self.steps_per_epoch = steps_per_epoch
         self.callback = callback
         self.reducer = reducer
+        self.data_sink = data_sink
 
     def train(
         self,
@@ -104,13 +116,13 @@ class Trainer:
         self.log_interval = log_interval
         self.overflow_still_update = overflow_still_update
         self.loss_item_name = loss_item_name
+        self.loss_item = []
 
         # Directories
         ckpt_save_dir = os.path.join(save_dir, "weights")
+        summary_dir = os.path.join(save_dir, "summary")
+        prof_dir = os.path.join(save_dir, "profiling_data")
         sync_lock_dir = os.path.join(save_dir, "sync_locks") if not enable_modelarts else "/tmp/sync_locks"
-        if self.summary:
-            summary_dir = os.path.join(save_dir, "summary")
-            self.summary_record = SummaryRecord(summary_dir)
         if main_device:
             os.makedirs(ckpt_save_dir, exist_ok=True)  # save checkpoint path
             os.makedirs(sync_lock_dir, exist_ok=True)  # sync_lock for run_eval
@@ -128,6 +140,8 @@ class Trainer:
         self.accumulate_grads = None
         self.accumulate = accumulate
         self.accumulate_grads_fn = self._get_accumulate_grads_fn()
+        self.cur_lr = 0
+        self.prof = None
 
         # Set Checkpoint Manager
         manager = CheckpointManager(ckpt_save_policy="latest_k")
@@ -145,6 +159,8 @@ class Trainer:
             enable_modelarts=enable_modelarts,
             sync_lock_dir=sync_lock_dir,
             ckpt_save_dir=ckpt_save_dir,
+            summary_dir=summary_dir,
+            prof_dir=prof_dir,
             train_url=train_url,
             overflow_still_update=overflow_still_update,
             ms_jit=ms_jit,
@@ -204,12 +220,6 @@ class Trainer:
             if cur_step == self.steps_per_epoch:
                 self._on_train_epoch_end(run_context)
 
-        if enable_modelarts and self.summary:
-            for p in os.listdir(summary_dir):
-                summary_file_path = os.path.join(summary_dir, p)
-                sync_data(summary_file_path, train_url + "/summary/" + summary_file_path.split("/")[-1])
-        if self.summary:
-            self.summary_record.close()
         self._on_train_end(run_context)
         logger.info("End Train.")
 
@@ -261,13 +271,16 @@ class Trainer:
         self.main_device = main_device
         self.log_interval = log_interval
         self.loss_item_name = loss_item_name
+        self.loss_item = []
+        self.cur_lr = 0
+        self.prof = None
 
         # Directories
         ckpt_save_dir = os.path.join(save_dir, "weights")
         sync_lock_dir = os.path.join(save_dir, "sync_locks") if not enable_modelarts else "/tmp/sync_locks"
-        if self.summary:
-            summary_dir = os.path.join(save_dir, "summary")
-            self.summary_record = SummaryRecord(summary_dir)
+        summary_dir = os.path.join(save_dir, "summary")
+        prof_dir = os.path.join(save_dir, "profiling_data")
+
         if main_device:
             os.makedirs(ckpt_save_dir, exist_ok=True)  # save checkpoint path
             os.makedirs(sync_lock_dir, exist_ok=False)  # sync_lock for run_eval
@@ -285,6 +298,8 @@ class Trainer:
             enable_modelarts=enable_modelarts,
             sync_lock_dir=sync_lock_dir,
             ckpt_save_dir=ckpt_save_dir,
+            summary_dir=summary_dir,
+            prof_dir=prof_dir,
             train_url=train_url,
             overflow_still_update=overflow_still_update,
             ms_jit=ms_jit,
@@ -309,26 +324,24 @@ class Trainer:
 
             # train one epoch with datasink
             self._on_train_epoch_begin(run_context)
-            _, loss_item, _, _ = train_epoch_fn()
-            self._on_train_epoch_begin(run_context)
+            _, self.loss_item, _, _ = train_epoch_fn()
+            self._on_train_epoch_end(run_context)
 
             # print loss and lr
             log_string = f"Epoch {cur_epoch}/{epochs}, Step {self.steps_per_epoch}/{self.steps_per_epoch}"
-            if len(self.loss_item_name) < len(loss_item):
-                self.loss_item_name += [f"loss_item{i}" for i in range(len(loss_item) - len(self.loss_item_name))]
-            for i in range(len(loss_item)):
-                log_string += f", {self.loss_item_name[i]}: {loss_item[i].asnumpy():.4f}"
-                if self.summary:
-                    self.summary_record.add_value("scalar", f"{self.loss_item_name[i]}", Tensor(loss_item[i].asnumpy()))
+            if len(self.loss_item_name) < len(self.loss_item):
+                self.loss_item_name += [f"loss_item{i}" for i in range(len(self.loss_item) - len(self.loss_item_name))]
+            for i in range(len(self.loss_item)):
+                log_string += f", {self.loss_item_name[i]}: {self.loss_item[i].asnumpy():.4f}"
             if self.optimizer.dynamic_lr:
                 if self.optimizer.is_group_lr:
                     lr_cell = self.optimizer.learning_rate[0]
-                    cur_lr = lr_cell(Tensor(self.global_step, ms.int32)).asnumpy().item()
+                    self.cur_lr = lr_cell(Tensor(self.global_step, ms.int32)).asnumpy().item()
                 else:
-                    cur_lr = self.optimizer.learning_rate(Tensor(self.global_step, ms.int32)).asnumpy().item()
+                    self.cur_lr = self.optimizer.learning_rate(Tensor(self.global_step, ms.int32)).asnumpy().item()
             else:
-                cur_lr = self.optimizer.learning_rate.asnumpy().item()
-            log_string += f", cur_lr: {cur_lr}"
+                self.cur_lr = self.optimizer.learning_rate.asnumpy().item()
+            log_string += f", cur_lr: {self.cur_lr}"
             logger.info(log_string)
 
             # save checkpoint per epoch on main device
@@ -354,18 +367,12 @@ class Trainer:
                 logger.info(f"Epoch {cur_epoch}/{epochs}, epoch time: {(time.time() - s_epoch_time) / 60:.2f} min.")
                 s_epoch_time = time.time()
 
-        if enable_modelarts and self.summary:
-            for p in os.listdir(summary_dir):
-                summary_file_path = os.path.join(summary_dir, p)
-                sync_data(summary_file_path, train_url + "/summary/" + summary_file_path.split("/")[-1])
-        if self.summary:
-            self.summary_record.close()
         self._on_train_end(run_context)
         logger.info("End Train.")
 
     def train_step(self, imgs, labels, cur_step=0, cur_epoch=0):
         if self.accumulate == 1:
-            loss, loss_item, _, grads_finite = self.train_step_fn(imgs, labels, True)
+            loss, self.loss_item, _, grads_finite = self.train_step_fn(imgs, labels, True)
             if self.ema:
                 self.ema.update()
             self.scaler.adjust(grads_finite)
@@ -375,7 +382,7 @@ class Trainer:
                 else:
                     logger.warning(f"overflow, drop step, loss scale adjust to {self.scaler.scale_value.asnumpy()}")
         else:
-            loss, loss_item, grads, grads_finite = self.train_step_fn(imgs, labels, False)
+            loss, self.loss_item, grads, grads_finite = self.train_step_fn(imgs, labels, False)
             self.scaler.adjust(grads_finite)
             if grads_finite or self.overflow_still_update:
                 self.accumulate_cur_step += 1
@@ -413,27 +420,22 @@ class Trainer:
                 f"Epoch {cur_epoch}/{self.epochs}, Step {cur_step}/{self.steps_per_epoch}, imgsize {imgs.shape[2:]}"
             )
             # print loss
-            if len(self.loss_item_name) < len(loss_item):
-                self.loss_item_name += [f"loss_item{i}" for i in range(len(loss_item) - len(self.loss_item_name))]
-            for i in range(len(loss_item)):
-                log_string += f", {self.loss_item_name[i]}: {loss_item[i].asnumpy():.4f}"
-                if self.summary:
-                    self.summary_record.add_value("scalar", f"{self.loss_item_name[i]}", Tensor(loss_item[i].asnumpy()))
+            if len(self.loss_item_name) < len(self.loss_item):
+                self.loss_item_name += [f"loss_item{i}" for i in range(len(self.loss_item) - len(self.loss_item_name))]
+            for i in range(len(self.loss_item)):
+                log_string += f", {self.loss_item_name[i]}: {self.loss_item[i].asnumpy():.4f}"
+
             # print lr
             if self.optimizer.dynamic_lr:
                 if self.optimizer.is_group_lr:
                     lr_cell = self.optimizer.learning_rate[0]
-                    cur_lr = lr_cell(Tensor(self.global_step, ms.int32)).asnumpy().item()
+                    self.cur_lr = lr_cell(Tensor(self.global_step, ms.int32)).asnumpy().item()
                 else:
-                    cur_lr = self.optimizer.learning_rate(Tensor(self.global_step, ms.int32)).asnumpy().item()
+                    self.cur_lr = self.optimizer.learning_rate(Tensor(self.global_step, ms.int32)).asnumpy().item()
             else:
-                cur_lr = self.optimizer.learning_rate.asnumpy().item()
-            log_string += f", cur_lr: {cur_lr}"
+                self.cur_lr = self.optimizer.learning_rate.asnumpy().item()
+            log_string += f", cur_lr: {self.cur_lr}"
             logger.info(log_string)
-            if self.summary:
-                self.summary_record.add_value("scalar", f"cur_lr", Tensor(cur_lr))
-                self.summary_record.record(int(cur_step))
-                self.summary_record.flush()
 
     def _get_accumulate_grads_fn(self):
         hyper_map = ops.HyperMap()
@@ -494,27 +496,65 @@ class Trainer:
         for cb in self.callback:
             cb.on_train_begin(run_context)
 
+        if self.summary:
+            self.summary_record = SummaryRecord(run_context.summary_dir)
+        if self.profiler:
+            self.prof = Profiler(output_path=run_context.prof_dir, start_profile=False)
+
     def _on_train_end(self, run_context: RunContext):
         """hooks to run on the end of training process"""
         for cb in self.callback:
             cb.on_train_end(run_context)
+        if run_context.enable_modelarts and self.summary:
+            for p in os.listdir(run_context.summary_dir):
+                summary_file_path = os.path.join(run_context.summary_dir, p)
+                sync_data(summary_file_path, run_context.train_url + "/summary/" + summary_file_path.split("/")[-1])
+        if self.summary:
+            self.summary_record.close()
+        if self.profiler:
+            for p in os.listdir(run_context.prof_dir):
+                prof_file_path = os.path.join(run_context.prof_dir, p)
+                sync_data(prof_file_path, run_context.train_url + "/profiling_data/" + prof_file_path.split("/")[-1])
+            self.prof.analyse()
 
     def _on_train_epoch_begin(self, run_context: RunContext):
         """hooks to run on the beginning of a training epoch"""
         for cb in self.callback:
             cb.on_train_epoch_begin(run_context)
+        if self.profiler:
+            if run_context.cur_epoch_index == self.prof_range[0]:
+                self.prof.start()
+            if run_context.cur_epoch_index == self.prof_range[1]:
+                self.prof.stop()
 
     def _on_train_epoch_end(self, run_context: RunContext):
         """hooks to run on the end of a training epoch"""
         for cb in self.callback:
             cb.on_train_epoch_end(run_context)
+        if self.summary and self.data_sink:
+            for i in range(len(self.loss_item)):
+                self.summary_record.add_value("scalar", f"{self.loss_item_name[i]}", self.loss_item[i])
+            self.summary_record.add_value("scalar", f"cur_lr", run_context.trainer.cur_lr)
+            self.summary_record.record(run_context.cur_epoch_index)
+            self.summary_record.flush()
 
     def _on_train_step_begin(self, run_context: RunContext):
         """hooks to run on the beginning of a training step"""
         for cb in self.callback:
             cb.on_train_step_begin(run_context)
+        if self.profiler:
+            if run_context.cur_step_index == self.prof_range[0]:
+                self.prof.start()
+            if run_context.cur_step_index == self.prof_range[1]:
+                self.prof.stop()
 
     def _on_train_step_end(self, run_context: RunContext):
         """hooks to run on the end of a training step"""
         for cb in self.callback:
             cb.on_train_step_end(run_context)
+        if self.summary and run_context.cur_step_index % self.log_interval == 0:
+            for i in range(len(self.loss_item)):
+                self.summary_record.add_value("scalar", f"{self.loss_item_name[i]}", self.loss_item[i])
+            self.summary_record.add_value("scalar", f"cur_lr", self.cur_lr)
+            self.summary_record.record(run_context.cur_step_index)
+            self.summary_record.flush()
