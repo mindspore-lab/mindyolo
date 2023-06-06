@@ -60,7 +60,7 @@ python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_c
 * 评估模型的精度：
 
   ```shell
-  python test.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_ckpt/WEIGHT.ckpt
+  python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt
   ```
 *注意：默认超参为8卡训练，单卡情况需调整部分参数。 默认设备为Ascend，您可以指定'device_target'的值为Ascend/GPU/CPU。*
 * 有关更多选项，请参阅 `train/test.py -h`.

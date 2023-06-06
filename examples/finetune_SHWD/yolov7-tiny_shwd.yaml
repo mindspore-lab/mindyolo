@@ -1,0 +1,176 @@
+per_batch_size: 16 # 16 * 8 = 128
+img_size: 640 # image sizes
+sync_bn: True
+weight: ./yolov7-tiny_pretrain.ckpt
+
+data:
+  dataset_name: shwd
+
+  train_set: ./SHWD/train.txt
+  val_set: ./SHWD/val.txt
+
+  nc: 2
+
+  # class names
+  names: [ 'person',  'hat' ]
+
+  num_parallel_workers: 4
+
+  train_transforms:
+    - {func_name: mosaic, prob: 1.0, mosaic9_prob: 0.2, translate: 0.1, scale: 0.5}
+    - {func_name: mixup, prob: 0.05, alpha: 8.0, beta: 8.0, needed_mosaic: True}
+    - {func_name: hsv_augment, prob: 1.0, hgain: 0.015, sgain: 0.7, vgain: 0.4}
+    - {func_name: pastein, prob: 0.05, num_sample: 30}
+    - {func_name: label_norm, xyxy2xywh_: True}
+    - {func_name: fliplr, prob: 0.5}
+    - {func_name: label_pad, padding_size: 160, padding_value: -1}
+    - {func_name: image_norm, scale: 255.}
+    - {func_name: image_transpose, bgr2rgb: True, hwc2chw: True}
+
+  test_transforms:
+    - {func_name: letterbox, scaleup: False}
+    - {func_name: label_norm, xyxy2xywh_: True}
+    - {func_name: label_pad, padding_size: 160, padding_value: -1}
+    - {func_name: image_norm, scale: 255. }
+    - {func_name: image_transpose, bgr2rgb: True, hwc2chw: True }
+
+optimizer:
+  optimizer: momentum
+  lr_init: 0.001  # initial learning rate
+  momentum: 0.937  # SGD momentum/Adam beta1
+  nesterov: True # update gradients with NAG(Nesterov Accelerated Gradient) algorithm
+  loss_scale: 1.0 # loss scale for optimizer
+  warmup_epochs: 3  # warmup epochs (fractions ok)
+  warmup_momentum: 0.8  # warmup initial momentum
+  warmup_bias_lr: 0.1  # warmup initial bias lr
+  min_warmup_step: 1000 # minimum warmup step
+  group_param: yolov7 # group param strategy
+  gp_weight_decay: 0.0005  # group param weight decay 5e-4
+  start_factor: 1.0
+  end_factor: 0.01
+
+loss:
+  name: YOLOv7Loss
+  box: 0.05  # box loss gain
+  cls: 0.5  # cls loss gain
+  cls_pw: 1.0  # cls BCELoss positive_weight
+  obj: 1.0  # obj loss gain (scale with pixels)
+  obj_pw: 1.0  # obj BCELoss positive_weight
+  fl_gamma: 0.0  # focal loss gamma (efficientDet default gamma=1.5)
+  anchor_t: 4.0  # anchor-multiple threshold
+  label_smoothing: 0.0 # label smoothing epsilon
+
+network:
+  model_name: yolov7
+  depth_multiple: 1.0  # model depth multiple
+  width_multiple: 1.0  # layer channel multiple
+
+  stride: [8, 16, 32]
+
+  # anchors
+  anchors:
+    - [10,13, 16,30, 33,23]  # P3/8
+    - [30,61, 62,45, 59,119]  # P4/16
+    - [116,90, 156,198, 373,326]  # P5/32
+
+  # yolov7-tiny backbone
+  backbone:
+    # [from, number, module, args] c2, k=1, s=1, p=None, g=1, d=1, act=True
+    [[-1, 1, ConvNormAct, [32, 3, 2, None, 1, 1, nn.LeakyReLU(0.1)]],  # 0-P1/2
+
+     [-1, 1, ConvNormAct, [64, 3, 2, None, 1, 1, nn.LeakyReLU(0.1)]],  # 1-P2/4
+
+     [-1, 1, ConvNormAct, [32, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-2, 1, ConvNormAct, [32, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [32, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [32, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [[-1, -2, -3, -4], 1, Concat, [1]],
+     [-1, 1, ConvNormAct, [64, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],  # 7
+
+     [-1, 1, MP, []],  # 8-P3/8
+     [-1, 1, ConvNormAct, [64, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-2, 1, ConvNormAct, [64, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [64, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [64, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [[-1, -2, -3, -4], 1, Concat, [1]],
+     [-1, 1, ConvNormAct, [128, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],  # 14
+
+     [-1, 1, MP, []],  # 15-P4/16
+     [-1, 1, ConvNormAct, [128, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-2, 1, ConvNormAct, [128, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [128, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [128, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [[-1, -2, -3, -4], 1, Concat, [1]],
+     [-1, 1, ConvNormAct, [256, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],  # 21
+
+     [-1, 1, MP, []],  # 22-P5/32
+     [-1, 1, ConvNormAct, [256, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-2, 1, ConvNormAct, [256, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [256, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [256, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [[-1, -2, -3, -4], 1, Concat, [1]],
+     [-1, 1, ConvNormAct, [512, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],  # 28
+    ]
+
+  # yolov7-tiny head
+  head:
+    [[-1, 1, ConvNormAct, [256, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-2, 1, ConvNormAct, [256, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, SP, [5]],
+     [-2, 1, SP, [9]],
+     [-3, 1, SP, [13]],
+     [[-1, -2, -3, -4], 1, Concat, [1]],
+     [-1, 1, ConvNormAct, [256, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [[-1, -7], 1, Concat, [1]],
+     [-1, 1, ConvNormAct, [256, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],  # 37
+
+     [-1, 1, ConvNormAct, [128, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, Upsample, [None, 2, 'nearest']],
+     [21, 1, ConvNormAct, [128, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]], # route backbone P4
+     [[-1, -2], 1, Concat, [1]],
+
+     [-1, 1, ConvNormAct, [64, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-2, 1, ConvNormAct, [64, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [64, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [64, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [[-1, -2, -3, -4], 1, Concat, [1]],
+     [-1, 1, ConvNormAct, [128, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],  # 47
+
+     [-1, 1, ConvNormAct, [64, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, Upsample, [None, 2, 'nearest']],
+     [14, 1, ConvNormAct, [64, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]], # route backbone P3
+     [[-1, -2], 1, Concat, [1]],
+
+     [-1, 1, ConvNormAct, [32, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-2, 1, ConvNormAct, [32, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [32, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [32, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [[-1, -2, -3, -4], 1, Concat, [1]],
+     [-1, 1, ConvNormAct, [64, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],  # 57
+
+     [-1, 1, ConvNormAct, [128, 3, 2, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [[-1, 47], 1, Concat, [1]],
+
+     [-1, 1, ConvNormAct, [64, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-2, 1, ConvNormAct, [64, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [64, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [64, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [[-1, -2, -3, -4], 1, Concat, [1]],
+     [-1, 1, ConvNormAct, [128, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],  # 65
+
+     [-1, 1, ConvNormAct, [256, 3, 2, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [[-1, 37], 1, Concat, [1]],
+
+     [-1, 1, ConvNormAct, [128, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-2, 1, ConvNormAct, [128, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [128, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [-1, 1, ConvNormAct, [128, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [[-1, -2, -3, -4], 1, Concat, [1]],
+     [-1, 1, ConvNormAct, [256, 1, 1, None, 1, 1, nn.LeakyReLU(0.1)]],  # 73
+
+     [57, 1, ConvNormAct, [128, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [65, 1, ConvNormAct, [256, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+     [73, 1, ConvNormAct, [512, 3, 1, None, 1, 1, nn.LeakyReLU(0.1)]],
+
+     [[74,75,76], 1, YOLOv7Head, [nc, anchors, stride]],   # Detect(P3, P4, P5)
+    ]

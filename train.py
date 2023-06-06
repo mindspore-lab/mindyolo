@@ -4,7 +4,6 @@ import os
 from functools import partial
 
 from mindyolo.utils.callback import create_callback
-from test import test
 
 import mindspore as ms
 
@@ -155,6 +154,7 @@ def train(args):
     steps_per_epoch = dataloader.get_dataset_size() // args.epochs
 
     if args.run_eval:
+        from test import test
         eval_dataset = COCODataset(
             dataset_path=args.data.val_set,
             img_size=args.img_size,
