@@ -27,5 +27,5 @@ class LiteModel(ModelBase):
         inputs[0].set_data_from_numpy(input)
 
         outputs = self.model.predict(inputs)
-        outputs = [outputs.get_data_to_numpy() for output in outputs]
+        outputs = [output.get_data_to_numpy().copy() for output in outputs]
         return outputs

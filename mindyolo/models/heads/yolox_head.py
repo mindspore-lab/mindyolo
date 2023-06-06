@@ -6,6 +6,7 @@ from mindspore import numpy as mnp
 from mindspore.common import initializer as init
 
 from mindyolo.models.layers.conv import ConvNormAct, DWConvNormAct
+from ..layers.utils import meshgrid
 
 
 class YOLOXHead(nn.Cell):
@@ -122,5 +123,5 @@ class YOLOXHead(nn.Cell):
     @staticmethod
     def _make_grid(nx=20, ny=20, dtype=ms.float32):
         # FIXME: Not supported on a specific model of machine
-        xv, yv = ops.meshgrid(mnp.arange(nx), mnp.arange(ny))
+        xv, yv = meshgrid((mnp.arange(nx), mnp.arange(ny)))
         return ops.cast(ops.stack((xv, yv), 2).view((1, 1, ny, nx, 2)), dtype)

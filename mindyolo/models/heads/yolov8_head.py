@@ -6,6 +6,7 @@ import mindspore.numpy as mnp
 from mindspore import Parameter, Tensor, nn, ops
 
 from ..layers import DFL, ConvNormAct, Identity
+from ..layers.utils import meshgrid
 
 
 class YOLOv8Head(nn.Cell):
@@ -82,7 +83,7 @@ class YOLOv8Head(nn.Cell):
             sx = mnp.arange(w, dtype=dtype) + grid_cell_offset  # shift x
             sy = mnp.arange(h, dtype=dtype) + grid_cell_offset  # shift y
             # FIXME: Not supported on a specific model of machine
-            sy, sx = ops.meshgrid(sy, sx, indexing='ij')
+            sy, sx = meshgrid((sy, sx), indexing="ij")
             anchor_points += (ops.stack((sx, sy), -1).view(-1, 2),)
             stride_tensor += (ops.ones((h * w, 1), dtype) * stride,)
         return ops.concat(anchor_points), ops.concat(stride_tensor)
