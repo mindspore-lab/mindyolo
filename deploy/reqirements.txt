@@ -1,5 +1,5 @@
 tqdm
-cv2
+opencv-python
 pycocotools >= 1.0.2
 pyyaml
 numpy==1.20
