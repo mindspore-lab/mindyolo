@@ -8,6 +8,7 @@ data:
 
   train_set: ./SHWD/train.txt
   val_set: ./SHWD/val.txt
+  test_set: ./SHWD/val.txt
 
   nc: 2
 

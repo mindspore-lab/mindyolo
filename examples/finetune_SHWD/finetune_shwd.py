@@ -123,6 +123,9 @@ def train_shwd(args):
         ema=ema,
         optimizer=optimizer,
         summary=args.summary,
+        loss_fn=loss_fn,
+        callback=[],
+        reducer=reducer
     )
 
     trainer.train(
