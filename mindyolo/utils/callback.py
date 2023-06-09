@@ -1,6 +1,5 @@
 import math
 import os
-import pathlib
 import sys
 import time
 from typing import Union, Tuple, List
@@ -40,7 +39,6 @@ class RunContext:
         trainer (Trainer): trainer class that perform training process
         test_fn (Function): test function that can evaluate the training model
         enable_modelarts (bool): whether to enable modelarts. usually on cloud when true
-        sync_lock_dir (str): a helper for single card evaluation when training on multiple card
         ckpt_save_dir (str): checkpoint saving directory
         train_url (str): training url. usually on cloud when not empty
 
@@ -54,7 +52,6 @@ class RunContext:
         trainer=None,
         test_fn=None,
         enable_modelarts=False,
-        sync_lock_dir="",
         ckpt_save_dir="",
         save_dir="",
         train_url="",
@@ -70,7 +67,6 @@ class RunContext:
         self.test_fn = test_fn
         self.ckpt_save_dir = ckpt_save_dir
         self.save_dir = save_dir
-        self.sync_lock_dir = sync_lock_dir
         self.enable_modelarts = enable_modelarts
         self.train_url = train_url
         self.overflow_still_update = overflow_still_update
@@ -276,29 +272,21 @@ class EvalWhileTrain(BaseCallback):
         test_fn = run_context.test_fn
         cur_epoch = run_context.cur_epoch_index
         epochs = run_context.epoch_num
-        sync_lock_dir = run_context.sync_lock_dir
         ckpt_save_dir = run_context.ckpt_save_dir
 
-        main_device = trainer.main_device
+        eval_network = trainer.ema.ema if trainer.ema else trainer.network
+        _train_status = eval_network.training
+        eval_network.set_train(False)
+        accuracy = test_fn(network=eval_network, cur_epoch=f'{cur_epoch:03d}')
+        accuracy = accuracy[0] if isinstance(accuracy, (list, tuple)) else accuracy
+        eval_network.set_train(_train_status)
 
-        sync_lock = os.path.join(sync_lock_dir, "run_eval_sync.lock." + str(cur_epoch))
+        save_path_best = os.path.join(
+            ckpt_save_dir,
+            f"best_{trainer.model_name}-{cur_epoch}_{trainer.steps_per_epoch}" f"_acc{accuracy:.3f}.ckpt",
+        )
 
-        if main_device:
-            os.makedirs(sync_lock_dir, exist_ok=True)  # sync_lock for run_eval
-
-        # single device run eval only
-        if trainer.main_device and not os.path.exists(sync_lock):
-            eval_network = trainer.ema.ema if trainer.ema else trainer.network
-            _train_status = eval_network.training
-            eval_network.set_train(False)
-            accuracy = test_fn(network=eval_network)
-            accuracy = accuracy[0] if isinstance(accuracy, (list, tuple)) else accuracy
-            eval_network.set_train(_train_status)
-
-            save_path_best = os.path.join(
-                ckpt_save_dir,
-                f"best_{trainer.model_name}-{cur_epoch}_{trainer.steps_per_epoch}" f"_acc{accuracy:.3f}.ckpt",
-            )
+        if trainer.main_device:
             self.ckpt_filelist_best = self.manager_best.save_ckpoint(
                 eval_network, num_ckpt=self.keep_checkpoint_max, metric=accuracy, save_path=save_path_best
             )
@@ -308,12 +296,6 @@ class EvalWhileTrain(BaseCallback):
                 f"run_eval time: {(time.time() - s_eval_time):.3f} s."
             )
             logger.info(f"best accuracy: {best_accu:.3f}, saved at: {best_path}")
-            pathlib.Path(sync_lock).touch()
-        # other device wait for lock sign
-        while True:
-            if os.path.exists(sync_lock):
-                break
-            time.sleep(1)
 
 
 @CALLBACK_REGISTRY.registry_module()

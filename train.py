@@ -16,7 +16,7 @@ from mindyolo.utils.config import parse_args
 from mindyolo.utils.train_step_factory import get_gradreducer, get_loss_scaler, create_train_step_fn
 from mindyolo.utils.trainer_factory import create_trainer
 from mindyolo.utils.utils import (freeze_layers, load_pretrain, set_default,
-                                  set_seed)
+                                  set_seed, Synchronizer)
 
 
 def get_parser_train(parents=None):
@@ -104,7 +104,7 @@ def train(args):
         sync_bn=args.sync_bn,
     )
 
-    if args.ema and main_device:
+    if args.ema:
         ema_network = create_model(
             model_name=args.network.model_name,
             model_cfg=args.network,
@@ -165,17 +165,17 @@ def train(args):
             augment=False,
             rect=args.rect,
             single_cls=args.single_cls,
-            batch_size=args.per_batch_size * 2,
+            batch_size=args.per_batch_size,
             stride=max(args.network.stride),
         )
         eval_dataloader = create_loader(
             dataset=eval_dataset,
             batch_collate_fn=eval_dataset.test_collate_fn,
             dataset_column_names=eval_dataset.dataset_column_names,
-            batch_size=args.per_batch_size * 2,
+            batch_size=args.per_batch_size,
             epoch_size=1,
-            rank=0,
-            rank_size=1,
+            rank=args.rank,
+            rank_size=args.rank_size,
             shuffle=False,
             drop_remainder=False,
             num_parallel_workers=args.data.num_parallel_workers,
@@ -234,6 +234,10 @@ def train(args):
             is_coco_dataset=is_coco_dataset,
             imgIds=None if not is_coco_dataset else eval_dataset.imgIds,
             per_batch_size=args.per_batch_size,
+            rank=args.rank,
+            rank_size=args.rank_size,
+            save_dir=args.save_dir,
+            synchronizer=Synchronizer(args.rank_size) if args.rank_size > 1 else None,
         )
     else:
         test_fn = None

@@ -1,23 +1,27 @@
 import argparse
 import ast
+import contextlib
+import json
 import os
 import time
+from typing import Union
+
 import yaml
-from datetime import datetime
 from pathlib import Path
 import numpy as np
+from mindspore.communication import init, get_rank, get_group_size
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
 import mindspore as ms
-from mindspore import Tensor, context, nn
+from mindspore import Tensor, context, nn, ParallelMode
 
 from mindyolo.data import COCO80_TO_COCO91_CLASS, COCODataset, create_loader
-from mindyolo.models import create_model
-from mindyolo.utils import logger
+from mindyolo.models.model_factory import create_model
+from mindyolo.utils import logger, get_logger
 from mindyolo.utils.config import parse_args
 from mindyolo.utils.metrics import non_max_suppression, scale_coords, xyxy2xywh
-from mindyolo.utils.utils import set_seed
+from mindyolo.utils.utils import set_seed, get_broadcast_datetime, Synchronizer
 
 
 def get_parser_test(parents=None):
@@ -53,6 +57,7 @@ def get_parser_test(parents=None):
     parser.add_argument(
         "--data_dir", type=str, default="/cache/data/", help="ModelArts: local device path to dataset folder"
     )
+    parser.add_argument("--is_parallel", type=ast.literal_eval, default=False, help="Distribute test or not")
     parser.add_argument(
         "--ckpt_dir",
         type=str,
@@ -69,7 +74,13 @@ def set_default_test(args):
         context.set_context(device_id=int(os.getenv("DEVICE_ID", 0)))
     elif args.device_target == "GPU" and args.ms_enable_graph_kernel:
         context.set_context(enable_graph_kernel=True)
-    args.rank, args.rank_size = 0, 1
+    # Set Parallel
+    if args.is_parallel:
+        init()
+        args.rank, args.rank_size, parallel_mode = get_rank(), get_group_size(), ParallelMode.DATA_PARALLEL
+        context.set_auto_parallel_context(device_num=args.rank_size, parallel_mode=parallel_mode)
+    else:
+        args.rank, args.rank_size = 0, 1
     # Set Data
     args.data.nc = 1 if args.single_cls else int(args.data.nc)  # number of classes
     args.data.names = ["item"] if args.single_cls and len(args.names) != 1 else args.data.names  # class names
@@ -79,7 +90,9 @@ def set_default_test(args):
         args.config,
     )
     # Directories and Save run settings
-    args.save_dir = os.path.join(args.save_dir, datetime.now().strftime("%Y.%m.%d-%H:%M:%S"))
+    time = get_broadcast_datetime(rank_size=args.rank_size)
+    args.save_dir = os.path.join(
+        args.save_dir, f'{time[0]:04d}.{time[1]:02d}.{time[2]:02d}-{time[3]:02d}.{time[4]:02d}.{time[5]:02d}')
     os.makedirs(args.save_dir, exist_ok=True)
     if args.rank % args.rank_size == 0:
         with open(os.path.join(args.save_dir, "cfg.yaml"), "w") as f:
@@ -113,6 +126,11 @@ def test(
     is_coco_dataset: bool = True,
     imgIds: list = [],
     per_batch_size: int = -1,
+    rank: int = 0,
+    rank_size: int = 1,
+    save_dir: str = '',
+    synchronizer: Synchronizer = None,
+    cur_epoch: Union[str, int] = 0,  # to distinguish saving directory from different epoch in eval while run mode
 ):
     steps_per_epoch = dataloader.get_dataset_size()
     loader = dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
@@ -180,20 +198,48 @@ def test(
                 )
         logger.info(f"Sample {steps_per_epoch}/{i + 1}, time cost: {(time.time() - _t) * 1000:.2f} ms.")
 
+    # save and load result file for distributed case
+    if rank_size > 1:
+        # save result to file
+        # each epoch has a unique directory in eval while run mode
+        infer_dir = os.path.join(save_dir, 'infer', str(cur_epoch))
+        os.makedirs(infer_dir, exist_ok=True)
+        infer_path = os.path.join(infer_dir, f'det_result_rank{rank}_{rank_size}.json')
+        with open(infer_path, 'w') as f:
+            json.dump(result_dicts, f)
+        # synchronize
+        assert synchronizer is not None
+        synchronizer()
+
+        # load file to result_dicts
+        f_names = os.listdir(infer_dir)
+        f_paths = [os.path.join(infer_dir, f) for f in f_names]
+        logger.info(f"Loading {len(f_names)} eval file from directory {infer_dir}: {sorted(f_names)}.")
+        assert len(f_names) == rank_size, f'number of eval file({len(f_names)}) should be equal to rank size({rank_size})'
+        result_dicts = []
+        for path in f_paths:
+            with open(path, 'r') as fp:
+                result_dicts += json.load(fp)
+
     # Compute mAP
-    try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
-        anno = COCO(anno_json_path)  # init annotations api
-        pred = anno.loadRes(result_dicts)  # init predictions api
-        eval = COCOeval(anno, pred, "bbox")
-        if is_coco_dataset:
-            eval.params.imgIds = imgIds
-        eval.evaluate()
-        eval.accumulate()
-        eval.summarize()
-        map, map50 = eval.stats[:2]  # update results (mAP@0.5:0.95, mAP@0.5)
-    except Exception as e:
-        logger.error(f"pycocotools unable to run: {e}")
-        raise e
+    if not result_dicts:
+        logger.warning(f'Got 0 bbox after NMS, skip computing map')
+        map, map50 = 0.0, 0.0
+    else:
+        try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
+            with contextlib.redirect_stdout(get_logger()):  # redirect stdout to logger
+                anno = COCO(anno_json_path)  # init annotations api
+                pred = anno.loadRes(result_dicts)  # init predictions api
+                eval = COCOeval(anno, pred, "bbox")
+                if is_coco_dataset:
+                    eval.params.imgIds = imgIds
+                eval.evaluate()
+                eval.accumulate()
+                eval.summarize()
+                map, map50 = eval.stats[:2]  # update results (mAP@0.5:0.95, mAP@0.5)
+        except Exception as e:
+            logger.error(f"pycocotools unable to run: {e}")
+            raise e
 
     t = tuple(x / sample_num * 1E3 for x in (infer_times, nms_times, infer_times + nms_times)) + \
         (height, width, per_batch_size)  # tuple
@@ -204,8 +250,10 @@ def test(
 
 def main(args):
     # Init
+    s_time = time.time()
     set_seed(args.seed)
     set_default_test(args)
+    logger.info(f"parse_args:\n{args}")
 
     # Create Network
     network = create_model(
@@ -238,8 +286,8 @@ def main(args):
         dataset_column_names=dataset.dataset_column_names,
         batch_size=args.per_batch_size,
         epoch_size=1,
-        rank=0,
-        rank_size=1,
+        rank=args.rank,
+        rank_size=args.rank_size,
         shuffle=False,
         drop_remainder=False,
         num_parallel_workers=args.data.num_parallel_workers,
@@ -260,9 +308,13 @@ def main(args):
         is_coco_dataset=is_coco_dataset,
         imgIds=None if not is_coco_dataset else dataset.imgIds,
         per_batch_size=args.per_batch_size,
+        rank=args.rank,
+        rank_size=args.rank_size,
+        save_dir=args.save_dir,
+        synchronizer=Synchronizer(args.rank_size) if args.rank_size > 1 else None,
     )
-
-    logger.info("Testing completed.")
+    e_time = time.time()
+    logger.info(f"Testing completed, cost {e_time - s_time:.2f}s.")
 
 
 if __name__ == "__main__":
