@@ -1,3 +1,4 @@
+import math
 import os
 import pathlib
 import sys
@@ -5,7 +6,7 @@ import time
 from typing import Union, Tuple, List
 
 import numpy as np
-
+from mindspore import Profiler, SummaryRecord, Tensor
 from mindyolo.utils.modelarts import sync_data
 from mindyolo.utils import CheckpointManager, logger
 from mindyolo.utils.registry import Registry
@@ -26,6 +27,7 @@ def create_callback(arg_callback):
         assert isinstance(cb, dict) and 'name' in cb, f'callback[{i}] is not a dict or does not contain key [name]'
 
     logger.info(CALLBACK_REGISTRY)
+
     return [_create_callback_worker(**kw) for kw in arg_callback]
 
 
@@ -54,6 +56,7 @@ class RunContext:
         enable_modelarts=False,
         sync_lock_dir="",
         ckpt_save_dir="",
+        save_dir="",
         train_url="",
         overflow_still_update=False,
         ms_jit=True,
@@ -66,6 +69,7 @@ class RunContext:
         self.trainer = trainer
         self.test_fn = test_fn
         self.ckpt_save_dir = ckpt_save_dir
+        self.save_dir = save_dir
         self.sync_lock_dir = sync_lock_dir
         self.enable_modelarts = enable_modelarts
         self.train_url = train_url
@@ -76,6 +80,8 @@ class RunContext:
         # the first index start with 1 rather than 0
         self.cur_epoch_index = 0
         self.cur_step_index = 0
+        self.loss = []
+        self.lr = 0
 
 
 class BaseCallback:
@@ -308,3 +314,84 @@ class EvalWhileTrain(BaseCallback):
             if os.path.exists(sync_lock):
                 break
             time.sleep(1)
+
+
+@CALLBACK_REGISTRY.registry_module()
+class SummaryCallback(BaseCallback):
+    """
+    Callback of whether to collect summary data at training time.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def on_train_begin(self, run_context: RunContext):
+        """hooks to run on the beginning of training process"""
+        self.summary_dir = os.path.join(run_context.save_dir, "summary")
+        self.summary_record = SummaryRecord(self.summary_dir)
+
+    def on_train_end(self, run_context: RunContext):
+        """hooks to run on the end of training process"""
+        self.summary_record.close()
+        if run_context.enable_modelarts:
+            for p in os.listdir(self.summary_dir):
+                summary_file_path = os.path.join(self.summary_dir, p)
+                sync_data(summary_file_path, run_context.train_url + "/summary/" + summary_file_path.split("/")[-1])
+
+    def on_train_epoch_end(self, run_context: RunContext):
+        """hooks to run on the end of a training epoch"""
+        trainer = run_context.trainer
+        if trainer.data_sink:
+            for i in range(len(run_context.loss)):
+                self.summary_record.add_value("scalar", f"{trainer.loss_item_name[i]}", run_context.loss[i])
+            self.summary_record.add_value("scalar", f"cur_lr", Tensor(run_context.lr))
+            self.summary_record.record(run_context.cur_epoch_index)
+            self.summary_record.flush()
+
+    def on_train_step_end(self, run_context: RunContext):
+        """hooks to run on the end of a training step"""
+        trainer = run_context.trainer
+        if run_context.cur_step_index % trainer.log_interval == 0:
+            for i in range(len(run_context.loss)):
+                self.summary_record.add_value("scalar", f"{trainer.loss_item_name[i]}", run_context.loss[i])
+            self.summary_record.add_value("scalar", f"cur_lr", Tensor(run_context.lr))
+            self.summary_record.record(run_context.cur_step_index)
+            self.summary_record.flush()
+
+
+@CALLBACK_REGISTRY.registry_module()
+class ProfilerCallback(BaseCallback):
+    """
+    Callback of whether to collect profiler data at training time.
+
+    Example:
+        Case 1: Non-data sinking mode Collects performance data in the specified step interval.
+        Case 2: Data sink mode Collects performance data for a specified epoch interval.
+    """
+
+    def __init__(self, profiler_step_num):
+        super().__init__()
+        self.profiler_step_num = profiler_step_num
+
+    def on_train_begin(self, run_context: RunContext):
+        """hooks to run on the beginning of training process"""
+        self.prof_dir = os.path.join(run_context.save_dir, "profiling_data")
+        self.prof = Profiler(output_path=self.prof_dir)
+
+    def on_train_epoch_end(self, run_context: RunContext):
+        """hooks to run on the beginning of a training epoch"""
+        if run_context.cur_epoch_index == math.ceil(self.profiler_step_num/run_context.steps_per_epoch):
+            self.prof.stop()
+            self.prof.analyse()
+
+    def on_train_step_end(self, run_context: RunContext):
+        """hooks to run on the beginning of a training step"""
+        if run_context.cur_step_index == self.profiler_step_num:
+            self.prof.stop()
+            self.prof.analyse()
+
+    def on_train_end(self, run_context: RunContext):
+        if run_context.enable_modelarts:
+            for p in os.listdir(self.prof_dir):
+                prof_file_path = os.path.join(self.prof_dir, p)
+                sync_data(prof_file_path, run_context.train_url + "/profiling_data/" + prof_file_path.split("/")[-1])
