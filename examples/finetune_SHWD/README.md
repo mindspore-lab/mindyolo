@@ -59,7 +59,7 @@
 * 在多卡NPU/GPU上进行分布式模型训练，以8卡为例:
 
   ```shell
-  mpirun --allow-run-as-root -n 8 python examples/finetune_SHWD/finetune_shwd.py --config ./examples/finetune_SHWD/yolov7-tiny.yaml --is_parallel True
+  mpirun --allow-run-as-root -n 8 python examples/finetune_SHWD/finetune_shwd.py --config ./examples/finetune_SHWD/yolov7-tiny_shwd.yaml --is_parallel True
   ```
 
 * 在单卡NPU/GPU/CPU上训练模型：
