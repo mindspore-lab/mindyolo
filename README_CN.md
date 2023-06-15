@@ -14,20 +14,21 @@
 
 MindYOLO是[MindSpore Lab](https://github.com/mindspore-lab)开发的AI套件，实现了最先进的YOLO系列算法，[查看支持的模型算法](MODEL_ZOO.md)。
 
-MindYOLO使用Python语言编写，基于[MindSpore](https://mindspore.cn/)深度学习框架开发，适用于**MindSpore 1.8.1**。
+MindYOLO使用Python语言编写，基于 [MindSpore](https://mindspore.cn/) AI框架开发。
 
+master 分支配套 **MindSpore 2.0**。
 
 <img src=".github/000000137950.jpg" />
 
 
 ## 新特性 
 
-- 2023/03/30
-1. 目前版本支持的模型包括YOLOv3/YOLOv5/YOLOv7的基本规格。
-2. 模型可以导出为MindIR/AIR格式进行部署。
-3. ⚠️ 当前版本基于GRAPH的静态Shape。后续将添加PYNATIVE的动态Shape支持，敬请期待。
-4. ⚠️ 当前版本仅支持Ascend平台，GPU平台将在后续版本中支持。
+- 2023/06/15
 
+1. 支持 YOLOv3/v4/v5/v7/v8/X 等6个模型，发布了23个模型weights，详情请参考 [MODEL ZOO](MODEL_ZOO.md)。
+2. 配套 MindSpore 2.0。
+3. 支持 MindSpore lite 2.0 推理。
+4. 新的教程文档上线！
 
 ## 基准和模型仓库 
 
@@ -38,12 +39,10 @@ MindYOLO使用Python语言编写，基于[MindSpore](https://mindspore.cn/)深�
 
 - [x] [YOLOv8](configs/yolov8)
 - [x] [YOLOv7](configs/yolov7)
-- [x] [YOLOv5](configs/yolov5)
-- [x] [YOLOv3](configs/yolov3)
-- [x] [YOLOv4](configs/yolov4)
 - [x] [YOLOX](configs/yolox)
-- [ ] [YOLOv6](configs/yolov6)
-
+- [x] [YOLOv5](configs/yolov5)
+- [x] [YOLOv4](configs/yolov4)
+- [x] [YOLOv3](configs/yolov3)
 
 </details>
 
@@ -51,17 +50,20 @@ MindYOLO使用Python语言编写，基于[MindSpore](https://mindspore.cn/)深�
 
 ### 依赖
 
-- mindspore >= 1.8.1
+- mindspore >= 2.0
 - numpy >= 1.17.0
 - pyyaml >= 5.3
 - openmpi 4.0.3 (for distributed mode)
 
 安装这些依赖，请执行以下命令
+
 ```shell
 pip install -r requirements.txt
 ```
 
-假定你已安装所需依赖，可以按照[官方说明](https://www.mindspore.cn/install)轻松安装MindSpore，你可以在其中选择最适合的硬件平台。要在分布式模式下运行，需要安装[openmpi](https://www.open-mpi.org/software/ompi/v4.0/)。 
+然后按照[官方说明](https://www.mindspore.cn/install)轻松安装MindSpore，你可以在其中选择最适合的硬件平台。要在分布式模式下运行，需要安装[openmpi](https://www.open-mpi.org/software/ompi/v4.0/)。 
+
+⚠️ 当前版本仅支持Ascend平台，GPU平台将在后续版本中支持。
 
 ## 快速入门
 
@@ -72,6 +74,9 @@ pip install -r requirements.txt
 敬请期待
 
 ## 注意
+
+⚠️当前版本基于GRAPH的静态Shape。后续将添加PYNATIVE的动态Shape支持，敬请期待。
+
 ### 贡献方式
 
 我们感谢开发者用户的所有贡献，包括提issue和PR，一起让MindYOLO变得更好。
