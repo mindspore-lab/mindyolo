@@ -3,8 +3,6 @@ import ast
 import os
 from functools import partial
 
-from mindyolo.utils.callback import create_callback
-
 import mindspore as ms
 
 from mindyolo.data import COCODataset, create_loader
@@ -15,6 +13,7 @@ from mindyolo.utils import logger
 from mindyolo.utils.config import parse_args
 from mindyolo.utils.train_step_factory import get_gradreducer, get_loss_scaler, create_train_step_fn
 from mindyolo.utils.trainer_factory import create_trainer
+from mindyolo.utils.callback import create_callback
 from mindyolo.utils.utils import (freeze_layers, load_pretrain, set_default,
                                   set_seed)
 
@@ -24,7 +23,7 @@ def get_parser_train(parents=None):
     parser.add_argument("--device_target", type=str, default="Ascend", help="device target, Ascend/GPU/CPU")
     parser.add_argument("--save_dir", type=str, default="./runs", help="save dir")
     parser.add_argument("--device_per_servers", type=int, default=8, help="device number on a server")
-    parser.add_argument("--log_level", type=str, default="INFO", help="save dir")
+    parser.add_argument("--log_level", type=str, default="INFO", help="log level to print")
     parser.add_argument("--is_parallel", type=ast.literal_eval, default=False, help="Distribute train or not")
     parser.add_argument("--ms_mode", type=int, default=0,
                         help="Running in GRAPH_MODE(0) or PYNATIVE_MODE(1) (default=0)")
