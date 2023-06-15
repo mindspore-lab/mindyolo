@@ -44,7 +44,6 @@ def get_parser_train(parents=None):
     parser.add_argument(
         "--ms_enable_graph_kernel", type=ast.literal_eval, default=False, help="use enable_graph_kernel or not"
     )
-    parser.add_argument("--ms_datasink", type=ast.literal_eval, default=False, help="Train with datasink.")
     parser.add_argument("--overflow_still_update", type=ast.literal_eval, default=True, help="overflow still update")
     parser.add_argument("--ema", type=ast.literal_eval, default=True, help="ema")
     parser.add_argument("--weight", type=str, default="", help="initial weight path")
@@ -264,41 +263,24 @@ def train(args):
         callback=callback_fns,
         reducer=reducer,
     )
-    if not args.ms_datasink:
-        trainer.train(
-            epochs=args.epochs,
-            main_device=main_device,
-            warmup_step=max(round(args.optimizer.warmup_epochs * steps_per_epoch), args.optimizer.min_warmup_step),
-            warmup_momentum=warmup_momentum,
-            accumulate=args.accumulate,
-            overflow_still_update=args.overflow_still_update,
-            keep_checkpoint_max=args.keep_checkpoint_max,
-            log_interval=args.log_interval,
-            loss_item_name=[] if not hasattr(loss_fn, "loss_item_name") else loss_fn.loss_item_name,
-            save_dir=args.save_dir,
-            enable_modelarts=args.enable_modelarts,
-            train_url=args.train_url,
-            run_eval=args.run_eval,
-            test_fn=test_fn,
-            rank_size=args.rank_size,
-            ms_jit=args.ms_jit
-        )
-    else:
-        logger.warning("DataSink is an experimental interface under development.")
-        logger.warning("Train with data sink mode.")
-        trainer.train_with_datasink(
-            epochs=args.epochs,
-            main_device=main_device,
-            warmup_epoch=max(args.optimizer.warmup_epochs, args.optimizer.min_warmup_step // steps_per_epoch),
-            warmup_momentum=warmup_momentum,
-            keep_checkpoint_max=args.keep_checkpoint_max,
-            loss_item_name=[] if not hasattr(loss_fn, "loss_item_name") else loss_fn.loss_item_name,
-            save_dir=args.save_dir,
-            enable_modelarts=args.enable_modelarts,
-            train_url=args.train_url,
-            run_eval=args.run_eval,
-            test_fn=test_fn,
-        )
+    trainer.train(
+        epochs=args.epochs,
+        main_device=main_device,
+        warmup_step=max(round(args.optimizer.warmup_epochs * steps_per_epoch), args.optimizer.min_warmup_step),
+        warmup_momentum=warmup_momentum,
+        accumulate=args.accumulate,
+        overflow_still_update=args.overflow_still_update,
+        keep_checkpoint_max=args.keep_checkpoint_max,
+        log_interval=args.log_interval,
+        loss_item_name=[] if not hasattr(loss_fn, "loss_item_name") else loss_fn.loss_item_name,
+        save_dir=args.save_dir,
+        enable_modelarts=args.enable_modelarts,
+        train_url=args.train_url,
+        run_eval=args.run_eval,
+        test_fn=test_fn,
+        rank_size=args.rank_size,
+        ms_jit=args.ms_jit
+    )
     logger.info("Training completed.")
 
 

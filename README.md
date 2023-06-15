@@ -12,19 +12,24 @@
     </a>
 </p>
 
-MindYOLO is [MindSpore Lab](https://github.com/mindspore-lab)'s software system that implements state-of-the-art YOLO series algorithms, [support list and benchmark](MODEL_ZOO.md). It is written in Python and powered by the [MindSpore](https://mindspore.cn/) deep learning framework.
+MindYOLO is [MindSpore Lab](https://github.com/mindspore-lab)'s software toolbox that implements state-of-the-art YOLO series algorithms, [support list and benchmark](MODEL_ZOO.md). It is written in Python and powered by the [MindSpore](https://mindspore.cn/) AI framework.
 
-The master branch works with **MindSpore 1.8.1**.
+The r0.1 branch supports **MindSpore 1.8.1**.
 
 <img src=".github/000000137950.jpg" />
 
 
 ## What is New 
-- 2023/03/30
-1. Currently, the models supported by the first release include the basic specifications of YOLOv3/YOLOv5/YOLOv7;
-2. Models can be exported to MindIR/AIR format for deployment.
-3. ⚠️ The current version is based on the static shape of GRAPH. The dynamic shape of the PYNATIVE will be added later. Please look forward to it.
-4. ⚠️ The current version only supports the Ascend platform, and the GPU platform will support it later.
+
+- 2023/06/15
+
+1. New version: v0.1 is released!
+
+2. Support YOLOv3/v4/v5/v7/v8/X 6 models and release 23 weights, see [MODEL ZOO](MODEL_ZOO.md) for details.
+
+3. Models can be exported to MindIR/AIR format for deployment.
+
+4. New online documents are available!
 
 ## Benchmark and Model Zoo
 
@@ -35,11 +40,10 @@ See [MODEL ZOO](MODEL_ZOO.md).
 
 - [x] [YOLOv8](configs/yolov8)
 - [x] [YOLOv7](configs/yolov7)
-- [x] [YOLOv5](configs/yolov5)
-- [x] [YOLOv3](configs/yolov3)
-- [x] [YOLOv4](configs/yolov4)
 - [x] [YOLOX](configs/yolox)
-- [ ] [YOLOv6](configs/yolov6)
+- [x] [YOLOv5](configs/yolov5)
+- [x] [YOLOv4](configs/yolov4)
+- [x] [YOLOv3](configs/yolov3)
 
 </details>
 
@@ -61,6 +65,8 @@ MindSpore can be easily installed by following the official [instructions](https
 
 The following instructions assume the desired dependency is fulfilled.
 
+⚠️ The current version only supports the Ascend platform, and the GPU platform will be supported later.
+
 ## Getting Started
 
 See [GETTING STARTED](GETTING_STARTED.md)
@@ -70,6 +76,9 @@ See [GETTING STARTED](GETTING_STARTED.md)
 To be supplemented.
 
 ## Notes
+
+⚠️ The current version is based on the static shape of GRAPH. The dynamic shape of the PYNATIVE will be added later. Please look forward to it.
+
 ### How to Contribute
 
 We appreciate all contributions including issues and PRs to make MindYOLO better. 
