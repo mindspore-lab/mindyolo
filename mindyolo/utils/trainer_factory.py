@@ -288,6 +288,7 @@ class Trainer:
         self._on_train_begin(run_context)
         for epoch in range(epochs):
             cur_epoch = epoch + 1
+            self.global_step += self.steps_per_epoch
             run_context.cur_epoch_index = cur_epoch
             if epoch == 0:
                 logger.warning("In the data sink mode, log output will only occur once each epoch is completed.")
@@ -354,8 +355,6 @@ class Trainer:
     def train_step(self, imgs, labels, cur_step=0, cur_epoch=0):
         if self.accumulate == 1:
             loss, loss_item, _, grads_finite = self.train_step_fn(imgs, labels, True)
-            if self.ema:
-                self.ema.update()
             self.scaler.adjust(grads_finite)
             if not grads_finite and (cur_step % self.log_interval == 0):
                 if self.overflow_still_update:
@@ -382,7 +381,7 @@ class Trainer:
                         f"Epoch {cur_epoch}/{self.epochs}, Step {cur_step}/{self.steps_per_epoch}, "
                         f"accumulate: {self.accumulate}, optimizer an accumulate step success."
                     )
-                    from mindyolo.utils.all_finite import all_finite
+                    from mindspore.amp import all_finite
 
                     if not all_finite(self.accumulate_grads):
                         logger.warning(f"overflow, still update.")
