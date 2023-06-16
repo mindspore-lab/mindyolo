@@ -206,11 +206,12 @@ def train(args):
         loss_ratio=args.rank_size,
         scaler=scaler,
         reducer=reducer,
+        ema=ema,
         overflow_still_update=args.overflow_still_update,
         ms_jit=args.ms_jit,
     )
 
-    # create callbacks
+    # Create callbacks
     if args.summary:
         args.callback.append({"name": "SummaryCallback"})
     if args.profiler:
@@ -283,6 +284,7 @@ def train(args):
     else:
         logger.warning("DataSink is an experimental interface under development.")
         logger.warning("Train with data sink mode.")
+        assert args.accumulate == 1, "datasink mode not support grad accumulate."
         trainer.train_with_datasink(
             epochs=args.epochs,
             main_device=main_device,

@@ -160,6 +160,7 @@ class YoloxSwitchTrain(BaseCallback):
                                                          loss_ratio=loss_ratio,
                                                          scaler=trainer.scaler,
                                                          reducer=trainer.reducer,
+                                                         ema=trainer.ema,
                                                          overflow_still_update=overflow_still_update,
                                                          ms_jit=ms_jit)
 

@@ -105,6 +105,7 @@ def train_shwd(args):
         loss_ratio=args.rank_size,
         scaler=scaler,
         reducer=reducer,
+        ema=ema,
         overflow_still_update=args.overflow_still_update,
         ms_jit=args.ms_jit,
     )

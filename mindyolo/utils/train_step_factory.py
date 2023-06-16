@@ -34,10 +34,11 @@ def get_loss_scaler(ms_loss_scaler="static", scale_value=1024, scale_factor=2, s
     return loss_scaler
 
 
-def create_train_step_fn(
-    network, loss_fn, optimizer, loss_ratio, scaler, reducer, overflow_still_update=False, ms_jit=False
-):
-    from mindyolo.utils.all_finite import all_finite
+def create_train_step_fn(network, loss_fn, optimizer, loss_ratio, scaler, reducer,
+                         ema=None, overflow_still_update=False, ms_jit=False):
+    from mindspore.amp import all_finite
+
+    use_ema = True if ema else False
 
     def forward_func(x, label):
         pred = network(x)
@@ -56,9 +57,13 @@ def create_train_step_fn(
         if optimizer_update:
             if grads_finite:
                 loss = ops.depend(loss, optimizer(unscaled_grads))
+                if use_ema:
+                    loss = ops.depend(loss, ema.update())
             else:
                 if overflow_still_update:
                     loss = ops.depend(loss, optimizer(unscaled_grads))
+                    if use_ema:
+                        loss = ops.depend(loss, ema.update())
 
         return scaler.unscale(loss), loss_items, unscaled_grads, grads_finite
 
