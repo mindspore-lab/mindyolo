@@ -18,7 +18,7 @@ MindYOLO使用Python语言编写，基于 [MindSpore](https://mindspore.cn/) AI�
 
 master 分支配套 **MindSpore 2.0**。
 
-<img src=".github/000000137950.jpg" />
+<img src="https://raw.githubusercontent.com/mindspore-lab/mindyolo/master/.github/000000137950.jpg" />
 
 
 ## 新特性 
