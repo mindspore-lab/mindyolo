@@ -16,7 +16,7 @@ MindYOLO is [MindSpore Lab](https://github.com/mindspore-lab)'s software toolbox
 
 The master branch supporting **MindSpore 2.0**.
 
-<img src=".github/000000137950.jpg" />
+<img src="https://raw.githubusercontent.com/mindspore-lab/mindyolo/master/.github/000000137950.jpg" />
 
 
 ## What is New
