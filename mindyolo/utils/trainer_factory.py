@@ -111,10 +111,8 @@ class Trainer:
 
         # Directories
         ckpt_save_dir = os.path.join(save_dir, "weights")
-        sync_lock_dir = os.path.join(save_dir, "sync_locks") if not enable_modelarts else "/tmp/sync_locks"
         if main_device:
             os.makedirs(ckpt_save_dir, exist_ok=True)  # save checkpoint path
-            os.makedirs(sync_lock_dir, exist_ok=True)  # sync_lock for run_eval
 
         # to be compatible with old interface
         has_eval_mask = list(isinstance(c, EvalWhileTrain) for c in self.callback)
@@ -144,7 +142,6 @@ class Trainer:
             trainer=self,
             test_fn=test_fn,
             enable_modelarts=enable_modelarts,
-            sync_lock_dir=sync_lock_dir,
             ckpt_save_dir=ckpt_save_dir,
             save_dir=save_dir,
             train_url=train_url,
@@ -264,11 +261,9 @@ class Trainer:
 
         # Directories
         ckpt_save_dir = os.path.join(save_dir, "weights")
-        sync_lock_dir = os.path.join(save_dir, "sync_locks") if not enable_modelarts else "/tmp/sync_locks"
 
         if main_device:
             os.makedirs(ckpt_save_dir, exist_ok=True)  # save checkpoint path
-            os.makedirs(sync_lock_dir, exist_ok=False)  # sync_lock for run_eval
 
         # Set Checkpoint Manager
         manager = CheckpointManager(ckpt_save_policy="latest_k")
@@ -281,7 +276,6 @@ class Trainer:
             trainer=self,
             test_fn=test_fn,
             enable_modelarts=enable_modelarts,
-            sync_lock_dir=sync_lock_dir,
             ckpt_save_dir=ckpt_save_dir,
             save_dir=save_dir,
             train_url=train_url,

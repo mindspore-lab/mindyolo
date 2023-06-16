@@ -6,7 +6,7 @@ from datetime import datetime
 import numpy as np
 
 import mindspore as ms
-from mindspore import context
+from mindspore import context, ops, Tensor, nn
 from mindspore.communication.management import get_group_size, get_rank, init
 from mindspore.context import ParallelMode
 
@@ -55,7 +55,9 @@ def set_default(args):
         args.config,
     )
     # Directories and Save run settings
-    args.save_dir = os.path.join(args.save_dir, datetime.now().strftime("%Y.%m.%d-%H_%M_%S"))
+    time = get_broadcast_datetime(rank_size=args.rank_size)
+    args.save_dir = os.path.join(
+        args.save_dir, f'{time[0]:04d}.{time[1]:02d}.{time[2]:02d}-{time[3]:02d}.{time[4]:02d}.{time[5]:02d}')
     os.makedirs(args.save_dir, exist_ok=True)
     if args.rank % args.rank_size == 0:
         with open(os.path.join(args.save_dir, "cfg.yaml"), "w") as f:
@@ -143,3 +145,45 @@ def draw_result(img_path, result_dict, data_names, is_coco_dataset=True, save_pa
 
     # save results
     cv2.imwrite(save_result_path, im)
+
+
+def get_broadcast_datetime(rank_size=1, root_rank=0):
+    bd_cast = ops.Broadcast(root_rank=root_rank)
+    time = datetime.now()
+    time_list = [time.year, time.month, time.day, time.hour, time.minute, time.second, time.microsecond]
+    if rank_size <=1:
+        return time_list
+
+    # only broadcast in distribution mode
+    x = bd_cast((Tensor(time_list, dtype=ms.int32),))
+    x = x[0].asnumpy().tolist()
+    return x
+
+
+class AllReduce(nn.Cell):
+    """
+    a wrapper class to make ops.AllReduce become a Cell. This is a workaround for sync_wait
+    """
+    def __init__(self):
+        super(AllReduce, self).__init__()
+        self.all_reduce = ops.AllReduce(op=ops.ReduceOp.SUM)
+
+    def construct(self, x):
+        return self.all_reduce(x)
+
+
+class Synchronizer:
+    def __init__(self, rank_size=1):
+        # this init method should be run only once
+        self.all_reduce = AllReduce()
+        self.rank_size = rank_size
+
+    def __call__(self):
+        if self.rank_size <= 1:
+            return
+        sync = Tensor(np.array([1]).astype(np.int32))
+        sync = self.all_reduce(sync)
+        sync = sync.asnumpy()[0]
+        if sync != self.rank_size:
+            raise ValueError(f'Sync value {sync} is not equal to rank size {self.rank_size}.'
+                             f' There might be wrong with devices')

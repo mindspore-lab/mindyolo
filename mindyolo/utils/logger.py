@@ -37,6 +37,19 @@ class Logger(logging.Logger):
         self.device_per_servers = 8
         self.formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
 
+    def write(self, msg):
+        """
+        write method to simulate Stream class
+        """
+        if msg and not msg.isspace():  # skip line with white spaces
+            self.info(msg)
+
+    def flush(self):
+        """
+        write method to simulate Stream class
+        """
+        pass
+
 
 def setup_logging(logger_name="MindYOLO", log_level="INFO", rank_id=None, device_per_servers=8):
     """Setup logging file."""
