@@ -127,7 +127,14 @@ class YOLOv4Loss(nn.Cell):
 
         loss = lbox + lobj + lcls
 
-        return loss / bs / 8, ops.stop_gradient(ops.stack((loss / bs, lbox / bs, lobj / bs, lcls / bs)))
+        # ops.stack doesn't support type ms.float16 under ascend ms2.0,
+        # refer to issue #154 (https://github.com/mindspore-lab/mindyolo/issues/154)
+        return loss / bs / 8, ops.stop_gradient(ops.stack(
+            (loss.astype(ms.float32) / bs,
+             lbox.astype(ms.float32) / bs,
+             lobj.astype(ms.float32) / bs,
+             lcls.astype(ms.float32) / bs)
+        ))
 
     def build_targets(self, p, targets, imgs):
         # Build targets for compute_loss(), input targets(image,class,x,y,w,h)
