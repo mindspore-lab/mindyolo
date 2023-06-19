@@ -32,7 +32,7 @@ The master branch supporting **MindSpore 2.0**.
 
 See [MODEL ZOO](MODEL_ZOO.md).
 
-<details open>
+<details open markdown>
 <summary><b>Supported Algorithms</b></summary>
 
 - [x] [YOLOv8](configs/yolov8)
