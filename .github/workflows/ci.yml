@@ -34,7 +34,5 @@ jobs:
         pylint mindyolo --rcfile=.github/pylint.conf
     - name: Test with unit test (UT) pytest
       run: |
-        pytest tests/ut/
-    - name: Test with system test (ST) pytest
-      run: |
-        pytest tests/st/
+        pytest tests/modules/*.py
+

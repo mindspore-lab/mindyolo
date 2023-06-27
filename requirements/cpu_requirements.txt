@@ -3,3 +3,4 @@ tqdm
 mindspore
 pylint
 pytest
+opencv-python
