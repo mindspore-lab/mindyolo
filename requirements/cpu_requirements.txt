@@ -1,5 +1,6 @@
 pyyaml >= 5.3
 tqdm
+pillow == 9.5.0
 mindspore
 pylint
 pytest
