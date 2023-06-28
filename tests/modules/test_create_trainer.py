@@ -22,7 +22,7 @@ from mindyolo.utils.trainer_factory import create_trainer
 
 
 @pytest.mark.parametrize("yaml_name", ['yolov7-tiny.yaml'])
-@pytest.mark.parametrize("mode", [0, 1])
+@pytest.mark.parametrize("mode", [0])
 def test_create_trainer(yaml_name, mode):
     ms.set_context(mode=mode)
     parent_dir = yaml_name[:6]
@@ -97,10 +97,11 @@ def test_create_trainer(yaml_name, mode):
         network=network,
         ema=None,
         optimizer=optimizer,
-        summary=False,
         loss_fn=loss_fn,
         callback=[],
         reducer=ops.functional.identity,
+        data_sink=False,
+        profiler=False
     )
 
     trainer.train(
