@@ -11,7 +11,6 @@ from pathlib import Path
 import numpy as np
 from mindspore.communication import init, get_rank, get_group_size
 from pycocotools.coco import COCO
-from pycocotools.cocoeval import COCOeval
 
 import mindspore as ms
 from mindspore import Tensor, context, nn, ParallelMode
@@ -132,6 +131,12 @@ def test(
     synchronizer: Synchronizer = None,
     cur_epoch: Union[str, int] = 0,  # to distinguish saving directory from different epoch in eval while run mode
 ):
+    try:
+        from mindyolo.csrc import COCOeval_fast as COCOeval
+    except ImportError:
+        logger.warning(f'unable to load fast_coco_eval api, use normal one instead')
+        from pycocotools.cocoeval import COCOeval
+
     steps_per_epoch = dataloader.get_dataset_size()
     loader = dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
     coco91class = COCO80_TO_COCO91_CLASS

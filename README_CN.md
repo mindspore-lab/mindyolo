@@ -48,22 +48,7 @@ master 分支配套 **MindSpore 2.0**。
 
 ## 安装
 
-### 依赖
-
-- mindspore >= 2.0
-- numpy >= 1.17.0
-- pyyaml >= 5.3
-- openmpi 4.0.3 (for distributed mode)
-
-安装这些依赖，请执行以下命令
-
-```shell
-pip install -r requirements.txt
-```
-
-然后按照[官方说明](https://www.mindspore.cn/install)轻松安装MindSpore，你可以在其中选择最适合的硬件平台。要在分布式模式下运行，需要安装[openmpi](https://www.open-mpi.org/software/ompi/v4.0/)。 
-
-⚠️ 当前版本仅支持Ascend平台，GPU平台将在后续版本中支持。
+查看  [INSTALLATION GUIDE](docs/zh/INSTALLATION_CN.md)
 
 ## 快速入门
 
