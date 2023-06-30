@@ -34,7 +34,7 @@ master 分支配套 **MindSpore 2.0**。
 
 查看 [MODEL ZOO](MODEL_ZOO.md).
 
-<details open>
+<details open markdown>
 <summary><b>支持的算法</b></summary>
 
 - [x] [YOLOv8](configs/yolov8)
