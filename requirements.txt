@@ -1,7 +1,13 @@
 # MindYOLO requirements
 # Usage: pip install -r requirements.txt
 
+# Setup
+pybind11>=2.10.4
+
 # Base
+numpy>=1.17.0
+PyYAML>=5.3
+tqdm
 opencv-python>=4.7.0.68
 opencv-python-headless>=4.7.0.68
 
