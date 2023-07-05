@@ -48,7 +48,7 @@ master 分支配套 **MindSpore 2.0**。
 
 ## 安装
 
-查看  [INSTALLATION GUIDE](docs/zh/INSTALLATION_CN.md)
+查看 [INSTALLATION](docs/zh/installation.md)
 
 ## 快速入门
 

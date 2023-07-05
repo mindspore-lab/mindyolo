@@ -46,11 +46,11 @@ See [MODEL ZOO](MODEL_ZOO.md).
 
 ## Installation
 
-See [INSTALLATION GUIDE](docs/en/INSTALLATION.md)
+See [INSTALLATION](docs/en/installation.md) for details.
 
 ## Getting Started
 
-See [GETTING STARTED](GETTING_STARTED.md)
+See [GETTING STARTED](GETTING_STARTED.md) for details.
 
 ## Learn More about MindYOLO
 
