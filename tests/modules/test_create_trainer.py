@@ -15,9 +15,7 @@ from mindyolo.utils.config import load_config, Config
 from mindyolo.utils import logger
 from mindyolo.models import create_loss, create_model
 from mindyolo.optim import create_optimizer
-from mindyolo.utils.train_step_factory import (create_train_step_fn,
-                                               get_gradreducer,
-                                               get_loss_scaler)
+from mindyolo.utils.train_step_factory import create_train_step_fn
 from mindyolo.utils.trainer_factory import create_trainer
 
 
@@ -45,7 +43,7 @@ def test_create_trainer(yaml_name, mode):
     network.set_train(True)
 
     # Create Dataloaders
-    bs = 8
+    bs = 6
     # create data
     x = np.random.randn(bs, 3, 32, 32).astype(np.float32)
     y = np.random.rand(bs, 160, 6).astype(np.float32)
