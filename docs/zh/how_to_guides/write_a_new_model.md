@@ -6,15 +6,17 @@
 - 验证: 验证模型是否可运行
 
 ## 模型定义
+
 ### 1.直接使用python代码来编写网络
-### 模块导入
+
+#### 模块导入
 导入MindSpore框架中的nn模块和ops模块，用于定义神经网络的组件和操作。
 ```python
 import mindspore.nn as nn
 import mindspore.ops.operations as ops
 ```
 
-### 创建模型
+#### 创建模型
 定义了一个继承自nn.Cell的模型类MyModel。在构造函数__init__中，定义模型的各个组件：
 
 ```python
@@ -44,7 +46,7 @@ class MyModel(nn.Cell):
         x = self.fc(x)
         return x
 ```
-### 创建模型实例
+#### 创建模型实例
 通过实例化MyModel类，创建一个模型实例model，后续可以使用该实例进行模型的训练和推理。
 ```python
 
@@ -52,13 +54,13 @@ model = MyModel()
 
 ```
 
-## 2.使用yaml文件编写网络
+### 2.使用yaml文件编写网络
 通常需要以下三个步骤
 - 新建一个mymodel.yaml文件
 - 新建对应的mymodel.py文件 
 - 在mindyolo/models/_init_.py文件中引入该模型
 
-### 以下是编写mymodel.yaml文件的详细指导
+以下是编写mymodel.yaml文件的详细指导:<br>
 以编写一个简单网络为例：
 以yaml格式编写必要参数，后续在mymodel.py文件里面可以用到这些参数。
 其中network部分为模型网络 <br>
@@ -102,8 +104,8 @@ network:
     ]
 ```
 
-## 编写mymodel.py文件
-### 模块导入
+编写mymodel.py文件:
+#### 模块导入
 需要导入套件内的模块。 如`from .registry import register_model`等等
 
 ```python
@@ -120,7 +122,7 @@ from .registry import register_model #用于将自定义的模型注册到 Mindy
 #可见性声明
 __all__ = ["MYmodel", "mymodel"]
 ```
-### 创建配置字典
+#### 创建配置字典
 _cfg函数是一个辅助函数，用于创建配置字典。它接受一个url参数和其他关键字参数，并返回一个包含url和其他参数的字典。<br>
 default_cfgs是一个字典，用于存储默认配置。在这里，mymodel作为键，使用_cfg函数创建了一个配置字典。
 ```python
@@ -129,7 +131,7 @@ def _cfg(url="", **kwargs):
 
 default_cfgs = {"mymodel": _cfg(url="")}
 ```
-### 创建模型
+#### 创建模型
 在`MindSpore`中，模型的类继承于`nn.Cell`，一般来说需要重载以下两个函数：
 
 - 在`__init__`函数中，应当定义模型中需要用到的module层。
