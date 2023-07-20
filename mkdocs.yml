@@ -10,11 +10,15 @@ nav:
   - Tutorials:  # Learning Oriented
       - Quick Start: tutorials/quick_start.md
       - Configuration: tutorials/configuration.md
+      - Augmentation: tutorials/data_augmentation.md
       - Finetune: tutorials/finetune.md
       - CloudBrain: tutorials/modelarts.md
       - Deployment: tutorials/deployment.md
-  - How-To Guides:  # Problem Oriented
+
+  - Developer Guides:  # Problem Oriented
+      - Data Preparation: how_to_guides/data_preparation.md
       - Write A New Model: how_to_guides/write_a_new_model.md
+      - Callback: how_to_guides/callback.md
   - Reference:
       - data: reference/data.md
 #      - loss: reference/loss.md
@@ -97,6 +101,7 @@ markdown_extensions:
       custom_checkbox: true
   - pymdownx.tilde
 
+
 hooks:
   - docs/gen_ref_pages.py
 
@@ -139,8 +144,15 @@ plugins:
           Change Log: 更新日志
           Code of Conduct: 行为准则
           FAQ: 常见问题
-          How-To Guides: 指导
+          Developer Guides: 开发者指导
           Reference: 引用
+          Augmentation: 数据增强
+          Training: 训练流程解析
+          Data Preparation: 数据准备
+          Augmentation(custom): 自定义数据增强
+          Write A New Model: 自定义模型
+          Callback: 回调函数用法
+
 
 
 
