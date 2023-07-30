@@ -63,3 +63,9 @@ In addition, we provide an optional [fast coco api](https://github.com/facebookr
 cd mindyolo/csrc
 sh build.sh
 ```
+
+We also provide fused GPU operators which are built upon MindSpore [ops.Custom](https://www.mindspore.cn/tutorials/experts/en/master/operation/op_custom.html) API. The fused GPU operators are able to improve train speed. The source code is provided in C++ and CUDA and is in the folder `mindyolo/models/losses/fused_op`. Before using it, you shall try compiling the source code to dynamic link libraries with the following commands **(This operation is optional)** :
+
+```shell
+bash mindyolo/models/losses/fused_op/build.sh
+```

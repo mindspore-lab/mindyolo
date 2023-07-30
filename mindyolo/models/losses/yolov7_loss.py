@@ -17,7 +17,7 @@ __all__ = ["YOLOv7Loss", "YOLOv7AuxLoss"]
 @register_model
 class YOLOv7Loss(nn.Cell):
     def __init__(
-        self, box, obj, cls, anchor_t, label_smoothing, fl_gamma, cls_pw, obj_pw, anchors, stride, nc, **kwargs
+        self, box, obj, cls, anchor_t, label_smoothing, fl_gamma, cls_pw, obj_pw, anchors, stride, nc, use_fused_op=False, **kwargs
     ):
         super(YOLOv7Loss, self).__init__()
         self.hyp_box = box
@@ -63,6 +63,7 @@ class YOLOv7Loss(nn.Cell):
         )
 
         self.loss_item_name = ["loss", "lbox", "lobj", "lcls"]  # branch name returned by lossitem for print
+        self.use_fused_op = use_fused_op
 
     def construct(self, p, targets, imgs):
         lcls, lbox, lobj = 0.0, 0.0, 0.0
@@ -98,7 +99,7 @@ class YOLOv7Loss(nn.Cell):
             pbox = ops.concat((pxy, pwh), 1)  # predicted box
             selected_tbox = targets[i][:, 2:6] * pre_gen_gains[i]
             selected_tbox[:, :2] -= grid
-            iou = bbox_iou(pbox, selected_tbox, xywh=True, CIoU=True).view(-1)
+            iou = bbox_iou(pbox, selected_tbox, xywh=True, CIoU=True, use_fused_op=self.use_fused_op).view(-1)
             lbox += ((1.0 - iou) * tmask).sum() / tmask.astype(iou.dtype).sum().clip(1, None)  # iou loss
 
             # Objectness
@@ -364,7 +365,7 @@ class YOLOv7Loss(nn.Cell):
 @register_model
 class YOLOv7AuxLoss(nn.Cell):
     def __init__(
-        self, box, obj, cls, anchor_t, label_smoothing, fl_gamma, cls_pw, obj_pw, anchors, stride, nc, **kwargs
+        self, box, obj, cls, anchor_t, label_smoothing, fl_gamma, cls_pw, obj_pw, anchors, stride, nc, use_fused_op, **kwargs
     ):
         super(YOLOv7AuxLoss, self).__init__()
         self.hyp_box = box
@@ -416,6 +417,7 @@ class YOLOv7AuxLoss(nn.Cell):
         )
 
         self.loss_item_name = ["loss", "lbox", "lobj", "lcls"]  # branch name returned by loss for print
+        self.use_fused_op = use_fused_op
 
     def construct(self, p, targets, imgs):
         lcls, lbox, lobj = 0.0, 0.0, 0.0
@@ -471,7 +473,7 @@ class YOLOv7AuxLoss(nn.Cell):
             pbox = ops.concat((pxy, pwh), 1)  # predicted box
             selected_tbox = targets[i][:, 2:6] * pre_gen_gains[i]
             selected_tbox[:, :2] -= grid
-            iou = bbox_iou(pbox, selected_tbox, xywh=True, CIoU=True).view(-1)
+            iou = bbox_iou(pbox, selected_tbox, xywh=True, CIoU=True, use_fused_op=self.use_fused_op).view(-1)
             lbox += ((1.0 - iou) * tmask).sum() / tmask.astype(iou.dtype).sum().clip(1, None)  # iou loss
             # 1.2. Objectness
             tobj[b, a, gj, gi] = ((1.0 - self.gr) + self.gr * ops.stop_gradient(iou).clip(0, None)) * tmask  # iou ratio
@@ -494,7 +496,7 @@ class YOLOv7AuxLoss(nn.Cell):
             pbox_aux = ops.concat((pxy_aux, pwh_aux), 1)  # predicted box
             selected_tbox_aux = targets_aux[i][:, 2:6] * pre_gen_gains[i]
             selected_tbox_aux[:, :2] -= grid_aux
-            iou_aux = bbox_iou(pbox_aux, selected_tbox_aux, xywh=True, CIoU=True).view(-1)
+            iou_aux = bbox_iou(pbox_aux, selected_tbox_aux, xywh=True, CIoU=True, use_fused_op=self.use_fused_op).view(-1)
             lbox += (
                 0.25 * ((1.0 - iou_aux) * tmask_aux).sum() / tmask_aux.astype(iou_aux.dtype).sum().clip(1, None)
             )  # iou loss

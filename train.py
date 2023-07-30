@@ -81,6 +81,8 @@ def get_parser_train(parents=None):
                         help="ModelArts: local device path to dataset folder")
     parser.add_argument("--ckpt_dir", type=str, default="/cache/pretrain_ckpt/",
                         help="ModelArts: local device path to checkpoint folder")
+    parser.add_argument("--use_fused_op", type=ast.literal_eval, default=False,
+                        help="Whether to use aot custom operator to accelerate GPU computation")
     return parser
 
 
@@ -185,7 +187,8 @@ def train(args):
 
     # Create Loss
     loss_fn = create_loss(
-        **args.loss, anchors=args.network.get("anchors", 1), stride=args.network.stride, nc=args.data.nc
+        **args.loss, anchors=args.network.get("anchors", 1), stride=args.network.stride, nc=args.data.nc,
+        use_fused_op=args.use_fused_op
     )
     ms.amp.auto_mixed_precision(loss_fn, amp_level="O0" if args.keep_loss_fp32 else args.ms_amp_level)
 

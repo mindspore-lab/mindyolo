@@ -31,7 +31,7 @@ class ConfidenceLoss(nn.Cell):
 
 @register_model
 class YOLOv4Loss(nn.Cell):
-    def __init__(self, box, obj, cls, label_smoothing, ignore_threshold, iou_threshold, anchors, nc, **kwargs):
+    def __init__(self, box, obj, cls, label_smoothing, ignore_threshold, iou_threshold, anchors, nc, use_fused_op=False, **kwargs):
         super(YOLOv4Loss, self).__init__()
         self.ignore_threshold = ignore_threshold
         self.iou = Iou()
@@ -57,6 +57,7 @@ class YOLOv4Loss(nn.Cell):
 
         self.concat = ops.Concat(axis=-1)
         self.reduce_max = ops.ReduceMax(keep_dims=False)
+        self.use_fused_op = use_fused_op
 
     def construct(self, p, targets, imgs):
         image_shape = imgs.shape
@@ -94,7 +95,7 @@ class YOLOv4Loss(nn.Cell):
 
                 # Regression
                 pbox = ops.concat((pxy, pwh), 1)  # predicted box
-                iou = bbox_iou(pbox, tbox, GIoU=True).squeeze()  # iou(prediction, target)
+                iou = bbox_iou(pbox, tbox, GIoU=True, use_fused_op=self.use_fused_op).squeeze()  # iou(prediction, target)
                 # iou = iou * tmask
                 # lbox += ((1.0 - iou) * tmask).mean()  # iou loss
                 box_loss_scale = 2 - tbox[:, 2] * tbox[:, 3] / gain[0] / gain[1]
@@ -160,7 +161,7 @@ class YOLOv4Loss(nn.Cell):
 
         anchor_shapes = ops.zeros((na, 1, 4), ms.float32)
         anchor_shapes[..., 2:] = ops.ExpandDims()(self.anchors, 1)
-        anch_ious = bbox_iou(gt_box, anchor_shapes).squeeze()
+        anch_ious = bbox_iou(gt_box, anchor_shapes, use_fused_op=self.use_fused_op).squeeze()
 
         j = anch_ious == anch_ious.max(axis=0)
         l = anch_ious > self.iou_threshold

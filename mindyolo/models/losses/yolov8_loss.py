@@ -14,7 +14,7 @@ __all__ = ["YOLOv8Loss"]
 
 @register_model
 class YOLOv8Loss(nn.Cell):
-    def __init__(self, box, cls, dfl, stride, nc, reg_max=16, **kwargs):
+    def __init__(self, box, cls, dfl, stride, nc, reg_max=16, use_fused_op=False, **kwargs):
         super(YOLOv8Loss, self).__init__()
 
         self.bce = nn.BCEWithLogitsLoss(reduction="none")
@@ -27,8 +27,8 @@ class YOLOv8Loss(nn.Cell):
         self.reg_max = reg_max
 
         self.use_dfl = reg_max > 1
-        self.assigner = TaskAlignedAssigner(topk=10, num_classes=self.nc, alpha=0.5, beta=6.0)
-        self.bbox_loss = BboxLoss(reg_max, use_dfl=self.use_dfl)
+        self.assigner = TaskAlignedAssigner(topk=10, num_classes=self.nc, alpha=0.5, beta=6.0, use_fused_op=use_fused_op)
+        self.bbox_loss = BboxLoss(reg_max, use_dfl=self.use_dfl, use_fused_op=use_fused_op)
         self.proj = mnp.arange(reg_max)
 
         # ops
@@ -154,10 +154,11 @@ class YOLOv8Loss(nn.Cell):
 
 
 class BboxLoss(nn.Cell):
-    def __init__(self, reg_max, use_dfl=False):
+    def __init__(self, reg_max, use_dfl=False, use_fused_op=False):
         super().__init__()
         self.reg_max = reg_max
         self.use_dfl = use_dfl
+        self.use_fused_op = use_fused_op
 
     def construct(
         self, pred_dist, pred_bboxes, anchor_points, target_bboxes, target_scores, target_scores_sum, fg_mask
@@ -174,7 +175,7 @@ class BboxLoss(nn.Cell):
         """
         # IoU loss
         weight = target_scores.sum(-1).expand_dims(-1)  # (bs, N, num_classes) -> (bs, N) -> (bs, N, 1)
-        iou = bbox_iou(pred_bboxes, target_bboxes, xywh=False, CIoU=True)
+        iou = bbox_iou(pred_bboxes, target_bboxes, xywh=False, CIoU=True, use_fused_op=self.use_fused_op)
         loss_iou = ((1.0 - iou) * weight * fg_mask.expand_dims(2)).sum() / target_scores_sum
 
         # DFL loss
@@ -219,7 +220,7 @@ class BboxLoss(nn.Cell):
 
 
 class TaskAlignedAssigner(nn.Cell):
-    def __init__(self, topk=13, num_classes=80, alpha=1.0, beta=6.0, eps=1e-9):
+    def __init__(self, topk=13, num_classes=80, alpha=1.0, beta=6.0, eps=1e-9, use_fused_op=False):
         super().__init__()
         self.topk = topk
         self.num_classes = num_classes
@@ -227,6 +228,7 @@ class TaskAlignedAssigner(nn.Cell):
         self.alpha = alpha
         self.beta = beta
         self.eps = eps
+        self.use_fused_op=use_fused_op
 
     def construct(self, pd_scores, pd_bboxes, anc_points, gt_labels, gt_bboxes, mask_gt):
         """This code referenced to
@@ -310,7 +312,7 @@ class TaskAlignedAssigner(nn.Cell):
 
         # (b, n_gt, 1, 4), (b, 1, N, 4) -> (b, n_gt, N)
         overlaps = (
-            bbox_iou(gt_bboxes.expand_dims(2), pd_bboxes.expand_dims(1), xywh=False, CIoU=True).squeeze(3).clip(0, None)
+            bbox_iou(gt_bboxes.expand_dims(2), pd_bboxes.expand_dims(1), xywh=False, CIoU=True, use_fused_op=self.use_fused_op).squeeze(3).clip(0, None)
         )
         align_metric = bbox_scores.pow(self.alpha) * overlaps.pow(self.beta)
         return align_metric, overlaps

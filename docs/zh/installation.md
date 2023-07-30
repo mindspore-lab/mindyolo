@@ -56,9 +56,15 @@ cd mindyolo
 pip install -e .
 ```
 
-另外, 我们提供了一个可选的 [fast coco api](https://github.com/facebookresearch/detectron2/blob/main/detectron2/evaluation/fast_eval_api.py) 接口用于提升验证过程的速度。代码是以C++形式提供的，可以尝试用以下的命令进行安装 **(此操作是可选的)** :
+我们提供了一个可选的 [fast coco api](https://github.com/facebookresearch/detectron2/blob/main/detectron2/evaluation/fast_eval_api.py) 接口用于提升验证过程的速度。代码是以C++形式提供的，可以尝试用以下的命令进行安装 **(此操作是可选的)** :
 
 ```shell
 cd mindyolo/csrc
 sh build.sh
+```
+
+我们还提供了基于MindSpore [Custom自定义算子](https://www.mindspore.cn/tutorials/experts/zh-CN/master/operation/op_custom.html) 的GPU融合算子，用于提升训练过程的速度。代码采用C++和CUDA开发，位于`mindyolo/models/losses/fused_op`路径下。使用该特性前，需要使用以下的命令，编译生成GPU融合算子运行所依赖的动态库 **(此操作是可选的)** :
+
+```shell
+bash mindyolo/models/losses/fused_op/build.sh
 ```
