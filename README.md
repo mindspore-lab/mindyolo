@@ -58,7 +58,7 @@ To be supplemented.
 
 ## Notes
 
-⚠️ The current version is based on the static shape of GRAPH. The dynamic shape of the PYNATIVE will be supported later. Please look forward to it.
+⚠️ The current version is based on the [static shape of GRAPH](https://mindspore.cn/docs/en/r2.0/note/static_graph_syntax_support.html). The dynamic shape of the PYNATIVE will be supported later. Please look forward to it.
 
 ### How to Contribute
 
@@ -72,7 +72,7 @@ MindYOLO is released under the [Apache License 2.0](LICENSE.md).
 
 ### Acknowledgement
 
-MindYOLO is an open source project that welcome any contribution and feedback. We wish that the toolbox and benchmark could serve the growing research community by providing a flexible as well as standardized toolkit to reimplement existing methods and develop their own new realtime object detection methods.
+MindYOLO is an open source project that welcome any contribution and feedback. We wish that the toolbox and benchmark could support the growing research community, reimplement existing methods, and develop their own new real-time object detection methods by providing a flexible and standardized toolkit.
 
 ### Citation
 

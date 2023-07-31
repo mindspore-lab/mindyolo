@@ -60,7 +60,7 @@ master 分支配套 **MindSpore 2.0**。
 
 ## 注意
 
-⚠️当前版本基于GRAPH的静态Shape。后续将添加PYNATIVE的动态Shape支持，敬请期待。
+⚠️当前版本基于GRAPH的[静态Shape]((https://mindspore.cn/docs/en/r2.0/note/static_graph_syntax_support.html))。后续将添加PYNATIVE的动态Shape支持，敬请期待。
 
 ### 贡献方式
 
