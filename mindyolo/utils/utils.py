@@ -110,7 +110,7 @@ def drop_inconsistent_shape_parameters(model, param_dict):
     return updated_param_dict
 
 
-def load_pretrain(network, weight, ema=None, ema_weight=None, strict=False):
+def load_pretrain(network, weight, ema=None, ema_weight=None, strict=True):
     if weight.endswith(".ckpt"):
         param_dict = ms.load_checkpoint(weight)
         if not strict:
