@@ -148,17 +148,19 @@ def draw_result(img_path, result_dict, data_names, is_coco_dataset=True, save_pa
 
 
 def get_broadcast_datetime(rank_size=1, root_rank=0):
-    bd_cast = ops.Broadcast(root_rank=root_rank)
     time = datetime.now()
     time_list = [time.year, time.month, time.day, time.hour, time.minute, time.second, time.microsecond]
     if rank_size <=1:
         return time_list
 
     # only broadcast in distribution mode
-    x = bd_cast((Tensor(time_list, dtype=ms.int32),))
+    x = broadcast((Tensor(time_list, dtype=ms.int32),), root_rank)
     x = x[0].asnumpy().tolist()
     return x
 
+@ms.ms_function
+def broadcast(x, root_rank):
+    return ops.Broadcast(root_rank=root_rank)(x)
 
 class AllReduce(nn.Cell):
     """
