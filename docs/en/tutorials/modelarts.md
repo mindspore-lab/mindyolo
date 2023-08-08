@@ -2,6 +2,6 @@
 
 # Modelarts
 
-{% include-markdown "../../../tutorials/modelarts.md" %}
+{% include-markdown "../../../tutorials/cloud/modelarts_CN.md" %}
 
 
