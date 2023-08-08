@@ -197,7 +197,7 @@ def infer(args):
     )
     if args.save_result:
         save_path = os.path.join(args.save_dir, "detect_results")
-        draw_result(args.image_path, result_dict, args.data.names, save_path=save_path)
+        draw_result(args.image_path, result_dict, args.data.names, is_coco_dataset=is_coco_dataset, save_path=save_path)
 
     logger.info("Infer completed.")
 
