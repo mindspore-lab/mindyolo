@@ -2,27 +2,38 @@ import sys
 
 sys.path.append(".")
 import os
-import numpy as np
+import pytest
 from download import download
 import cv2
 
-from mindspore import nn
-
-from mindyolo.utils.metrics import non_max_suppression, scale_coords, xyxy2xywh
+from mindyolo.utils.config import load_config, Config
 from mindyolo.data import COCO80_TO_COCO91_CLASS
-from deploy.infer_engine.lite import LiteModel
 from mindyolo.utils.utils import draw_result
-from deploy.predict import detect
+from demo.predict import detect
+from mindyolo.models.model_factory import create_model
 
-def test_deploy_predict():
+
+@pytest.mark.parametrize("yaml_name", ['yolov5n.yaml'])
+def test_demo_predict(yaml_name):
     image_url = 'https://mindspore-website.obs.cn-north-4.myhuaweicloud.com/notebook/datasets/image_cat.zip'
     path = download(image_url, './', kind="zip", replace=True)
     image_path = ('./image_cat/jpg/000000039769.jpg')
 
-    model_url = 'https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5n_300e_mAP273-9b16bd7b-bd03027b.mindir'
-    model_path = download(model_url, './yolov5n.mindir', kind="file", replace=True)
+    model_url = 'https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5n_300e_mAP273-9b16bd7b.ckpt'
+    weight = download(model_url, './yolov5n.ckpt', kind="file", replace=True)
+    parent_dir = yaml_name[:6]
+    yaml_path = os.path.join('./configs', parent_dir, yaml_name)
+    cfg, _, _ = load_config(yaml_path)
+    cfg = Config(cfg)
 
-    network = LiteModel(model_path)
+    network = create_model(
+        model_name=cfg.network.model_name,
+        model_cfg=cfg.network,
+        num_classes=cfg.data.nc,
+        sync_bn=False,
+        checkpoint_path=weight,
+    )
+    network.set_train(False)
     img = cv2.imread(image_path)
     result_dict = detect(
         network=network,
@@ -49,4 +60,4 @@ def test_deploy_predict():
 
 
 if __name__ == '__main__':
-    test_deploy_predict()
+    test_demo_predict('yolov5n.yaml')
