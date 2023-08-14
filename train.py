@@ -69,6 +69,7 @@ def get_parser_train(parents=None):
     parser.add_argument("--profiler", type=ast.literal_eval, default=False, help="collect profiling data or not")
     parser.add_argument("--profiler_step_num", type=int, default=1, help="collect profiler data for how many steps.")
     parser.add_argument("--opencv_threads_num", type=int, default=2, help="set the number of threads for opencv")
+    parser.add_argument("--strict_load", type=ast.literal_eval, default=True, help="strictly load the pretrain model")
 
     # args for ModelArts
     parser.add_argument("--enable_modelarts", type=ast.literal_eval, default=False, help="enable modelarts")
@@ -112,7 +113,7 @@ def train(args):
         ema = EMA(network, ema_network)
     else:
         ema = None
-    load_pretrain(network, args.weight, ema, args.ema_weight)  # load pretrain
+    load_pretrain(network, args.weight, ema, args.ema_weight, args.strict_load)  # load pretrain
     freeze_layers(network, args.freeze)  # freeze Layers
     ms.amp.auto_mixed_precision(network, amp_level=args.ms_amp_level)
     if ema:
