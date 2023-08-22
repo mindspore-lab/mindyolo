@@ -115,4 +115,7 @@ class DetectionBlock(nn.Cell):
             return prediction, box_xy, box_wh
         box_xy *= input_shape
         box_wh *= input_shape
-        return ops.concat((box_xy, box_wh, box_confidence, box_probs), -1)
+        return ops.concat((box_xy.astype(ms.float32),
+                           box_wh.astype(ms.float32),
+                           box_confidence.astype(ms.float32),
+                           box_probs.astype(ms.float32)), -1)
