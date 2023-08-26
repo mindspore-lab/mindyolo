@@ -46,12 +46,13 @@
    ```shell
    python ./deploy/predict.py --model_type Lite --model_path ./path_to_mindir/weight.mindir --config ./path_to_conifg/yolo.yaml --image_path ./path_to_image/image.jpg
    e.g.
-   python deploy/predict.py --model_type Lite --model_path ./yolov5n.mindir --conifg ./configs/yolov5/yolov5n.yaml --image_path ./coco/image/val2017/image.jpg
+   python deploy/predict.py --model_type Lite --model_path ./yolov5n.mindir --config ./configs/yolov5/yolov5n.yaml --image_path ./coco/image/val2017/image.jpg
    ```
 
 ## 脚本说明
    - predict.py 支持单张图片推理
    - test.py 支持COCO数据集推理
+   - 当前只支持在Ascend 310上推理
 
 ## MindX部署
 
