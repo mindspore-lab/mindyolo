@@ -52,7 +52,7 @@
 ## 脚本说明
    - predict.py 支持单张图片推理
    - test.py 支持COCO数据集推理
-   - 当前只支持在Ascend 310上推理
+   - 注意：当前只支持在Ascend 310上推理
 
 ## MindX部署
 
