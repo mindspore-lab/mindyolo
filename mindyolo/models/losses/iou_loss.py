@@ -5,10 +5,6 @@ from mindspore import Tensor, ops
 
 from mindyolo.models.layers.utils import box_cxcywh_to_xyxy
 
-from .fused_op import fused_get_ciou, fused_get_center_dist, fused_get_iou, \
-    fused_get_convex_diagonal_squared, fused_get_ciou_diagonal_angle, \
-    fused_get_boundding_boxes_coord, fused_get_intersection_area
-
 PI = Tensor(math.pi, ms.float32)
 EPS = 1e-7
 
@@ -101,7 +97,7 @@ def batch_box_iou(batch_box1, batch_box2, xywh=False):
     )  # iou = inter / (area1 + area2 - inter)
 
 
-def bbox_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, eps=1e-7, use_fused_op=False):
+def bbox_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, eps=1e-7):
     """
     Return intersection-over-union (IoU) of boxes.
     Arguments:
@@ -111,64 +107,45 @@ def bbox_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, eps=1e-7
         GIoU (bool): Whether to use GIoU. Default: False.
         DIoU (bool): Whether to use DIoU. Default: False.
         CIoU (bool): Whether to use CIoU. Default: False.
-        use_fused_op(bool): Whether to use fused operator built upon aot customized operator. Default: False.
     Returns:
         iou (Tensor[N,]): the IoU values for every element in boxes1 and boxes2
     """
+
     # Get the coordinates of bounding boxes
     if xywh:  # transform from xywh to xyxy
         x1, y1, w1, h1 = ops.split(box1, split_size_or_sections=1, axis=-1)
         x2, y2, w2, h2 = ops.split(box2, split_size_or_sections=1, axis=-1)
-        if use_fused_op:
-            b1_x1, b1_x2, b1_y1, b1_y2,b2_x1, b2_x2, b2_y1, b2_y2=fused_get_boundding_boxes_coord(x1, y1, w1, h1,x2, y2, w2, h2)
-        else:
-            w1_, h1_, w2_, h2_ = w1 / 2, h1 / 2, w2 / 2, h2 / 2
-            b1_x1, b1_x2, b1_y1, b1_y2 = x1 - w1_, x1 + w1_, y1 - h1_, y1 + h1_
-            b2_x1, b2_x2, b2_y1, b2_y2 = x2 - w2_, x2 + w2_, y2 - h2_, y2 + h2_
+        w1_, h1_, w2_, h2_ = w1 / 2, h1 / 2, w2 / 2, h2 / 2
+        b1_x1, b1_x2, b1_y1, b1_y2 = x1 - w1_, x1 + w1_, y1 - h1_, y1 + h1_
+        b2_x1, b2_x2, b2_y1, b2_y2 = x2 - w2_, x2 + w2_, y2 - h2_, y2 + h2_
     else:  # x1, y1, x2, y2 = box1
         b1_x1, b1_y1, b1_x2, b1_y2 = ops.split(box1, split_size_or_sections=1, axis=-1)
         b2_x1, b2_y1, b2_x2, b2_y2 = ops.split(box2, split_size_or_sections=1, axis=-1)
 
     # Intersection area
-    if use_fused_op:
-        inter = fused_get_intersection_area(b1_x1, b1_x2, b2_x1, b2_x2, b1_y1, b1_y2, b2_y1, b2_y2)
-    else:
-        inter = (ops.minimum(b1_x2, b2_x2) - ops.maximum(b1_x1, b2_x1)).clip(0., None) * \
-                (ops.minimum(b1_y2, b2_y2) - ops.maximum(b1_y1, b2_y1)).clip(0., None)
+    inter = (ops.minimum(b1_x2, b2_x2) - ops.maximum(b1_x1, b2_x1)).clip(0., None) * \
+            (ops.minimum(b1_y2, b2_y2) - ops.maximum(b1_y1, b2_y1)).clip(0., None)
 
+    # Union Area
     w1, h1 = b1_x2 - b1_x1, b1_y2 - b1_y1 + eps
     w2, h2 = b2_x2 - b2_x1, b2_y2 - b2_y1 + eps
-    if use_fused_op:
-        iou, union = fused_get_iou(w1, h1, w2, h2, inter)
-    else: 
-        union = w1 * h1 + w2 * h2 - inter + eps  # Union Area
-        iou = inter / union  # IoU
+    union = w1 * h1 + w2 * h2 - inter + eps
+
+    # IoU
+    iou = inter / union
 
     if CIoU or DIoU or GIoU:
         cw = ops.maximum(b1_x2, b2_x2) - ops.minimum(b1_x1, b2_x1)  # convex (smallest enclosing box) width
         ch = ops.maximum(b1_y2, b2_y2) - ops.minimum(b1_y1, b2_y1)  # convex height
         if CIoU or DIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
-            if use_fused_op:
-                c2 = fused_get_convex_diagonal_squared(b1_x1, b1_x2, b2_x1, b2_x2, b1_y1, b1_y2, b2_y1, b2_y2)
-            else:
-                c2 = cw**2 + ch**2 + eps  # convex diagonal squared
-            if use_fused_op:
-                rho2 = fused_get_center_dist(b1_x1, b1_x2, b1_y1, b1_y2, b2_x1, b2_x2, b2_y1, b2_y2)
-            else:
-                rho2 = ((b2_x1 + b2_x2 - b1_x1 - b1_x2) ** 2 + (b2_y1 + b2_y2 - b1_y1 - b1_y2) ** 2) / 4  # center dist ** 2
+            c2 = cw**2 + ch**2 + eps  # convex diagonal squared
+            rho2 = ((b2_x1 + b2_x2 - b1_x1 - b1_x2) ** 2 + (b2_y1 + b2_y2 - b1_y1 - b1_y2) ** 2) / 4  # center dist ** 2
             if CIoU:  # https://github.com/Zzh-tju/DIoU-SSD-pytorch/blob/master/utils/box/box_utils.py#L47
-                if use_fused_op:
-                    v = fused_get_ciou_diagonal_angle(w1, h1, w2, h2)
-                else:
-                    # v = (4 / get_pi(iou.dtype) ** 2) * ops.pow(ops.atan(w2 / (h2 + eps)) - ops.atan(w1 / (h1 + eps)), 2)
-                    v = (4 / PI.astype(iou.dtype) ** 2) * ops.pow(ops.atan(w2 / (h2 + eps)) - ops.atan(w1 / (h1 + eps)), 2)
-                if use_fused_op:
-                    _, res = fused_get_ciou(v, iou, rho2, c2)
-                else:
-                    alpha = v / (v - iou + (1 + eps))
-                    alpha = ops.stop_gradient(alpha)
-                    res = iou - (rho2 / c2 + v * alpha)  # CIoU
-                return res
+                # v = (4 / get_pi(iou.dtype) ** 2) * ops.pow(ops.atan(w2 / (h2 + eps)) - ops.atan(w1 / (h1 + eps)), 2)
+                v = (4 / PI.astype(iou.dtype) ** 2) * ops.pow(ops.atan(w2 / (h2 + eps)) - ops.atan(w1 / (h1 + eps)), 2)
+                alpha = v / (v - iou + (1 + eps))
+                alpha = ops.stop_gradient(alpha)
+                return iou - (rho2 / c2 + v * alpha)  # CIoU
             return iou - rho2 / c2  # DIoU
         c_area = cw * ch + eps  # convex area
         return iou - (c_area - union) / c_area  # GIoU https://arxiv.org/pdf/1902.09630.pdf

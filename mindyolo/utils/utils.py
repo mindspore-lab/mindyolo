@@ -87,19 +87,6 @@ def set_default(args):
         args.data.test_set = os.path.join(args.data_dir, args.data.test_set)
         args.weight = args.ckpt_dir if args.ckpt_dir else ""
         args.ema_weight = os.path.join(args.ckpt_dir, args.ema_weight) if args.ema_weight else ""
-    
-    # Check Custom operator settings.
-    if args.use_fused_op:
-        if args.device_target != "GPU":
-            logger.warning(
-                "mindyolo only support aot custom operator on GPU currently, please check configurations"
-            )
-            args.use_fused_op = False
-        else:
-            logger.warning(
-                "aot Custom operator enabled, please confirm that the compilation script \
-                (mindyolo\\models\\losses\\fused_op\\build.sh) has been executed properly."
-            )
 
 
 def load_pretrain(network, weight, ema=None, ema_weight=None):

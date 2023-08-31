@@ -15,7 +15,7 @@ __all__ = ["YOLOv5Loss"]
 class YOLOv5Loss(nn.Cell):
     # Compute losses
     def __init__(
-        self, box, obj, cls, anchor_t, label_smoothing, fl_gamma, cls_pw, obj_pw, anchors, stride, nc, use_fused_op=False, **kwargs
+        self, box, obj, cls, anchor_t, label_smoothing, fl_gamma, cls_pw, obj_pw, anchors, stride, nc, **kwargs
     ):
         super(YOLOv5Loss, self).__init__()
 
@@ -64,7 +64,6 @@ class YOLOv5Loss(nn.Cell):
         )
 
         self.loss_item_name = ["loss", "lbox", "lobj", "lcls"]  # branch name returned by loss for print
-        self.use_fused_op = use_fused_op
 
     def scatter_index_tensor(self, x, index):
         x_tmp = ops.transpose(x.reshape((-1, x.shape[-1])), (1, 0))
@@ -102,7 +101,7 @@ class YOLOv5Loss(nn.Cell):
                 pxy = ops.Sigmoid()(pxy) * 2 - 0.5
                 pwh = (ops.Sigmoid()(pwh) * 2) ** 2 * anchors[layer_index]
                 pbox = ops.concat((pxy, pwh), 1)  # predicted box
-                iou = bbox_iou(pbox, tbox[layer_index], CIoU=True, use_fused_op=self.use_fused_op).squeeze()  # iou(prediction, target)
+                iou = bbox_iou(pbox, tbox[layer_index], CIoU=True).squeeze()  # iou(prediction, target)
                 lbox += ((1.0 - iou) * tmask).sum() / tmask.astype(iou.dtype).sum()  # iou loss
 
                 # Objectness
