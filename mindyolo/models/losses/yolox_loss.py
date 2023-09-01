@@ -23,7 +23,6 @@ class YOLOXLoss(nn.Cell):
         strides=(8, 16, 32),
         use_l1=False,
         use_summary=False,
-        use_fused_op=False,
         **kwargs
     ):
         super(YOLOXLoss, self).__init__()
@@ -53,7 +52,6 @@ class YOLOXLoss(nn.Cell):
         self.assign = ops.Assign()
 
         self.loss_item_name = ["loss", "lbox", "lobj", "lcls", "lboxl1"]  # branch name returned by lossitem for print
-        self.use_fused_op = use_fused_op
 
     def _get_anchor_center_and_stride(self, norm=False):
         """
@@ -257,7 +255,7 @@ class YOLOXLoss(nn.Cell):
             loss_l1 = ops.reduce_sum(self.l1_loss(l1_preds, l1_target), -1) * obj_target
             loss_l1 = ops.reduce_sum(loss_l1)
         # calculate target -----------END-------------------------------------------------------------------------------
-        iou = bbox_iou(bbox_preds.reshape(-1, 4), reg_target.reshape(-1, 4), xywh=True, use_fused_op=self.use_fused_op).reshape(batch_size, -1)
+        iou = bbox_iou(bbox_preds.reshape(-1, 4), reg_target.reshape(-1, 4), xywh=True).reshape(batch_size, -1)
         loss_iou = (1 - iou * iou) * obj_target  # (bs, num_total_anchor)
         loss_iou = ops.reduce_sum(loss_iou)
 
