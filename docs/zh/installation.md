@@ -63,8 +63,8 @@ cd mindyolo/csrc
 sh build.sh
 ```
 
-我们还提供了基于MindSpore [Custom自定义算子](https://www.mindspore.cn/tutorials/experts/zh-CN/master/operation/op_custom.html) 的GPU融合算子，用于提升训练过程的速度。代码采用C++和CUDA开发，位于`mindyolo/models/losses/fused_op`路径下。使用该特性前，需要使用以下的命令，编译生成GPU融合算子运行所依赖的动态库 **(此操作是可选的)** :
+我们还提供了基于MindSpore [Custom自定义算子](https://www.mindspore.cn/tutorials/experts/zh-CN/master/operation/op_custom.html) 的GPU融合算子，用于提升训练过程的速度。代码采用C++和CUDA开发，位于`examples/custom_gpu_op/`路径下。您可参考示例脚本`examples/custom_gpu_op/iou_loss_fused.py`，修改`mindyolo/models/losses/iou_loss.py`的`bbox_iou`方法，在GPU训练过程中使用该特性。运行`iou_loss_fused.py`前，需要使用以下的命令，编译生成GPU融合算子运行所依赖的动态库 **(此操作是可选的)** :
 
 ```shell
-bash mindyolo/models/losses/fused_op/build.sh
+bash examples/custom_gpu_op/fused_op/build.sh
 ```

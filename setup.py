@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 import os.path
-import subprocess
 import pathlib
 import sys
-import glob
 
 from setuptools import find_packages, setup
 
@@ -30,26 +28,6 @@ def parse_requirements(path=here / "requirements.txt"):
     return pkgs
 
 
-def compile_fused_op(path=here / "mindyolo/models/losses/fused_op"):
-    try:
-        check_txt = subprocess.run(["nvcc", "--version"], timeout=3, capture_output=True, check=True).stdout
-        if "command not found" in str(check_txt):
-            print("nvcc not found, skipped compiling fused operator.")
-            return
-        for fused_op_src in glob.glob(str(path / "*_kernel.cu")):
-            fused_op_so = f"{fused_op_src[:-3]}.so"
-            so_path = str(path / fused_op_so)
-            nvcc_cmd = "nvcc --shared -Xcompiler -fPIC -o " + so_path + " " + fused_op_src
-            print("nvcc compiler cmd: {}".format(nvcc_cmd))
-            os.system(nvcc_cmd)
-    except FileNotFoundError:
-        print("nvcc not found, skipped compiling fused operator.")
-        return
-    except subprocess.CalledProcessError as e:
-        print("nvcc execute failed, skipped compiling fused operator: ", e)
-        return
-
-
 # add c++ extension
 ext_modules = []
 try:
@@ -65,7 +43,6 @@ try:
     ]
 except ImportError:
     pass
-compile_fused_op()
 setup(
     name="mindyolo",
     author="MindSpore Ecosystem",

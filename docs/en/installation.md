@@ -64,8 +64,8 @@ cd mindyolo/csrc
 sh build.sh
 ```
 
-We also provide fused GPU operators which are built upon MindSpore [ops.Custom](https://www.mindspore.cn/tutorials/experts/en/master/operation/op_custom.html) API. The fused GPU operators are able to improve train speed. The source code is provided in C++ and CUDA and is in the folder `mindyolo/models/losses/fused_op`. Before using it, you shall try compiling the source code to dynamic link libraries with the following commands **(This operation is optional)** :
+We also provide fused GPU operators which are built upon MindSpore [ops.Custom](https://www.mindspore.cn/tutorials/experts/en/master/operation/op_custom.html) API. The fused GPU operators are able to improve train speed. The source code is provided in C++ and CUDA and is in the folder `examples/custom_gpu_op/`. To enable this feature in the GPU training process, you shall modify the method `bbox_iou` in `mindyolo/models/losses/iou_loss.py` by referring to the demo script `examples/custom_gpu_op/iou_loss_fused.py`. Before runing `iou_loss_fused.py`, you shall compile the C++ and CUDA source code to dynamic link libraries with the following commands **(This operation is optional)** :
 
 ```shell
-bash mindyolo/models/losses/fused_op/build.sh
+bash examples/custom_gpu_op/fused_op/build.sh
 ```
