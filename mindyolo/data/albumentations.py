@@ -4,19 +4,25 @@ import random
 import numpy as np
 import pkg_resources as pkg
 
+from .utils import xyxy2xywh
+
 
 class Albumentations:
     # Implement Albumentations augmentation https://github.com/ultralytics/yolov5
     # YOLOv5 Albumentations class (optional, only used if package is installed)
-    def __init__(self, size=640):
+    def __init__(self, size=640, random_resized_crop=True):
         self.transform = None
         prefix = _colorstr("albumentations: ")
         try:
             import albumentations as A
 
             _check_version(A.__version__, "1.0.3", hard=True)  # version requirement
-            T = [
-                A.RandomResizedCrop(height=size, width=size, scale=(0.8, 1.0), ratio=(0.9, 1.11), p=0.0),
+            T = []
+            if random_resized_crop:
+                T.extend([
+                    A.RandomResizedCrop(height=size, width=size, scale=(0.8, 1.0), ratio=(0.9, 1.11), p=0.0),
+                ])
+            T.extend([
                 A.Blur(p=0.01),
                 A.MedianBlur(p=0.01),
                 A.ToGray(p=0.01),
@@ -24,7 +30,7 @@ class Albumentations:
                 A.RandomBrightnessContrast(p=0.0),
                 A.RandomGamma(p=0.0),
                 A.ImageCompression(quality_lower=75, p=0.0),
-            ]  # transforms
+            ])
             self.transform = A.Compose(T, bbox_params=A.BboxParams(format="yolo", label_fields=["class_labels"]))
 
             print(prefix + ", ".join(f"{x}".replace("always_apply=False, ", "") for x in T if x.p), flush=True)
@@ -36,11 +42,24 @@ class Albumentations:
             print(f"{prefix}{e}", flush=True)
             print("[WARNING] albumentations load failed", flush=True)
 
-    def __call__(self, im, labels, p=1.0):
+    def __call__(self, sample, p=1.0):
         if self.transform and random.random() < p:
-            new = self.transform(image=im, bboxes=labels[:, 1:], class_labels=labels[:, 0])  # transformed
-            im, labels = new["image"], np.array([[c, *b] for c, b in zip(new["class_labels"], new["bboxes"])])
-        return im, labels
+            im, bboxes, cls, bbox_format = sample['img'], sample['bboxes'], sample['cls'], sample['bbox_format']
+            assert bbox_format in ("ltrb", "xywhn")
+            if bbox_format == "ltrb" and bboxes.shape[0] > 0:
+                h, w = im.shape[:2]
+                bboxes = xyxy2xywh(bboxes)
+                bboxes[:, [0, 2]] /= w
+                bboxes[:, [1, 3]] /= h
+
+            new = self.transform(image=im, bboxes=bboxes, class_labels=cls)  # transformed
+
+            sample['img'] = new['image']
+            sample['bboxes'] = np.array(new['bboxes'])
+            sample['cls'] = np.array(new['class_labels'])
+            sample['bbox_format'] = "xywhn"
+
+        return sample
 
 
 def _check_version(current="0.0.0", minimum="0.0.0", name="version ", pinned=False, hard=False, verbose=False):

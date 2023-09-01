@@ -39,8 +39,14 @@ def test_create_loader(mode, drop_remainder, shuffle, batch_size):
     dataset_path = './coco128'
     ms.set_context(mode=mode)
     transforms_dict = [
-        {'func_name': 'mosaic', 'prob': 1.0, 'mosaic9_prob': 0.0, 'translate': 0.1, 'scale': 0.9},
-        {'func_name': 'mixup', 'prob': 0.1, 'alpha': 8.0, 'beta': 8.0, 'needed_mosaic': True},
+        {'func_name': 'resample_segments'},
+        {'func_name': 'mosaic', 'prob': 1.0},
+        {'func_name': 'random_perspective', 'prob': 1.0, 'translate': 0.1, 'scale': 0.9},
+        {'func_name': 'mixup', 'prob': 0.1, 'alpha': 8.0, 'beta': 8.0, 'pre_transform': [
+            {'func_name': 'resample_segments'},
+            { 'func_name': 'mosaic', 'prob': 1.0 },
+            { 'func_name': 'random_perspective', 'prob': 1.0, 'translate': 0.1, 'scale': 0.9},
+        ]},
         {'func_name': 'hsv_augment', 'prob': 1.0, 'hgain': 0.015, 'sgain': 0.7, 'vgain': 0.4},
         {'func_name': 'label_norm', 'xyxy2xywh_': True},
         {'func_name': 'albumentations'},
@@ -62,7 +68,8 @@ def test_create_loader(mode, drop_remainder, shuffle, batch_size):
     dataloader = create_loader(
         dataset=dataset,
         batch_collate_fn=dataset.train_collate_fn,
-        dataset_column_names=dataset.dataset_column_names,
+        column_names_getitem=dataset.column_names_getitem,
+        column_names_collate=dataset.column_names_collate,
         batch_size=batch_size,
         epoch_size=1,
         shuffle=shuffle,

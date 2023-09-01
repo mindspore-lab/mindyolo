@@ -140,15 +140,15 @@ def freeze_layers(network, freeze=[]):
 
 def draw_result(img_path, result_dict, data_names, is_coco_dataset=True, save_path="./detect_results"):
     import random
-
     import cv2
-
     from mindyolo.data import COCO80_TO_COCO91_CLASS
 
     os.makedirs(save_path, exist_ok=True)
     save_result_path = os.path.join(save_path, img_path.split("/")[-1])
     im = cv2.imread(img_path)
     category_id, bbox, score = result_dict["category_id"], result_dict["bbox"], result_dict["score"]
+    seg = result_dict.get("segmentation", None)
+    mask = None if seg is None else np.zeros_like(im, dtype=np.float32)
     for i in range(len(bbox)):
         # draw box
         x_l, y_t, w, h = bbox[i][:]
@@ -156,6 +156,9 @@ def draw_result(img_path, result_dict, data_names, is_coco_dataset=True, save_pa
         x_l, y_t, x_r, y_b = int(x_l), int(y_t), int(x_r), int(y_b)
         _color = [random.randint(0, 255) for _ in range(3)]
         cv2.rectangle(im, (x_l, y_t), (x_r, y_b), tuple(_color), 2)
+        if seg:
+            _color_seg = np.array([random.randint(0, 255) for _ in range(3)], np.float32)
+            mask += seg[i][:, :, None] * _color_seg[None, None, :]
 
         # draw label
         if is_coco_dataset:
@@ -169,6 +172,8 @@ def draw_result(img_path, result_dict, data_names, is_coco_dataset=True, save_pa
         cv2.putText(im, text, (x_l, y_t - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
 
     # save results
+    if seg:
+        im = (0.7 * im + 0.3 * mask).astype(np.uint8)
     cv2.imwrite(save_result_path, im)
 
 

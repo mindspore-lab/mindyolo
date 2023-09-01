@@ -4,7 +4,6 @@ import mindspore as ms
 from mindspore import Tensor, nn
 
 from .heads.yolov3_head import YOLOv3Head
-from .initializer import initialize_defult
 from .model_factory import build_model_from_cfg
 from .registry import register_model
 
@@ -30,15 +29,12 @@ class YOLOv3(nn.Cell):
         self.model = build_model_from_cfg(model_cfg=cfg, in_channels=ch, num_classes=nc, sync_bn=sync_bn)
         self.names = [str(i) for i in range(nc)]  # default names
 
-        self.reset_parameter()
+        self.initialize_weights()
 
     def construct(self, x):
         return self.model(x)
 
-    def reset_parameter(self):
-        # init default
-        initialize_defult(self)
-
+    def initialize_weights(self):
         # reset parameter for Detect Head
         m = self.model.model[-1]
         if isinstance(m, YOLOv3Head):
@@ -47,8 +43,7 @@ class YOLOv3(nn.Cell):
 
 @register_model
 def yolov3(cfg, in_channels=3, num_classes=None, **kwargs) -> YOLOv3:
-    """Get GoogLeNet model.
-    Refer to the base class `models.GoogLeNet` for more details."""
+    """Get yolov3 model."""
     model = YOLOv3(cfg=cfg, in_channels=in_channels, num_classes=num_classes, **kwargs)
     return model
 

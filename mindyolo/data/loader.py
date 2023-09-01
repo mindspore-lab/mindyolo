@@ -14,7 +14,8 @@ __all__ = ["create_loader"]
 def create_loader(
     dataset,
     batch_collate_fn,
-    dataset_column_names,
+    column_names_getitem,
+    column_names_collate,
     batch_size,
     epoch_size=1,
     rank=0,
@@ -52,7 +53,7 @@ def create_loader(
     if rank_size > 1:
         ds = de.GeneratorDataset(
             dataset,
-            column_names=dataset_column_names,
+            column_names=column_names_getitem,
             num_parallel_workers=min(8, num_parallel_workers),
             shuffle=shuffle,
             python_multiprocessing=python_multiprocessing,
@@ -62,13 +63,14 @@ def create_loader(
     else:
         ds = de.GeneratorDataset(
             dataset,
-            column_names=dataset_column_names,
+            column_names=column_names_getitem,
             num_parallel_workers=min(32, num_parallel_workers),
             shuffle=shuffle,
             python_multiprocessing=python_multiprocessing,
         )
     ds = ds.batch(
-        batch_size, per_batch_map=batch_collate_fn, input_columns=dataset_column_names, drop_remainder=drop_remainder
+        batch_size, per_batch_map=batch_collate_fn,
+        input_columns=column_names_getitem, output_columns=column_names_collate, drop_remainder=drop_remainder
     )
     ds = ds.repeat(epoch_size)
 

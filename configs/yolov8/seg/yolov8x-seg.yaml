@@ -1,0 +1,13 @@
+__BASE__: [
+  '../../coco.yaml',
+  './hyp.scratch.high.seg.yaml',
+  './yolov8-seg-base.yaml'
+]
+
+recompute: True
+recompute_layers: 2
+
+network:
+  depth_multiple: 1.00  # scales module repeats
+  width_multiple: 1.25  # scales convolution channels
+  max_channels: 512

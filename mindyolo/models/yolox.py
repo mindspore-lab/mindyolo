@@ -4,7 +4,6 @@ import mindspore as ms
 from mindspore import Tensor, nn
 
 from mindyolo.models.registry import register_model
-from .initializer import initialize_defult
 from .heads import YOLOXHead
 from .model_factory import build_model_from_cfg
 
@@ -29,15 +28,12 @@ class YOLOX(nn.Cell):
         self.model = build_model_from_cfg(model_cfg=cfg, in_channels=ch, num_classes=nc, sync_bn=sync_bn)
         self.names = [str(i) for i in range(nc)]
 
-        self.reset_parameter()
+        self.initialize_weights()
 
     def construct(self, x):
         return self.model(x)
 
-    def reset_parameter(self):
-        # init default
-        initialize_defult(self)
-
+    def initialize_weights(self):
         # reset parameter for Detect Head
         m = self.model.model[-1]
         assert isinstance(m, YOLOXHead)
@@ -46,7 +42,6 @@ class YOLOX(nn.Cell):
 
 @register_model
 def yolox(cfg, in_channels=3, num_classes=None, **kwargs) -> YOLOX:
-    """Get GoogLeNet model.
-    Refer to the base class `models.GoogLeNet` for more details."""
+    """Get yolox model."""
     model = YOLOX(cfg, in_channels=in_channels, num_classes=num_classes, **kwargs)
     return model

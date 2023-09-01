@@ -1,5 +1,7 @@
 # MindYOLO Model Zoo and Baselines
 
+## Detection
+
 | Name   | Scale              | Context  | ImageSize | Dataset      | Box mAP (%) | Params | FLOPs  | Recipe                                                                                           | Download                                                                                                             |
 |--------|--------------------|----------|-----------|--------------|-------------|--------|--------|--------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
 | YOLOv8 | N                  | D910x8-G | 640       | MS COCO 2017 | 37.2        | 3.2M   | 8.7G   | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov8/yolov8n.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-n_500e_mAP372-cc07f5bd.ckpt)                 |
@@ -26,12 +28,16 @@
 | YOLOX  | X                  | D910x8-G | 640       | MS COCO 2017 | 51.6        | 99.1M  | 281.9G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-x.yaml)         | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-x_300e_map516-52216d90.ckpt)                   |
 | YOLOX  | Darknet53          | D910x8-G | 640       | MS COCO 2017 | 47.7        | 63.7M  | 185.3G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolox/yolox-darknet53.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-darknet53_300e_map477-b5fcaba9.ckpt)                   |
 
-<br>
+## Segmentation
 
-#### Depoly inference
+| Name       | Scale | Context  | ImageSize | Dataset      | Box mAP (%) | Mask mAP (%) | Params | FLOPs  | Recipe                                                                                            | Download                                                                                                       |
+|------------|-------|----------|-----------|--------------|-------------|--------------|--------|--------|---------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| YOLOv8-seg | X     | D910x8-G | 640       | MS COCO 2017 | 52.5        | 42.9         | 71.8M  | 344.1G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov8/seg/yolov8x-seg.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-x-seg_300e_mAP_mask_429-b4920557.ckpt) |
+
+## Depoly inference
 
 - See [support list](./deploy/README.md)
 
-#### Notes
+## Notes
 - Context: Training context denoted as {device}x{pieces}-{MS mode}, where mindspore mode can be G - graph mode or F - pynative mode with ms function. For example, D910x8-G is for training on 8 pieces of Ascend 910 NPU using graph mode.
 - Box mAP: Accuracy reported on the validation set.

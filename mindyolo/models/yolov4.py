@@ -1,6 +1,5 @@
 import mindspore.nn as nn
 
-from .initializer import initialize_defult
 from .model_factory import build_model_from_cfg
 from .registry import register_model
 
@@ -24,19 +23,12 @@ class YOLOv4(nn.Cell):
         self.model = build_model_from_cfg(model_cfg=cfg, in_channels=ch, num_classes=nc, sync_bn=sync_bn)
         self.names = [str(i) for i in range(nc)]  # default names
 
-        self.reset_parameter()
-
     def construct(self, x):
         return self.model(x)
-
-    def reset_parameter(self):
-        # init default
-        initialize_defult(self)
 
 
 @register_model
 def yolov4(cfg, in_channels=3, num_classes=None, **kwargs) -> YOLOv4:
-    """Get GoogLeNet model.
-    Refer to the base class `models.GoogLeNet` for more details."""
+    """Get yolov4 model."""
     model = YOLOv4(cfg=cfg, in_channels=in_channels, num_classes=num_classes, **kwargs)
     return model

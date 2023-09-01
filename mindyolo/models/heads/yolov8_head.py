@@ -109,3 +109,47 @@ class YOLOv8Head(nn.Cell):
             b_np = b[-1].bias.data.asnumpy()
             b_np[: m.nc] = math.log(5 / m.nc / (640 / int(s)) ** 2)
             b[-1].bias = ops.assign(b[-1].bias, Tensor(b_np, ms.float32))
+
+
+class YOLOv8SegHead(YOLOv8Head):
+    """YOLOv8 Segment head for segmentation models."""
+
+    def __init__(self, nc=80, reg_max=16, nm=32, npr=256, stride=(), ch=()):
+        """Initialize the YOLO model attributes such as the number of masks, prototypes, and the convolution layers."""
+        super().__init__(nc, reg_max, stride, ch)
+        self.nm = nm  # number of masks
+        self.npr = npr  # number of protos
+        self.proto = Proto(ch[0], self.npr, self.nm)  # protos
+        self.detect = YOLOv8Head.construct
+
+        c4 = max(ch[0] // 4, self.nm)
+        self.cv4 = nn.CellList([nn.SequentialCell(ConvNormAct(x, c4, 3), ConvNormAct(c4, c4, 3), nn.Conv2d(c4, self.nm, 1, has_bias=True)) for x in ch])
+
+    def construct(self, x):
+        """Return model outputs and mask coefficients if training, otherwise return outputs and mask coefficients."""
+        p = self.proto(x[0])  # mask protos
+        bs = p.shape[0]  # batch size
+
+        mc = ops.cat([self.cv4[i](x[i]).view(bs, self.nm, -1) for i in range(self.nl)], 2)  # mask coefficients
+        x = self.detect(self, x)  # x: out if self.training else (p, out)
+        if self.training:
+            return x, mc, p
+
+        mc = ops.transpose(mc, (0, 2, 1))  # (bs, 32, nbox) -> (bs, nbox, 32)
+        # cat: (bs, nbox, no-84), (bs, nbox, 32) -> (bs, nbox, 84+32)
+        return ops.cat([x[0], mc], 2), (x[1], mc, p)
+
+
+class Proto(nn.Cell):
+    """YOLOv8 mask Proto module for segmentation models."""
+
+    def __init__(self, c1, c_=256, c2=32):  # ch_in, number of protos, number of masks
+        super().__init__()
+        self.cv1 = ConvNormAct(c1, c_, k=3)
+        self.upsample = nn.Conv2dTranspose(c_, c_, 2, 2, padding=0, has_bias=True)  # nn.Upsample(scale_factor=2, mode='nearest')
+        self.cv2 = ConvNormAct(c_, c_, k=3)
+        self.cv3 = ConvNormAct(c_, c2)
+
+    def construct(self, x):
+        """Performs a forward pass through layers using an upsampled input image."""
+        return self.cv3(self.cv2(self.upsample(self.cv1(x))))

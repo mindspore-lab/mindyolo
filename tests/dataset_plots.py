@@ -2,7 +2,7 @@ import cv2
 
 from mindyolo.data.dataset import COCODataset
 from mindyolo.data.loader import create_loader
-from mindyolo.data.poly import show_img_with_bbox
+from mindyolo.utils.poly import show_img_with_bbox
 from mindyolo.utils.config import parse_args
 
 if __name__ == "__main__":
@@ -20,7 +20,8 @@ if __name__ == "__main__":
     dataloader = create_loader(
         dataset=dataset,
         batch_collate_fn=dataset.test_collate_fn,
-        dataset_column_names=dataset.dataset_column_names,
+        column_names_getitem=dataset.column_names_getitem,
+        column_names_collate=dataset.column_names_collate,
         batch_size=cfg.per_batch_size * 2,
         epoch_size=1,
         rank=0,

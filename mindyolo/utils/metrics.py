@@ -1,12 +1,16 @@
 import time
-
+import cv2
 import numpy as np
+
+import mindspore as ms
+from mindspore import ops, Tensor
 
 __all__ = ["non_max_suppression", "scale_coords", "xyxy2xywh", "xywh2xyxy"]
 
 
 def non_max_suppression(
     prediction,
+    mask_coefficient=None,
     conf_thres=0.25,
     iou_thres=0.45,
     conf_free=False,
@@ -37,6 +41,14 @@ def non_max_suppression(
             (prediction[..., :4], prediction[..., 4:].max(-1, keepdims=True), prediction[..., 4:]), axis=-1
         )
 
+    nm = 0
+    if mask_coefficient is not None:
+        assert mask_coefficient.shape[:2] == prediction.shape[:2], \
+            f"mask_coefficient shape {mask_coefficient.shape[:2]} and " \
+            f"prediction.shape {prediction.shape[:2]} are not equal."
+        nm = mask_coefficient.shape[2]
+        prediction = np.concatenate((prediction, mask_coefficient), axis=-1)
+
     # Settings
     min_wh, max_wh = 2, 4096  # (pixels) minimum and maximum box width and height
     max_det = 300  # maximum number of detections per image
@@ -47,7 +59,7 @@ def non_max_suppression(
     merge = False  # use merge-NMS
 
     t = time.time()
-    output = [np.zeros((0, 6))] * prediction.shape[0]
+    output = [np.zeros((0, 6+nm))] * prediction.shape[0]
     for xi, x in enumerate(prediction):  # image index, image inference
         # Apply constraints
         # x[((x[..., 2:4] < min_wh) | (x[..., 2:4] > max_wh)).any(1), 4] = 0  # width-height
@@ -60,20 +72,22 @@ def non_max_suppression(
         # Scale class with conf
         if not conf_free:
             if nc == 1:
-                x[:, 5:] = x[:, 4:5]  # signle cls no need to multiplicate.
+                x[:, 5:5+nc] = x[:, 4:5]  # signle cls no need to multiplicate.
             else:
-                x[:, 5:] *= x[:, 4:5]  # conf = obj_conf * cls_conf
+                x[:, 5:5+nc] *= x[:, 4:5]  # conf = obj_conf * cls_conf
 
         # Box (center x, center y, width, height) to (x1, y1, x2, y2)
         box = xywh2xyxy(x[:, :4])
 
         # Detections matrix nx6 (xyxy, conf, cls)
         if multi_label:
-            i, j = (x[:, 5:] > conf_thres).nonzero()
-            x = np.concatenate((box[i], x[i, j + 5, None], j[:, None].astype(np.float32)), 1)
+            i, j = (x[:, 5:5+nc] > conf_thres).nonzero()
+            x = np.concatenate((box[i], x[i, j + 5, None], j[:, None].astype(np.float32)), 1) if nm == 0 else \
+                np.concatenate((box[i], x[i, j + 5, None], j[:, None].astype(np.float32), x[i, -nm:]), 1)
         else:  # best class only
-            conf, j = x[:, 5:].max(1, keepdim=True)
-            x = np.concatenate((box, conf, j.float()), 1)[conf.view(-1) > conf_thres]
+            conf, j = x[:, 5:5+nc].max(1, keepdim=True)
+            x = np.concatenate((box, conf, j.float()), 1)[conf.view(-1) > conf_thres] if nm == 0 else \
+                np.concatenate((box, conf, j.float(), x[:, -nm:]), 1)[conf.view(-1) > conf_thres]
 
         # Filter by class
         if classes is not None:
@@ -221,3 +235,121 @@ def xyxy2xywh(x):
     y[:, 2] = x[:, 2] - x[:, 0]  # width
     y[:, 3] = x[:, 3] - x[:, 1]  # height
     return y
+
+
+#------------------------for segment------------------------
+
+def scale_image(masks, img0_shape, pad=None):
+    """
+    Takes a mask, and resizes it to the original image size
+    Args:
+      masks (numpy.ndarray): resized and padded masks/images, [h, w, num]/[h, w, 3].
+      img0_shape (tuple): the original image shape
+      ratio_pad (tuple): the ratio of the padding to the original image.
+    Returns:
+      masks (numpy.ndarray): The masks that are being returned.
+    """
+
+    # Rescale coordinates (xyxy) from img1_shape to img0_shape
+    img1_shape = masks.shape
+    if (np.array(img1_shape[:2]) == np.array(img0_shape[:2])).all():
+        return masks
+
+    if pad is None:
+        ratio = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])  # ratio  = old / new
+        pad = (img1_shape[0] - img0_shape[0] * ratio) / 2, (img1_shape[1] - img0_shape[1] * ratio) / 2
+
+    top, left = int(pad[0]), int(pad[1])  # y, x
+    bottom, right = int(img1_shape[0] - pad[0]), int(img1_shape[1] - pad[1])
+
+    if len(masks.shape) < 2:
+        raise ValueError(f'"len of masks shape" should be 2 or 3, but got {len(masks.shape)}')
+    masks = masks[top:bottom, left:right]
+    masks = cv2.resize(masks, dsize=(img0_shape[1], img0_shape[0]), interpolation=cv2.INTER_LINEAR)
+    # masks = ops.interpolate(Tensor(masks, dtype=ms.float32)[None], shape, mode='bilinear', align_corners=False)[0].asnumpy()  # CHW
+    if len(masks.shape) == 2:
+        masks = masks[:, :, None]
+
+    return masks
+
+
+def crop_mask(masks, boxes):
+    """
+    It takes a mask and a bounding box, and returns a mask that is cropped to the bounding box
+    Args:
+      masks (numpy.ndarray): [h, w, n] array of masks
+      boxes (numpy.ndarray): [n, 4] array of bbox coordinates in relative point form
+    Returns:
+      (numpy.ndarray): The masks are being cropped to the bounding box.
+    """
+    n, h, w = masks.shape
+    x1, y1, x2, y2 = np.split(boxes[:, :, None], 4, 1)  # x1 shape(n,1,1)
+    r = np.arange(w, dtype=x1.dtype)[None, None, :]  # rows shape(1,1,w)
+    c = np.arange(h, dtype=x1.dtype)[None, :, None]  # cols shape(1,h,1)
+
+    return masks * ((r >= x1) * (r < x2) * (c >= y1) * (c < y2))
+
+
+def process_mask_upsample(protos, masks_in, bboxes, shape):
+    """
+    It takes the output of the mask head, and applies the mask to the bounding boxes. This produces masks of higher
+    quality but is slower.
+    Args:
+      protos (numpy.ndarray): [mask_dim, mask_h, mask_w]
+      masks_in (numpy.ndarray): [n, mask_dim], n is number of masks after nms
+      bboxes (numpy.ndarray): [n, 4], n is number of masks after nms
+      shape (tuple): the size of the input image (h,w)
+    Returns:
+      (numpy.ndarray): The upsampled masks.
+    """
+    assert len(shape) == 2, f"The length of the shape is {len(shape)}, expected to be 2."
+    c, mh, mw = protos.shape  # CHW
+    masks = sigmoid((np.matmul(masks_in, protos.reshape(c, -1)))).reshape(-1, mh, mw)
+
+    # interpolate bilinear
+    # (n, mh, mw) -> (mh, mw, n) -> (*shape, n) -> (n, *shape)
+    # masks = cv2.resize(masks.transpose(1, 2, 0), dsize=shape, interpolation=cv2.INTER_LINEAR).transpose(2, 0, 1)
+    masks = ops.interpolate(Tensor(masks, dtype=ms.float32)[None], shape, mode='bilinear', align_corners=False)[0].asnumpy()  # CHW
+
+    masks = crop_mask(masks, bboxes)  # CHW
+    return masks > 0.5
+
+
+def process_mask(protos, masks_in, bboxes, shape, upsample=False):
+    """
+    Apply masks to bounding boxes using the output of the mask head.
+
+    Args:
+        protos (numpy.ndarray): A array of shape [mask_dim, mask_h, mask_w].
+        masks_in (numpy.ndarray): A array of shape [n, mask_dim], where n is the number of masks after NMS.
+        bboxes (numpy.ndarray): A array of shape [n, 4], where n is the number of masks after NMS.
+        shape (tuple): A tuple of integers representing the size of the input image in the format (h, w).
+        upsample (bool): A flag to indicate whether to upsample the mask to the original image size. Default is False.
+
+    Returns:
+        (numpy.ndarray): A binary mask array of shape [n, h, w], where n is the number of masks after NMS, and h and w
+            are the height and width of the input image. The mask is applied to the bounding boxes.
+    """
+
+    assert len(shape) == 2, f"The length of the shape is {len(shape)}, expected to be 2."
+    c, mh, mw = protos.shape  # CHW
+    ih, iw = shape
+    masks = sigmoid(np.matmul(masks_in, protos.view(c, -1))).reshape(-1, mh, mw)  # CHW
+
+    downsampled_bboxes = np.copy(bboxes)
+    downsampled_bboxes[:, 0] *= mw / iw
+    downsampled_bboxes[:, 2] *= mw / iw
+    downsampled_bboxes[:, 3] *= mh / ih
+    downsampled_bboxes[:, 1] *= mh / ih
+
+    masks = crop_mask(masks, downsampled_bboxes)  # CHW
+    if upsample:
+        # masks = cv2.resize(masks.transpose(1, 2, 0), dsize=shape, interpolation=cv2.INTER_LINEAR).transpose(2, 0, 1)
+        masks = ops.interpolate(Tensor(masks, dtype=ms.float32)[None], shape, mode='bilinear', align_corners=False)[0].asnumpy()  # CHW
+    return masks > 0.5
+
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+#----------------------------------------------------------
