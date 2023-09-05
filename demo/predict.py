@@ -2,6 +2,7 @@ import argparse
 import ast
 import math
 import os
+import sys
 import time
 import cv2
 import numpy as np
@@ -66,7 +67,11 @@ def set_default_infer(args):
         args.config,
     )
     # Directories and Save run settings
-    args.save_dir = os.path.join(args.save_dir, datetime.now().strftime("%Y.%m.%d-%H:%M:%S"))
+    platform = sys.platform
+    if platform == "win32":
+        args.save_dir = os.path.join(args.save_dir, datetime.now().strftime("%Y.%m.%d-%H.%M.%S"))
+    else:
+        args.save_dir = os.path.join(args.save_dir, datetime.now().strftime("%Y.%m.%d-%H:%M:%S"))
     os.makedirs(args.save_dir, exist_ok=True)
     if args.rank % args.rank_size == 0:
         with open(os.path.join(args.save_dir, "cfg.yaml"), "w") as f:
