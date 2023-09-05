@@ -165,8 +165,10 @@ class Trainer:
                     self.optimizer.momentum = Tensor(warmup_momentum[i], dtype)
 
             imgs, labels = data["image"], data["labels"]
+            segments = None if 'segment' not in data else data["segment"]
             self._on_train_step_begin(run_context)
-            run_context.loss, run_context.lr = self.train_step(imgs, labels, cur_step=cur_step,cur_epoch=cur_epoch)
+            run_context.loss, run_context.lr = self.train_step(imgs, labels, segments,
+                                                               cur_step=cur_step,cur_epoch=cur_epoch)
             self._on_train_step_end(run_context)
 
             # train log
@@ -352,9 +354,12 @@ class Trainer:
         self._on_train_end(run_context)
         logger.info("End Train.")
 
-    def train_step(self, imgs, labels, cur_step=0, cur_epoch=0):
+    def train_step(self, imgs, labels, segments=None, cur_step=0, cur_epoch=0):
         if self.accumulate == 1:
-            loss, loss_item, _, grads_finite = self.train_step_fn(imgs, labels, True)
+            if segments is None:
+                loss, loss_item, _, grads_finite = self.train_step_fn(imgs, labels, True)
+            else:
+                loss, loss_item, _, grads_finite = self.train_step_fn(imgs, labels, segments, True)
             self.scaler.adjust(grads_finite)
             if not grads_finite and (cur_step % self.log_interval == 0):
                 if self.overflow_still_update:
@@ -362,7 +367,10 @@ class Trainer:
                 else:
                     logger.warning(f"overflow, drop step, loss scale adjust to {self.scaler.scale_value.asnumpy()}")
         else:
-            loss, loss_item, grads, grads_finite = self.train_step_fn(imgs, labels, False)
+            if segments is None:
+                loss, loss_item, grads, grads_finite = self.train_step_fn(imgs, labels, False)
+            else:
+                loss, loss_item, grads, grads_finite = self.train_step_fn(imgs, labels, segments, False)
             self.scaler.adjust(grads_finite)
             if grads_finite or self.overflow_still_update:
                 self.accumulate_cur_step += 1

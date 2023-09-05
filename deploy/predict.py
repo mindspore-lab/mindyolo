@@ -21,6 +21,7 @@ from mindyolo.utils.utils import draw_result, set_seed
 
 def get_parser_infer(parents=None):
     parser = argparse.ArgumentParser(description="Infer", parents=[parents] if parents else [])
+    parser.add_argument("--task", type=str, default="detect", choices=["detect"])
     parser.add_argument("--device_target", type=str, default="Ascend", help="device target, Ascend/GPU/CPU")
     parser.add_argument("--ms_mode", type=int, default=0, help="train mode, graph/pynative")
     parser.add_argument("--ms_amp_level", type=str, default="O0", help="amp level, O0/O1/O2")
@@ -184,19 +185,22 @@ def infer(args):
 
     # Detect
     is_coco_dataset = "coco" in args.data.dataset_name
-    result_dict = detect(
-        network=network,
-        img=img,
-        conf_thres=args.conf_thres,
-        iou_thres=args.iou_thres,
-        conf_free=args.conf_free,
-        nms_time_limit=args.nms_time_limit,
-        img_size=args.img_size,
-        is_coco_dataset=is_coco_dataset,
-    )
-    if args.save_result:
-        save_path = os.path.join(args.save_dir, "detect_results")
-        draw_result(args.image_path, result_dict, args.data.names, save_path=save_path)
+    if args.task == "detect":
+        result_dict = detect(
+            network=network,
+            img=img,
+            conf_thres=args.conf_thres,
+            iou_thres=args.iou_thres,
+            conf_free=args.conf_free,
+            nms_time_limit=args.nms_time_limit,
+            img_size=args.img_size,
+            is_coco_dataset=is_coco_dataset,
+        )
+        if args.save_result:
+            save_path = os.path.join(args.save_dir, "detect_results")
+            draw_result(args.image_path, result_dict, args.data.names, save_path=save_path)
+    else:
+        raise NotImplementedError
 
     logger.info("Infer completed.")
 

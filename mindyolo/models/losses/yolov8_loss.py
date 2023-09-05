@@ -9,7 +9,7 @@ from .iou_loss import bbox_iou
 CLIP_VALUE = 1000.0
 EPS = 1e-7
 
-__all__ = ["YOLOv8Loss"]
+__all__ = ["YOLOv8Loss", "YOLOv8SegLoss"]
 
 
 @register_model
@@ -151,6 +151,165 @@ class YOLOv8Loss(nn.Cell):
             anchor_points += (ops.stack((sx, sy), -1).view(-1, 2),)
             stride_tensor += (ops.ones((h * w, 1), dtype) * stride,)
         return ops.concat(anchor_points), ops.concat(stride_tensor)
+
+
+@register_model
+class YOLOv8SegLoss(YOLOv8Loss):
+    def __init__(self, box, cls, dfl, stride, nc, reg_max=16, nm=32, overlap=True, max_object_num=600, **kwargs):
+        super(YOLOv8SegLoss, self).__init__(box, cls, dfl, stride, nc, reg_max)
+
+        self.overlap = overlap
+        self.nm = nm
+        self.max_object_num = max_object_num
+
+        # branch name returned by lossitem for print
+        self.loss_item_name = ["loss", "lbox", "lseg", "lcls", "dfl"]
+
+    def construct(self, preds, target_box, target_seg):
+        """YOLOv8 Loss
+        Args:
+            feats: list of tensor, feats[i] shape: (bs, nc+reg_max*4, hi, wi)
+            targets: [image_idx,cls,x,y,w,h], shape: (bs, gt_max, 6)
+        """
+        loss = ops.zeros(4, ms.float32)  # box, cls, dfl, mask
+        # (bs, nc+reg_max*4, hi, wi), (bs, k, hi*wi), (bs, k, 138, 138); k = 32;
+        feats, pred_masks, proto = preds # x, mc, p;
+        batch_size, _, mask_h, mask_w = proto.shape  # batch size, number of masks, mask height, mask width
+
+        _x = ()
+        for xi in feats:
+            _x += (xi.view(batch_size, self.no, -1),)
+        _x = ops.concat(_x, 2)
+        pred_distri, pred_scores = _x[:, :self.reg_max * 4, :], _x[:, -self.nc:, :]  # (bs, nc, h*w)
+
+        # b, grids, ..
+        pred_scores = pred_scores.transpose(0, 2, 1)  # (bs, h*w, nc)
+        pred_distri = pred_distri.transpose(0, 2, 1)  # (bs, h*w, regmax * 4)
+        pred_masks = pred_masks.transpose(0, 2, 1)    # (bs, h*w, k)
+
+        dtype = pred_scores.dtype
+        imgsz = get_tensor(feats[0].shape[2:], dtype) * self.stride[0]  # image size (h,w)
+        anchor_points, stride_tensor = self.make_anchors(feats, self.stride, 0.5)
+
+        # targets
+        target_box, mask_gt = self.preprocess(target_box, scale_tensor=imgsz[[1, 0, 1, 0]])
+        gt_labels, gt_bboxes = target_box[:, :, :1], target_box[:, :, 1:5]  # cls, xyxy
+
+        # pboxes
+        pred_bboxes = self.bbox_decode(anchor_points, pred_distri)  # xyxy, shape: (b, h*w, 4)
+
+        _, target_bboxes, target_scores, fg_mask, target_gt_idx = self.assigner(
+            self.sigmoid(pred_scores),
+            (pred_bboxes * stride_tensor).astype(gt_bboxes.dtype),
+            anchor_points * stride_tensor,
+            gt_labels,
+            gt_bboxes,
+            mask_gt,
+        )
+
+        # stop gradient
+        target_bboxes, target_scores, fg_mask, target_gt_idx = (
+            ops.stop_gradient(target_bboxes),
+            ops.stop_gradient(target_scores),
+            ops.stop_gradient(fg_mask),
+            ops.stop_gradient(target_gt_idx)
+        )
+
+        target_scores_sum = ops.maximum(target_scores.sum(), 1)
+
+        # cls loss
+        loss[2] = self.bce(pred_scores, ops.cast(target_scores, dtype)).sum() / target_scores_sum  # BCE
+
+        # bbox loss
+        loss[0], loss[3] = self.bbox_loss(
+            pred_distri, pred_bboxes, anchor_points, target_bboxes / stride_tensor, target_scores, target_scores_sum, fg_mask
+        )
+
+        # FIXME: mask target reshape, dynamic shape feature required.
+        # masks = target_seg # (b, 1, mask_h, mask_w) if overlap else (bs, N, mask_h, mask_w)
+        # if tuple(masks.shape[-2:]) != (mask_h, mask_w):  # downsample
+        #     masks = ops.interpolate(ops.expand_dims(masks, 0), size=(mask_h, mask_w), mode="nearest")[0]
+
+        for i in range(batch_size):
+            _fg_mask, _fg_mask_index = ops.topk(fg_mask[i].astype(ms.float16), self.max_object_num)
+            _mask = target_seg[i]  # (mask_h, mask_w) if overlap else (n_gt, mask_h, mask_w)
+            _mask_idx = target_gt_idx[i]  # (b, N) -> (N,)
+            _mask_idx = ops.gather(_mask_idx, _fg_mask_index, axis=0)  # (max_object_num,)
+
+            if self.overlap:
+                _cond = _mask[None, :, :] == (_mask_idx[:, None, None] + 1)
+                gt_mask = ops.where(
+                    _cond,
+                    ops.ones(_cond.shape, pred_masks.dtype),
+                    ops.zeros(_cond.shape, pred_masks.dtype)
+                )
+            else:
+                gt_mask = _mask[_mask_idx]  # (n_gt, mask_h, mask_w) -> (N, mask_h, mask_w)/(max_object_num, mask_h, mask_w)
+
+            xyxyn = target_bboxes[i] / imgsz[[1, 0, 1, 0]]
+            marea = xyxy2xywh(xyxyn)[:, 2:].prod(1)
+            mxyxy = xyxyn * get_tensor((mask_w, mask_h, mask_w, mask_h), xyxyn.dtype)
+
+            _loss_1 = self.single_mask_loss(
+                gt_mask, pred_masks[i], proto[i], mxyxy, marea, _fg_mask, _fg_mask_index
+            )
+            loss[1] += _loss_1
+
+        loss[0] *= self.hyp_box  # box gain
+        loss[1] *= self.hyp_box / batch_size  # seg gain
+        loss[2] *= self.hyp_cls  # cls gain
+        loss[3] *= self.hyp_dfl  # dfl gain
+
+        return loss.sum() * batch_size, ops.stop_gradient(
+            ops.concat((loss.sum(keepdims=True), loss))
+        )  # loss, lbox, lseg, lcls, ldfl
+
+    def single_mask_loss(self, gt_mask, pred, proto, xyxy, area, _fg_mask, _fg_mask_index):
+        """Mask loss for one image."""
+        pred = ops.gather(pred, _fg_mask_index, axis=0)
+        xyxy = ops.gather(xyxy, _fg_mask_index, axis=0)
+        area = ops.gather(area, _fg_mask_index, axis=0)
+
+        _dtype = pred.dtype
+        pred_mask = ops.matmul(
+            pred.astype(ms.float16),
+            proto.astype(ms.float16).view(self.nm, -1)
+        ).view(-1, *proto.shape[1:]).astype(_dtype)  # (n, 32) @ (32,80,80) -> (n,80,80)
+
+        loss = ops.binary_cross_entropy_with_logits(
+            pred_mask, gt_mask, reduction='none',
+            weight=ops.ones(1, pred_mask.dtype),
+            pos_weight=ops.ones(1, pred_mask.dtype)
+        )
+
+        single_loss = (self.crop_mask(loss, xyxy).mean(axis=(1, 2)) / ops.clip(area, min=1e-4))
+        single_loss *= _fg_mask
+
+        num_seg = ops.clip(_fg_mask.sum(), min=1.0)
+
+        return single_loss.sum() / num_seg
+
+    @staticmethod
+    def crop_mask(masks, boxes):
+        """
+        It takes a mask and a bounding box, and returns a mask that is cropped to the bounding box
+
+        Args:
+          masks (Tensor): [h, w, n] tensor of masks
+          boxes (Tensor): [n, 4] tensor of bbox coordinates in relative point form
+
+        Returns:
+          (Tensor): The masks are being cropped to the bounding box.
+        """
+        n, h, w = masks.shape
+        x1, y1, x2, y2 = ops.chunk(boxes[:, :, None], 4, 1)  # x1 shape(n,1,1)
+        r = ops.arange(w, dtype=x1.dtype)[None, None, :]  # rows shape(1,1,w)
+        c = ops.arange(h, dtype=x1.dtype)[None, :, None]  # cols shape(1,h,1)
+
+        return masks * ops.logical_and(
+            ops.logical_and((r >= x1), (r < x2)),
+            ops.logical_and((c >= y1), (c < y2))
+        ).astype(x1.dtype)
 
 
 class BboxLoss(nn.Cell):
@@ -388,7 +547,7 @@ class TaskAlignedAssigner(nn.Cell):
         fg_mask = mask_pos.sum(-2)  # (b, n_gt, N) -> (b, N)
 
         # if fg_mask.max() > 1:  # one anchor is assigned to multiple gt_bboxes
-        mask_multi_gts = ops.tile(ops.expand_dims(fg_mask, 1), (1, n_gt, 1))  # (b, n_gt, N)
+        mask_multi_gts = ops.tile(ops.expand_dims(fg_mask > 1, 1), (1, n_gt, 1))  # (b, n_gt, N)
         max_overlaps_idx = overlaps.argmax(1)  # (b, n_gt, N) -> (b, N)
         is_max_overlaps = ops.one_hot(
             max_overlaps_idx, n_gt, on_value=ops.ones(1, ms.int32), off_value=ops.zeros(1, ms.int32)
@@ -396,7 +555,7 @@ class TaskAlignedAssigner(nn.Cell):
         is_max_overlaps = ops.cast(
             ops.transpose(is_max_overlaps, (0, 2, 1)), overlaps.dtype
         )  # (b, N, n_gt) -> (b, n_gt, N)
-        mask_pos = mnp.where(mask_multi_gts > 0, is_max_overlaps, mask_pos)
+        mask_pos = mnp.where(mask_multi_gts, is_max_overlaps, mask_pos)
         fg_mask = mask_pos.sum(-2)
 
         # find each grid serve which gt(index)
@@ -411,6 +570,23 @@ def xywh2xyxy(x):
     y[..., 1] = x[..., 1] - x[..., 3] / 2  # top left y
     y[..., 2] = x[..., 0] + x[..., 2] / 2  # bottom right x
     y[..., 3] = x[..., 1] + x[..., 3] / 2  # bottom right y
+    return y
+
+
+def xyxy2xywh(x):
+    """
+    Convert bounding box coordinates from (x1, y1, x2, y2) format to (x, y, width, height) format.
+
+    Args:
+        x (Tensor): The input bounding box coordinates in (x1, y1, x2, y2) format.
+    Returns:
+       y (Tensor): The bounding box coordinates in (x, y, width, height) format.
+    """
+    y = ops.Identity()(x)
+    y[..., 0] = (x[..., 0] + x[..., 2]) / 2  # x center
+    y[..., 1] = (x[..., 1] + x[..., 3]) / 2  # y center
+    y[..., 2] = x[..., 2] - x[..., 0]  # width
+    y[..., 3] = x[..., 3] - x[..., 1]  # height
     return y
 
 

@@ -154,7 +154,8 @@ class YoloxSwitchTrain(BaseCallback):
         if self.is_switch_loss and cur_epoch_index == self.switch_epoch_index:
             logger.info(f"\nAdding L1 loss starts from epoch {self.switch_epoch_index}. Graph recompiling\n")
             trainer.loss_fn.use_l1 = True
-            trainer.train_step_fn = create_train_step_fn(network=trainer.network,
+            trainer.train_step_fn = create_train_step_fn(task='detect',
+                                                         network=trainer.network,
                                                          loss_fn=trainer.loss_fn,
                                                          optimizer=trainer.optimizer,
                                                          loss_ratio=loss_ratio,

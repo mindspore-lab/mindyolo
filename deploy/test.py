@@ -17,6 +17,13 @@ from mindyolo.utils.metrics import non_max_suppression, scale_coords, xyxy2xywh
 
 
 def test(args):
+    if args.task == "detect":
+        return test_detect(args)
+    else:
+        raise NotImplementedError
+
+
+def test_detect(args):
     # Create Network
     if args.model_type == "MindX":
         from infer_engine.mindx import MindXModel
@@ -41,7 +48,8 @@ def test(args):
     dataloader = create_loader(
         dataset=dataset,
         batch_collate_fn=dataset.test_collate_fn,
-        dataset_column_names=dataset.dataset_column_names,
+        column_names_getitem=dataset.column_names_getitem,
+        column_names_collate=dataset.column_names_collate,
         batch_size=args.batch_size,
         epoch_size=1,
         rank=0,
@@ -63,9 +71,8 @@ def test(args):
     nms_times = 0.0
     result_dicts = []
     for i, data in enumerate(loader):
-        imgs, _, paths, ori_shape, pad, hw_scale = (
+        imgs, paths, ori_shape, pad, hw_scale = (
             data["image"],
-            data["labels"],
             data["img_files"],
             data["hw_ori"],
             data["pad"],
@@ -147,6 +154,7 @@ def test(args):
 def get_parser_test(parents=None):
     parser = argparse.ArgumentParser(description="Test", parents=[parents] if parents else [])
 
+    parser.add_argument("--task", type=str, default="detect", choices=["detect"])
     parser.add_argument("--img_size", type=int, default=640, help="inference size (pixels)")
     parser.add_argument("--rect", type=ast.literal_eval, default=False, help="rectangular training")
     parser.add_argument(

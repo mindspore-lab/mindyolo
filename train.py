@@ -20,6 +20,7 @@ from mindyolo.utils.utils import (freeze_layers, load_pretrain, set_default,
 
 def get_parser_train(parents=None):
     parser = argparse.ArgumentParser(description="Train", parents=[parents] if parents else [])
+    parser.add_argument("--task", type=str, default="detect", choices=["detect", "segment"])
     parser.add_argument("--device_target", type=str, default="Ascend", help="device target, Ascend/GPU/CPU")
     parser.add_argument("--save_dir", type=str, default="./runs", help="save dir")
     parser.add_argument("--device_per_servers", type=int, default=8, help="device number on a server")
@@ -32,12 +33,13 @@ def get_parser_train(parents=None):
                         help="Whether to maintain loss using fp32/O0-level calculation")
     parser.add_argument("--ms_loss_scaler", type=str, default="static", help="train loss scaler, static/dynamic/none")
     parser.add_argument("--ms_loss_scaler_value", type=float, default=1024.0, help="static loss scale value")
-    parser.add_argument("--ms_grad_sens", type=float, default=1024.0, help="gard sens")
     parser.add_argument("--ms_jit", type=ast.literal_eval, default=True, help="use jit or not")
     parser.add_argument("--ms_enable_graph_kernel", type=ast.literal_eval, default=False,
                         help="use enable_graph_kernel or not")
     parser.add_argument("--ms_datasink", type=ast.literal_eval, default=False, help="Train with datasink.")
     parser.add_argument("--overflow_still_update", type=ast.literal_eval, default=True, help="overflow still update")
+    parser.add_argument("--clip_grad", type=ast.literal_eval, default=False)
+    parser.add_argument("--clip_grad_value", type=float, default=10.0)
     parser.add_argument("--ema", type=ast.literal_eval, default=True, help="ema")
     parser.add_argument("--weight", type=str, default="", help="initial weight path")
     parser.add_argument("--ema_weight", type=str, default="", help="initial ema weight path")
@@ -137,11 +139,13 @@ def train(args):
             single_cls=args.single_cls,
             batch_size=args.total_batch_size,
             stride=max(args.network.stride),
+            return_segments=(args.task == "segment")
         )
         _dataloader = create_loader(
             dataset=_dataset,
             batch_collate_fn=_dataset.train_collate_fn,
-            dataset_column_names=_dataset.dataset_column_names,
+            column_names_getitem=_dataset.column_names_getitem,
+            column_names_collate=_dataset.column_names_collate,
             batch_size=args.per_batch_size,
             epoch_size=stage_epochs[stage],
             rank=args.rank,
@@ -171,7 +175,8 @@ def train(args):
         eval_dataloader = create_loader(
             dataset=eval_dataset,
             batch_collate_fn=eval_dataset.test_collate_fn,
-            dataset_column_names=eval_dataset.dataset_column_names,
+            column_names_getitem=eval_dataset.column_names_getitem,
+            column_names_collate=eval_dataset.column_names_collate,
             batch_size=args.per_batch_size,
             epoch_size=1,
             rank=args.rank,
@@ -201,6 +206,7 @@ def train(args):
     reducer = get_gradreducer(args.is_parallel, optimizer.parameters)
     scaler = get_loss_scaler(args.ms_loss_scaler, scale_value=args.ms_loss_scaler_value)
     train_step_fn = create_train_step_fn(
+        task=args.task,
         network=network,
         loss_fn=loss_fn,
         optimizer=optimizer,
@@ -210,6 +216,8 @@ def train(args):
         ema=ema,
         overflow_still_update=args.overflow_still_update,
         ms_jit=args.ms_jit,
+        clip_grad=args.clip_grad,
+        clip_grad_value=args.clip_grad_value
     )
 
     # Create callbacks
@@ -224,6 +232,7 @@ def train(args):
         is_coco_dataset = "coco" in args.data.dataset_name
         test_fn = partial(
             test,
+            task=args.task,
             dataloader=eval_dataloader,
             anno_json_path=os.path.join(
                 args.data.val_set[: -len(args.data.val_set.split("/")[-1])], "annotations/instances_val2017.json"
@@ -231,6 +240,7 @@ def train(args):
             conf_thres=args.conf_thres,
             iou_thres=args.iou_thres,
             conf_free=args.conf_free,
+            num_class=args.data.nc,
             nms_time_limit=args.nms_time_limit,
             is_coco_dataset=is_coco_dataset,
             imgIds=None if not is_coco_dataset else eval_dataset.imgIds,

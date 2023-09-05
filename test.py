@@ -4,27 +4,29 @@ import contextlib
 import json
 import os
 import time
-from typing import Union
-
 import yaml
-from pathlib import Path
 import numpy as np
-from mindspore.communication import init, get_rank, get_group_size
+from typing import Union
+from pathlib import Path
+from multiprocessing.pool import ThreadPool
 from pycocotools.coco import COCO
+from pycocotools.mask import encode
 
 import mindspore as ms
 from mindspore import Tensor, context, nn, ParallelMode
+from mindspore.communication import init, get_rank, get_group_size
 
 from mindyolo.data import COCO80_TO_COCO91_CLASS, COCODataset, create_loader
 from mindyolo.models.model_factory import create_model
 from mindyolo.utils import logger, get_logger
 from mindyolo.utils.config import parse_args
-from mindyolo.utils.metrics import non_max_suppression, scale_coords, xyxy2xywh
+from mindyolo.utils.metrics import non_max_suppression, scale_coords, xyxy2xywh, scale_image, process_mask_upsample
 from mindyolo.utils.utils import set_seed, get_broadcast_datetime, Synchronizer
 
 
 def get_parser_test(parents=None):
     parser = argparse.ArgumentParser(description="Test", parents=[parents] if parents else [])
+    parser.add_argument("--task", type=str, default="detect", choices=["detect", "segment"])
     parser.add_argument("--device_target", type=str, default="Ascend", help="device target, Ascend/GPU/CPU")
     parser.add_argument("--ms_mode", type=int, default=0, help="train mode, graph/pynative")
     parser.add_argument("--ms_amp_level", type=str, default="O0", help="amp level, O0/O1/O2")
@@ -114,13 +116,21 @@ def set_default_test(args):
         args.weight = args.ckpt_dir if args.ckpt_dir else ""
 
 
-def test(
+def test(task, **kwargs):
+    if task == "detect":
+        return test_detect(**kwargs)
+    elif task == "segment":
+        return test_segment(**kwargs)
+
+
+def test_detect(
     network: nn.Cell,
     dataloader: ms.dataset.Dataset,
     anno_json_path: str,
     conf_thres: float = 0.001,
     iou_thres: float = 0.65,
     conf_free: bool = False,
+    num_class: int = 80,
     nms_time_limit: float = -1.0,
     is_coco_dataset: bool = True,
     imgIds: list = [],
@@ -147,9 +157,8 @@ def test(
     result_dicts = []
 
     for i, data in enumerate(loader):
-        imgs, _, paths, ori_shape, pad, hw_scale = (
+        imgs, paths, ori_shape, pad, hw_scale = (
             data["image"],
-            data["labels"],
             data["img_files"],
             data["hw_ori"],
             data["pad"],
@@ -253,6 +262,177 @@ def test(
     return map, map50
 
 
+def test_segment(
+    network: nn.Cell,
+    dataloader: ms.dataset.Dataset,
+    anno_json_path: str,
+    conf_thres: float = 0.001,
+    iou_thres: float = 0.65,
+    conf_free: bool = False,
+    num_class: int = 80,
+    nms_time_limit: float = -1.0,
+    is_coco_dataset: bool = True,
+    imgIds: list = [],
+    per_batch_size: int = -1,
+    rank: int = 0,
+    rank_size: int = 1,
+    save_dir: str = '',
+    synchronizer: Synchronizer = None,
+    cur_epoch: Union[str, int] = 0,  # to distinguish saving directory from different epoch in eval while run mode
+):
+    try:
+        from mindyolo.csrc import COCOeval_fast as COCOeval
+    except ImportError:
+        logger.warning(f'unable to load fast_coco_eval api, use normal one instead')
+        from pycocotools.cocoeval import COCOeval
+
+    steps_per_epoch = dataloader.get_dataset_size()
+    loader = dataloader.create_dict_iterator(output_numpy=True, num_epochs=1)
+    coco91class = COCO80_TO_COCO91_CLASS
+
+    sample_num = 0
+    infer_times = 0.0
+    nms_times = 0.0
+    result_dicts = []
+
+    for i, data in enumerate(loader):
+        imgs, paths, ori_shape, pad, hw_scale = (
+            data["image"],
+            data["img_files"],
+            data["hw_ori"],
+            data["pad"],
+            data["hw_scale"],
+        )
+        nb, _, height, width = imgs.shape
+        imgs = Tensor(imgs, ms.float32)
+
+        # Run infer
+        _t = time.time()
+        out, (_, _, prototypes) = network(imgs)  # inference and training outputs
+        infer_times += time.time() - _t
+
+        # Run NMS
+        t = time.time()
+        _c = num_class + 4 if conf_free else num_class + 5
+        out = out.asnumpy()
+        bboxes, mask_coefficient = out[:, :, :_c], out[:, :, _c:]
+        out = non_max_suppression(
+            bboxes,
+            mask_coefficient,
+            conf_thres=conf_thres,
+            iou_thres=iou_thres,
+            conf_free=conf_free,
+            multi_label=True,
+            time_limit=nms_time_limit,
+        )
+        nms_times += time.time() - t
+
+        p = prototypes.asnumpy()
+
+        # Statistics pred
+        for si, (pred, proto) in enumerate(zip(out, p)):
+            path = Path(str(paths[si]))
+            sample_num += 1
+            if len(pred) == 0:
+                continue
+
+            # Predictions
+            pred_masks = process_mask_upsample(proto, pred[:, 6:], pred[:, :4], shape=imgs[si].shape[1:])
+            pred_masks = pred_masks.astype('float32')
+            pred_masks = scale_image(pred_masks.transpose(1, 2, 0), ori_shape[si], pad=pad[si])
+            predn = np.copy(pred)
+            scale_coords(
+                imgs[si].shape[1:], predn[:, :4], ori_shape[si], ratio=hw_scale[si], pad=pad[si]
+            )  # native-space pred
+
+            def single_encode(x):
+                """Encode predicted masks as RLE and append results to jdict."""
+                rle = encode(np.asarray(x[:, :, None], order='F', dtype='uint8'))[0]
+                rle['counts'] = rle['counts'].decode('utf-8')
+                return rle
+
+            image_id = int(path.stem) if path.stem.isnumeric() else path.stem
+            box = xyxy2xywh(predn[:, :4])  # xywh
+            box[:, :2] -= box[:, 2:] / 2  # xy center to top-left corner
+            pred_masks = np.transpose(pred_masks, (2, 0, 1))
+            rles = []
+            for _i in range(pred_masks.shape[0]):
+                rles.append(single_encode(pred_masks[_i]))
+            for j, (p, b) in enumerate(zip(pred.tolist(), box.tolist())):
+                result_dicts.append(
+                    {
+                        "image_id": image_id,
+                        "category_id": coco91class[int(p[5])] if is_coco_dataset else int(p[5]),
+                        "bbox": [round(x, 3) for x in b],
+                        "score": round(p[4], 5),
+                        "segmentation": rles[j]
+                    }
+                )
+        logger.info(f"Sample {steps_per_epoch}/{i + 1}, time cost: {(time.time() - _t) * 1000:.2f} ms.")
+
+    # save and load result file for distributed case
+    if rank_size > 1:
+        # save result to file
+        # each epoch has a unique directory in eval while run mode
+        infer_dir = os.path.join(save_dir, 'infer', str(cur_epoch))
+        os.makedirs(infer_dir, exist_ok=True)
+        infer_path = os.path.join(infer_dir, f'det_result_rank{rank}_{rank_size}.json')
+        with open(infer_path, 'w') as f:
+            json.dump(result_dicts, f)
+        # synchronize
+        assert synchronizer is not None
+        synchronizer()
+
+        # load file to result_dicts
+        f_names = os.listdir(infer_dir)
+        f_paths = [os.path.join(infer_dir, f) for f in f_names]
+        logger.info(f"Loading {len(f_names)} eval file from directory {infer_dir}: {sorted(f_names)}.")
+        assert len(f_names) == rank_size, f'number of eval file({len(f_names)}) should be equal to rank size({rank_size})'
+        result_dicts = []
+        for path in f_paths:
+            with open(path, 'r') as fp:
+                result_dicts += json.load(fp)
+
+    # Compute mAP
+    if not result_dicts:
+        logger.warning(f'Got 0 bbox after NMS, skip computing map')
+        map_bbox, map50_bbox, map_mask, map50_mask = 0.0, 0.0, 0.0, 0.0
+    else:
+        try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
+            print("Object detection:")
+            with contextlib.redirect_stdout(get_logger()):  # redirect stdout to logger
+                anno = COCO(anno_json_path)  # init annotations api
+                pred = anno.loadRes(result_dicts)  # init predictions api
+                eval = COCOeval(anno, pred, "bbox")
+                if is_coco_dataset:
+                    eval.params.imgIds = imgIds
+                eval.evaluate()
+                eval.accumulate()
+                eval.summarize()
+                map_bbox, map50_bbox = eval.stats[:2]  # update results (mAP@0.5:0.95, mAP@0.5)
+            print('\n')
+            print("Instance segmentation:")
+            with contextlib.redirect_stdout(get_logger()):  # redirect stdout to logger
+                anno = COCO(anno_json_path)  # init annotations api
+                pred = anno.loadRes(result_dicts)  # init predictions api
+                eval = COCOeval(anno, pred, "segm")
+                if is_coco_dataset:
+                    eval.params.imgIds = imgIds
+                eval.evaluate()
+                eval.accumulate()
+                eval.summarize()
+                map_mask, map50_mask = eval.stats[:2]  # update results (mAP@0.5:0.95, mAP@0.5)
+        except Exception as e:
+            logger.error(f"pycocotools unable to run: {e}")
+            raise e
+
+    t = tuple(x / sample_num * 1E3 for x in (infer_times, nms_times, infer_times + nms_times)) + \
+        (height, width, per_batch_size)  # tuple
+    logger.info(f'Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g;' % t)
+
+    return map_bbox, map50_bbox, map_mask, map50_mask
+
+
 def main(args):
     # Init
     s_time = time.time()
@@ -288,7 +468,8 @@ def main(args):
     dataloader = create_loader(
         dataset=dataset,
         batch_collate_fn=dataset.test_collate_fn,
-        dataset_column_names=dataset.dataset_column_names,
+        column_names_getitem=dataset.column_names_getitem,
+        column_names_collate=dataset.column_names_collate,
         batch_size=args.per_batch_size,
         epoch_size=1,
         rank=args.rank,
@@ -301,6 +482,7 @@ def main(args):
 
     # Run test
     test(
+        task=args.task,
         network=network,
         dataloader=dataloader,
         anno_json_path=os.path.join(
@@ -309,6 +491,7 @@ def main(args):
         conf_thres=args.conf_thres,
         iou_thres=args.iou_thres,
         conf_free=args.conf_free,
+        num_class=args.data.nc,
         nms_time_limit=args.nms_time_limit,
         is_coco_dataset=is_coco_dataset,
         imgIds=None if not is_coco_dataset else dataset.imgIds,

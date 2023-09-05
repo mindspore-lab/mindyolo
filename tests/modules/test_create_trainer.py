@@ -73,6 +73,7 @@ def test_create_trainer(yaml_name, mode):
     # Create train_step_fn
     scaler = StaticLossScaler(1.0)
     train_step_fn = create_train_step_fn(
+        task="detect",
         network=network,
         loss_fn=loss_fn,
         optimizer=optimizer,
