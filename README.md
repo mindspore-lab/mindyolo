@@ -14,19 +14,21 @@
 
 MindYOLO is [MindSpore Lab](https://github.com/mindspore-lab)'s software toolbox that implements state-of-the-art YOLO series algorithms, [support list and benchmark](MODEL_ZOO.md). It is written in Python and powered by the [MindSpore](https://mindspore.cn/) AI framework.
 
-The master branch supporting **MindSpore 2.0**.
+The master branch supporting **MindSpore 2.0/2.1**.
 
 <img src="https://raw.githubusercontent.com/mindspore-lab/mindyolo/master/.github/000000137950.jpg" />
 
 
 ## What is New
 
-- 2023/06/15
+- 2023/09/05
 
-1. Support YOLOv3/v4/v5/X/v7/v8 6 models and release 23 corresponding weights, see [MODEL ZOO](MODEL_ZOO.md) for details.
-2. Support MindSpore 2.0.
-3. Support deployment on MindSpore lite 2.0.
-4. New online documents are available!
+1. Add YOLOv8-X segment model.
+2. Dataset pipeline reconstruction(current supports seg/detect tasks).
+3. Add IoU custom operators example on GPU.
+4. Add distribute eval function.
+5. Add fast coco eval api.
+6. Tutorials and [Docs](https://mindspore-lab.github.io/mindyolo/) update(e.q. [Write a new model](https://mindspore-lab.github.io/mindyolo/zh/how_to_guides/write_a_new_model/), [Train Process Tutorial](https://mindspore-lab.github.io/mindyolo/zh/tutorials/quick_start/), ...).
 
 ## Benchmark and Model Zoo
 

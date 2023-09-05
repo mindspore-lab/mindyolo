@@ -112,7 +112,7 @@ class COCODataset:
             self.img_files = sorted([x.replace("/", os.sep) for x in f if x.split(".")[-1].lower() in self.img_formats])
             assert self.img_files, f"No images found"
         except Exception as e:
-            raise Exception(f"Error loading data from {self.path}: {e}\nSee {self.help_url}")
+            raise Exception(f"Error loading data from {self.path}: {e}\n")
 
         # Check cache
         self.label_files = self._img2label_paths(self.img_files)  # labels
@@ -305,7 +305,7 @@ class COCODataset:
                 sample = self.copy_paste(sample, prob)
             elif random.random() < prob:
                 if func_name == "albumentations" and getattr(self, "albumentations", None) is None:
-                    self.albumentations = Albumentations(size=self.img_size)
+                    self.albumentations = Albumentations(size=self.img_size, **_trans)
                 if func_name == "letterbox":
                     new_shape = self.img_size if not self.rect else self.batch_shapes[self.batch[index]]
                     sample = self.letterbox(sample, new_shape, **_trans)
@@ -697,7 +697,7 @@ class COCODataset:
                     sample2 = self.copy_paste(sample2, prob)
                 elif random.random() < prob:
                     if func_name == "albumentations" and getattr(self, "albumentations", None) is None:
-                        self.albumentations = Albumentations(size=self.img_size)
+                        self.albumentations = Albumentations(size=self.img_size, **_trans)
                     sample2 = getattr(self, func_name)(sample2, **_trans)
 
         assert isinstance(sample['segments'], np.ndarray), \
@@ -1098,10 +1098,9 @@ class COCODataset:
         h, w = sample['img'].shape[:2]
         if mask_overlap:
             masks, sorted_idx = polygons2masks_overlap((h, w), segments, downsample_ratio=mask_ratio)
-            masks = masks[None]  # (1, h/mask_ratio, w/mask_ratio)
             sample['cls'] = sample['cls'][sorted_idx]
             sample['bboxes'] = sample['bboxes'][sorted_idx]
-            sample['segments'] = masks
+            sample['segments'] = masks  # (h/mask_ratio, w/mask_ratio)
             sample['segment_format'] = 'overlap'
         else:
             masks = polygons2masks((h, w), segments, color=1, downsample_ratio=mask_ratio)

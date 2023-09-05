@@ -164,8 +164,8 @@ class Trainer:
                     dtype = self.optimizer.momentum.dtype
                     self.optimizer.momentum = Tensor(warmup_momentum[i], dtype)
 
-            imgs, labels = data["image"], data["labels"]
-            segments = None if 'segment' not in data else data["segment"]
+            imgs, labels = data["images"], data["labels"]
+            segments = None if 'masks' not in data else data["masks"]
             self._on_train_step_begin(run_context)
             run_context.loss, run_context.lr = self.train_step(imgs, labels, segments,
                                                                cur_step=cur_step,cur_epoch=cur_epoch)
@@ -212,6 +212,7 @@ class Trainer:
 
     def train_with_datasink(
         self,
+        task: str,
         epochs: int,
         main_device: bool,
         warmup_epoch: int = 0,
@@ -230,7 +231,12 @@ class Trainer:
         profiler_step_num: int = 1
     ):
         # Modify dataset columns name for data sink mode, because dataloader could not send string data to device.
-        loader = self.dataloader.project(["image", "labels"])
+        if task == "detect":
+            loader = self.dataloader.project(["images", "labels"])
+        elif task == "segment":
+            loader = self.dataloader.project(["images", "labels", "masks"])
+        else:
+            raise NotImplementedError
 
         # to be compatible with old interface
         has_eval_mask = list(isinstance(c, EvalWhileTrain) for c in self.callback)

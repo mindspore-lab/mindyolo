@@ -297,6 +297,7 @@ def train(args):
         logger.warning("Train with data sink mode.")
         assert args.accumulate == 1, "datasink mode not support grad accumulate."
         trainer.train_with_datasink(
+            task=args.task,
             epochs=args.epochs,
             main_device=main_device,
             warmup_epoch=max(args.optimizer.warmup_epochs, args.optimizer.min_warmup_step // steps_per_epoch),
