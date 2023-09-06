@@ -72,7 +72,7 @@ def test_detect(args):
     result_dicts = []
     for i, data in enumerate(loader):
         imgs, paths, ori_shape, pad, hw_scale = (
-            data["image"],
+            data["images"],
             data["img_files"],
             data["hw_ori"],
             data["pad"],

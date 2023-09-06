@@ -188,7 +188,7 @@ def get_broadcast_datetime(rank_size=1, root_rank=0):
     x = x[0].asnumpy().tolist()
     return x
 
-@ms.ms_function
+@ms.jit
 def broadcast(x, root_rank):
     return ops.Broadcast(root_rank=root_rank)(x)
 

@@ -158,7 +158,7 @@ def test_detect(
 
     for i, data in enumerate(loader):
         imgs, paths, ori_shape, pad, hw_scale = (
-            data["image"],
+            data["images"],
             data["img_files"],
             data["hw_ori"],
             data["pad"],
@@ -297,7 +297,7 @@ def test_segment(
 
     for i, data in enumerate(loader):
         imgs, paths, ori_shape, pad, hw_scale = (
-            data["image"],
+            data["images"],
             data["img_files"],
             data["hw_ori"],
             data["pad"],

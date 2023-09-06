@@ -1,7 +1,7 @@
 __BASE__: [
   '../../coco.yaml',
-  './hyp.scratch.high.seg.yaml',
-  './yolov8-seg-base.yaml'
+  './yolov8-seg-base.yaml',
+  './hyp.scratch.high.seg.yaml'
 ]
 
 recompute: True

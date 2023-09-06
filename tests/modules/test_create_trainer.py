@@ -52,7 +52,7 @@ def test_create_trainer(yaml_name, mode):
         l[:, 0] = i  # add target image index for build_targets()
 
     data = (x, y)
-    dataset = de.NumpySlicesDataset(data=data, column_names=["image", "labels"])
+    dataset = de.NumpySlicesDataset(data=data, column_names=["images", "labels"])
     dataset = dataset.batch(batch_size=bs)
     dataloader = dataset.repeat(10)
 

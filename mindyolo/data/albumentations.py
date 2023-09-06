@@ -10,7 +10,7 @@ from .utils import xyxy2xywh
 class Albumentations:
     # Implement Albumentations augmentation https://github.com/ultralytics/yolov5
     # YOLOv5 Albumentations class (optional, only used if package is installed)
-    def __init__(self, size=640, random_resized_crop=True):
+    def __init__(self, size=640, random_resized_crop=True, **kwargs):
         self.transform = None
         prefix = _colorstr("albumentations: ")
         try:
@@ -42,7 +42,7 @@ class Albumentations:
             print(f"{prefix}{e}", flush=True)
             print("[WARNING] albumentations load failed", flush=True)
 
-    def __call__(self, sample, p=1.0):
+    def __call__(self, sample, p=1.0, **kwargs):
         if self.transform and random.random() < p:
             im, bboxes, cls, bbox_format = sample['img'], sample['bboxes'], sample['cls'], sample['bbox_format']
             assert bbox_format in ("ltrb", "xywhn")
