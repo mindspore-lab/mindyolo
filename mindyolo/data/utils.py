@@ -115,10 +115,12 @@ def segments2boxes(segments):
     return xyxy2xywh(np.array(boxes))  # cls, xywh
 
 
-def segment2box(segment):
+def segment2box(segment, width=640, height=640):
     # Convert 1 segment label to 1 box label, applying inside-image constraint, i.e. (xy1, xy2, ...) to (xyxy)
     x, y = segment.T  # segment xy
-    return np.array([x.min(), y.min(), x.max(), y.max()]) if any(x) else np.zeros(4)  # xyxy
+    inside = (x >= 0) & (y >= 0) & (x <= width) & (y <= height)
+    x, y = x[inside], y[inside]
+    return np.array([x.min(), y.min(), x.max(), y.max()], dtype=segment.dtype) if any(x) else np.zeros(4, dtype=segment.dtype)  # xyxy
 
 
 def box_candidates(box1, box2, wh_thr=2, ar_thr=20, area_thr=0.1, eps=1e-16):  # box1(4,n), box2(4,n)

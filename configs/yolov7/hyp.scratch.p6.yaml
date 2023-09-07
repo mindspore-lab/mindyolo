@@ -28,19 +28,23 @@ data:
   num_parallel_workers: 4
 
   train_transforms:
-    - {func_name: mosaic, prob: 1.0, mosaic9_prob: 0.2, translate: 0.2, scale: 0.9}
-    - {func_name: mixup, prob: 0.15, alpha: 8.0, beta: 8.0, needed_mosaic: True}
+    - { func_name: mosaic, prob: 1.0, mosaic9_prob: 0.2 }
+    - { func_name: resample_segments }
+    - { func_name: random_perspective, prob: 1.0, degrees: 0.0, translate: 0.2, scale: 0.9, shear: 0.0 }
+    - { func_name: mixup, alpha: 8.0, beta: 8.0, prob: 0.15, pre_transform: [
+        { func_name: mosaic, prob: 1.0, mosaic9_prob: 0.2 },
+        { func_name: resample_segments },
+        { func_name: random_perspective, prob: 1.0, degrees: 0.0, translate: 0.2, scale: 0.9, shear: 0.0 }, ]
+    }
     - {func_name: hsv_augment, prob: 1.0, hgain: 0.015, sgain: 0.7, vgain: 0.4}
     - {func_name: pastein, prob: 0.15, num_sample: 30}
-    - {func_name: label_norm, xyxy2xywh_: True}
     - {func_name: fliplr, prob: 0.5}
+    - {func_name: label_norm, xyxy2xywh_: True}
     - {func_name: label_pad, padding_size: 160, padding_value: -1}
     - {func_name: image_norm, scale: 255.}
     - {func_name: image_transpose, bgr2rgb: True, hwc2chw: True}
 
   test_transforms:
-    - {func_name: letterbox, scaleup: False}
-    - {func_name: label_norm, xyxy2xywh_: True}
-    - {func_name: label_pad, padding_size: 160, padding_value: -1}
+    - {func_name: letterbox, scaleup: False, only_image: True}
     - {func_name: image_norm, scale: 255. }
     - {func_name: image_transpose, bgr2rgb: True, hwc2chw: True }
