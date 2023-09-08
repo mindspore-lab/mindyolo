@@ -641,17 +641,19 @@ class COCODataset:
         n = len(targets)
         if n:
             use_segments = len(segments)
+            new_bboxes = np.zeros((n, 4))
             if use_segments:  # warp segments
-                n, num = segments.shape[:2]
-                xy = np.ones((n * num, 3), dtype=segments.dtype)
-                segments = segments.reshape(-1, 2)
-                xy[:, :2] = segments
-                xy = xy @ M.T  # transform
-                xy = xy[:, :2] / xy[:, 2:3]
-                segments = xy.reshape(n, -1, 2)
-                segments[..., 0] = segments[..., 0].clip(0, width)
-                segments[..., 1] = segments[..., 1].clip(0, height)
-                new_bboxes = np.stack([segment2box(xy) for xy in segments], 0)
+                point_num = segments[0].shape[0]
+                new_segments = np.zeros((n, point_num, 2))
+                for i, segment in enumerate(segments):
+                    xy = np.ones((len(segment), 3))
+                    xy[:, :2] = segment
+                    xy = xy @ M.T  # transform
+                    xy = xy[:, :2] / xy[:, 2:3] if perspective else xy[:, :2]  # perspective rescale or affine
+
+                    # clip
+                    new_segments[i] = xy
+                    new_bboxes[i] = segment2box(xy, width, height)
 
             else:  # warp boxes
                 xy = np.ones((n * 4, 3))
@@ -949,7 +951,7 @@ class COCODataset:
 
         return sample
 
-    def letterbox(self, sample, new_shape=None, xywhn2xyxy_=True, scaleup=False, color=(114, 114, 114)):
+    def letterbox(self, sample, new_shape=None, xywhn2xyxy_=True, scaleup=False, only_image=False, color=(114, 114, 114)):
         # Resize and pad image while meeting stride-multiple constraints
 
         if sample['bbox_format'] == 'ltrb':
@@ -987,34 +989,42 @@ class COCODataset:
         left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
         image = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
 
-        # convert bboxes
-        if len(bboxes):
-            if xywhn2xyxy_:
-                bboxes = xywhn2xyxy(bboxes, r * w, r * h, padw=dw, padh=dh)
-            else:
-                bboxes *= r
-                bboxes[:, [0, 2]] += dw
-                bboxes[:, [1, 3]] += dh
-
-        # convert segments
-        if 'segments' in sample:
-            segments, segment_format = sample['segments'], sample['segment_format']
-            assert segment_format == 'polygon', f'The segment format should be polygon, but got {segment_format}'
-            assert isinstance(segments, np.ndarray), \
-                f"LetterBox: segments type expect numpy.ndarray, but got {type(segments)}; " \
-                f"maybe you should resample_segments before that."
-
-            if len(segments):
+        if not only_image:
+            # convert bboxes
+            if len(bboxes):
                 if xywhn2xyxy_:
-                    segments[..., 0] *= w
-                    segments[..., 1] *= h
+                    bboxes = xywhn2xyxy(bboxes, r * w, r * h, padw=dw, padh=dh)
                 else:
-                    segments *= r
-                segments[..., 0] += dw
-                segments[..., 1] += dh
-                sample['segments'] = segments
+                    bboxes *= r
+                    bboxes[:, [0, 2]] += dw
+                    bboxes[:, [1, 3]] += dh
+                sample['bboxes'] = bboxes
 
-        sample['bboxes'] = bboxes
+            # convert segments
+            if 'segments' in sample:
+                segments, segment_format = sample['segments'], sample['segment_format']
+                assert segment_format == 'polygon', f'The segment format should be polygon, but got {segment_format}'
+
+                if len(segments):
+                    if isinstance(segments, np.ndarray):
+                        if xywhn2xyxy_:
+                            segments[..., 0] *= w
+                            segments[..., 1] *= h
+                        else:
+                            segments *= r
+                        segments[..., 0] += dw
+                        segments[..., 1] += dh
+                    elif isinstance(segments, list):
+                        for segment in segments:
+                            if xywhn2xyxy_:
+                                segment[..., 0] *= w
+                                segment[..., 1] *= h
+                            else:
+                                segment *= r
+                            segment[..., 0] += dw
+                            segment[..., 1] += dh
+                    sample['segments'] = segments
+
         sample['img'] = image
         sample['hw_scale'] = hw_scale
         sample['hw_pad'] = hw_pad

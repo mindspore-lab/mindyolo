@@ -64,7 +64,7 @@ to understand their behavior. Some common arguments are:
   ```
 * To evaluate a model's performance 8 NPUs/GPUs:
   ```
-  mpirun --allow-run-as-root -n 8 python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True  ```
+  mpirun --allow-run-as-root -n 8 python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
   ```
 *Notes: (1) The default hyper-parameter is used for 8-card training, and some parameters need to be adjusted in the case of a single card. (2) The default device is Ascend, and you can modify it by specifying 'device_target' as Ascend/GPU/CPU, as these are currently supported.*
 * For more options, see `train/test.py -h`.
