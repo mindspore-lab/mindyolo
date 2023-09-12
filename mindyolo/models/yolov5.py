@@ -3,9 +3,9 @@ import numpy as np
 import mindspore as ms
 from mindspore import Tensor, nn
 
-from .heads.yolov7_head import YOLOv7AuxHead, YOLOv7Head
-from .model_factory import build_model_from_cfg
-from .registry import register_model
+from mindyolo.models.heads.yolov5_head import YOLOv5Head
+from mindyolo.models.model_factory import build_model_from_cfg
+from mindyolo.models.registry import register_model
 
 __all__ = ["YOLOv5", "yolov5"]
 
@@ -37,10 +37,8 @@ class YOLOv5(nn.Cell):
     def initialize_weights(self):
         # reset parameter for Detect Head
         m = self.model.model[-1]
-        if isinstance(m, YOLOv7Head):
+        if isinstance(m, YOLOv5Head):
             m.initialize_biases()
-        if isinstance(m, YOLOv7AuxHead):
-            m.initialize_aux_biases()
 
 
 @register_model
@@ -55,16 +53,17 @@ def yolov5(cfg, in_channels=3, num_classes=None, **kwargs) -> YOLOv5:
 
 if __name__ == "__main__":
     from mindyolo.models.model_factory import create_model
-    from mindyolo.utils.config import parse_config
+    from mindyolo.utils.config import load_config, Config
 
-    opt = parse_config()
-    model = create_model(
-        model_name="yolov5",
-        model_cfg=opt.net,
-        num_classes=opt.data.nc,
-        sync_bn=opt.sync_bn if hasattr(opt, "sync_bn") else False,
+    cfg, _, _ = load_config('../../configs/yolov5/yolov5s.yaml')
+    cfg = Config(cfg)
+    network = create_model(
+        model_name=cfg.network.model_name,
+        model_cfg=cfg.network,
+        num_classes=cfg.data.nc,
+        sync_bn=cfg.sync_bn if hasattr(cfg, "sync_bn") else False,
     )
     x = Tensor(np.random.randn(1, 3, 640, 640), ms.float32)
-    out = model(x)
+    out = network(x)
     out = out[0] if isinstance(out, (list, tuple)) else out
     print(f"Output shape is {[o.shape for o in out]}")
