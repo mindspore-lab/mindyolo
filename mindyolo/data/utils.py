@@ -4,8 +4,7 @@ import cv2
 
 def polygons2masks_overlap(imgsz, segments, downsample_ratio=1):
     """Return a (640, 640) overlap mask."""
-    masks = np.zeros((imgsz[0] // downsample_ratio, imgsz[1] // downsample_ratio),
-                     dtype=np.int32 if len(segments) > 255 else np.uint8)
+    masks = np.zeros((imgsz[0] // downsample_ratio, imgsz[1] // downsample_ratio), dtype=np.int32)
     areas = []
     ms = []
     for si in range(len(segments)):
@@ -30,11 +29,11 @@ def polygons2masks(imgsz, polygons, color, downsample_ratio=1):
         color (int): color
         downsample_ratio (int): downsample ratio
     """
-    masks = []
+    masks = np.zeros((len(polygons), imgsz[0] // downsample_ratio, imgsz[1] // downsample_ratio), np.int32)
     for si in range(len(polygons)):
         mask = polygon2mask(imgsz, [polygons[si].reshape(-1)], color, downsample_ratio)
-        masks.append(mask)
-    return np.array(masks)
+        masks[si] = mask
+    return masks
 
 
 def polygon2mask(imgsz, polygons, color=1, downsample_ratio=1):
@@ -115,12 +114,10 @@ def segments2boxes(segments):
     return xyxy2xywh(np.array(boxes))  # cls, xywh
 
 
-def segment2box(segment, width=640, height=640):
+def segment2box(segment):
     # Convert 1 segment label to 1 box label, applying inside-image constraint, i.e. (xy1, xy2, ...) to (xyxy)
     x, y = segment.T  # segment xy
-    inside = (x >= 0) & (y >= 0) & (x <= width) & (y <= height)
-    x, y = x[inside], y[inside]
-    return np.array([x.min(), y.min(), x.max(), y.max()], dtype=segment.dtype) if any(x) else np.zeros(4, dtype=segment.dtype)  # xyxy
+    return np.array([x.min(), y.min(), x.max(), y.max()]) if any(x) else np.zeros(4)  # xyxy
 
 
 def box_candidates(box1, box2, wh_thr=2, ar_thr=20, area_thr=0.1, eps=1e-16):  # box1(4,n), box2(4,n)
