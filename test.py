@@ -194,7 +194,7 @@ def test_detect(
 
             # Predictions
             predn = np.copy(pred)
-            scale_coords(
+            predn[:, :4] = scale_coords(
                 imgs[si].shape[1:], predn[:, :4], ori_shape[si], ratio=hw_scale[si], pad=pad[si]
             )  # native-space pred
 

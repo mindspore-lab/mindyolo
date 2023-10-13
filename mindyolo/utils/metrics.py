@@ -151,10 +151,8 @@ def scale_coords(img1_shape, coords, img0_shape, ratio=None, pad=None):
 
 def _clip_coords(boxes, img_shape):
     # Clip bounding xyxy bounding boxes to image shape (height, width)
-    boxes[:, 0].clip(0, img_shape[1])  # x1
-    boxes[:, 1].clip(0, img_shape[0])  # y1
-    boxes[:, 2].clip(0, img_shape[1])  # x2
-    boxes[:, 3].clip(0, img_shape[0])  # y2
+    boxes[..., [0, 2]] = boxes[..., [0, 2]].clip(0, img_shape[1])  # x1, x2
+    boxes[..., [1, 3]] = boxes[..., [1, 3]].clip(0, img_shape[0])  # y1, y2
     return boxes
 
 
