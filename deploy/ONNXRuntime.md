@@ -29,7 +29,7 @@ class EdgeSiLU(nn.Cell):
    python ./deploy/export.py --config ./path_to_config/model.yaml --weight ./path_to_ckpt/weight.ckpt --per_batch_size 1 --file_format ONNX --device_target [CPU]
    e.g.
    # 在CPU上运行
-   python ./deploy/export.py --config ./configs/yolov3/yolov5n.yaml --weight yolov5n_300e_mAP273-9b16bd7b.ckpt --per_batch_size 1 --file_format ONNX --device_target CPU
+   python ./deploy/export.py --config ./configs/yolov3/yolov3.yaml --weight yolov3-darknet53_300e_mAP455-adfb27af.ckpt --per_batch_size 1 --file_format ONNX --device_target CPU
    ```
 
 ## ONNXRuntime Test
