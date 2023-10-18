@@ -25,7 +25,7 @@
 ## 快速开始
 
 ### 模型转换
-   ckpt模型转为mindir模型，此步骤可在mindspore-lite CPU/Ascend910上运行，mindspore>=2.1之后也可以直接在mindspore中运行
+   ckpt模型转为mindir模型，此步骤可在CPU/Ascend910上运行
    ```shell
    python ./deploy/export.py --config ./path_to_config/model.yaml --weight ./path_to_ckpt/weight.ckpt --per_batch_size 1 --file_format MINDIR --device_target [CPU/Ascend]
    e.g.
@@ -33,20 +33,6 @@
    python ./deploy/export.py --config ./configs/yolov5/yolov5n.yaml --weight yolov5n_300e_mAP273-9b16bd7b.ckpt --per_batch_size 1 --file_format MINDIR --device_target CPU
    # 在Ascend上运行
    python ./deploy/export.py --config ./configs/yolov5/yolov5n.yaml --weight yolov5n_300e_mAP273-9b16bd7b.ckpt --per_batch_size 1 --file_format MINDIR --device_target Ascend
-   ```
-
-### MindSpore Test
-   ```shell
-   python deploy/test.py --model_type MindIR --model_path ./path_to_mindir/weight.mindir --config ./path_to_config/yolo.yaml
-   e.g.
-   python deploy/test.py --model_type MindIR --model_path ./yolov5n.mindir --config ./configs/yolov5/yolov5n.yaml
-   ```
-
-### MindSpore Predict
-   ```shell
-   python ./deploy/predict.py --model_type MindIR --model_path ./path_to_mindir/weight.mindir --config ./path_to_conifg/yolo.yaml --image_path ./path_to_image/image.jpg
-   e.g.
-   python deploy/predict.py --model_type MindIR --model_path ./yolov5n.mindir --config ./configs/yolov5/yolov5n.yaml --image_path ./coco/image/val2017/image.jpg
    ```
 
 ### Lite Test
@@ -72,9 +58,13 @@
 
 查看 [MINDX](MINDX.md)
 
-## ONNXRuntime部署
+## MindIR部署
+
+查看 [MINDIR](MINDIR.md)
+
+## ONNX部署
 **注意:** 仅部分模型支持导出ONNX并使用ONNXRuntime进行部署  
-查看 [ONNX](ONNXRuntime.md)
+查看 [ONNX](ONNX.md)
 
 
 ## 标准和支持的模型库
