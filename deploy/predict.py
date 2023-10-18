@@ -32,7 +32,7 @@ def get_parser_infer(parents=None):
     parser.add_argument("--img_size", type=int, default=640, help="inference size (pixels)")
     parser.add_argument("--seed", type=int, default=2, help="set global seed")
 
-    parser.add_argument("--model_type", type=str, default="MindX", help="model type MindX/Lite")
+    parser.add_argument("--model_type", type=str, default="MindX", help="model type MindX/Lite/MindIR/ONNX")
     parser.add_argument("--model_path", type=str, default="./models/yolov5s.om", help="model weight path")
 
     parser.add_argument("--save_dir", type=str, default="./runs_infer", help="save dir")
@@ -172,8 +172,14 @@ def infer(args):
     elif args.model_type == "Lite":
         from infer_engine.lite import LiteModel
         network = LiteModel(args.model_path)
+    elif args.model_type == "MindIR":
+        from infer_engine.mindir import MindIRModel
+        network = MindIRModel(args.model_path)
+    elif args.model_type == "ONNX":
+        from infer_engine.onnxruntime import ONNXRuntimeModel
+        network = ONNXRuntimeModel(args.model_path)
     else:
-        raise TypeError("the type only supposed MindX/Lite")
+        raise TypeError("the type only supposed MindX/Lite/MindIR/ONNX")
 
     # Load Image
     if isinstance(args.image_path, str) and os.path.isfile(args.image_path):

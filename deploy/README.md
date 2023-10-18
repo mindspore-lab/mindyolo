@@ -58,6 +58,15 @@
 
 查看 [MINDX](MINDX.md)
 
+## MindIR部署
+
+查看 [MINDIR](MINDIR.md)
+
+## ONNX部署
+**注意:** 仅部分模型支持导出ONNX并使用ONNXRuntime进行部署  
+查看 [ONNX](ONNX.md)
+
+
 ## 标准和支持的模型库
 
 - [x] [YOLOv7](configs/yolov7)
