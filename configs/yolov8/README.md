@@ -83,7 +83,7 @@ python test.py --config ./configs/yolov8/yolov8n.yaml --device_target Ascend --w
 
 ### Deployment
 
-See [here](./deploy/README.md).
+See [here](../../deploy/README.md).
 
 ## References
 

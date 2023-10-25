@@ -98,7 +98,7 @@ python test.py --config ./configs/yolov4/yolov4-silu.yaml --device_target Ascend
 
 ### Deployment
 
-See [here](./deploy/README.md).
+See [here](../../deploy/README.md).
 
 ## References
 
