@@ -72,7 +72,7 @@ python test.py --config ./configs/yolov5/yolov5n.yaml --device_target Ascend --w
 
 ### Deployment
 
-See [here](./deploy/README.md).
+See [here](../../deploy/README.md).
 
 ## References
 

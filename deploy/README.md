@@ -69,12 +69,12 @@
 
 ## 标准和支持的模型库
 
-- [x] [YOLOv7](configs/yolov7)
-- [x] [YOLOv5](configs/yolov5)
-- [x] [YOLOv3](configs/yolov3)
-- [x] [YOLOv8](configs/yolov6)
-- [x] [YOLOv4](configs/yolov6)
-- [x] [YOLOX](configs/yolox)
+- [x] [YOLOv7](../configs/yolov7)
+- [x] [YOLOv5](../configs/yolov5)
+- [x] [YOLOv3](../configs/yolov3)
+- [x] [YOLOv8](../configs/yolov8)
+- [x] [YOLOv4](../configs/yolov4)
+- [x] [YOLOX](../configs/yolox)
 
 | Name   | Scale              | Context  | ImageSize | Dataset      | Box mAP (%) | Params | FLOPs  | Recipe                                                                                        | Download                                                                                                     |
 |--------|--------------------|----------|-----------|--------------|-------------|--------|--------|-----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|

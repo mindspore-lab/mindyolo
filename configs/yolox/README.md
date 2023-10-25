@@ -75,7 +75,7 @@ python test.py --config ./configs/yolox/yolox-s.yaml --device_target Ascend --we
 
 ### Deployment
 
-See [here](./deploy/README.md).
+See [here](../../deploy/README.md).
 
 ## References
 
