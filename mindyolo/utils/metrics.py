@@ -85,9 +85,11 @@ def non_max_suppression(
             x = np.concatenate((box[i], x[i, j + 5, None], j[:, None].astype(np.float32)), 1) if nm == 0 else \
                 np.concatenate((box[i], x[i, j + 5, None], j[:, None].astype(np.float32), x[i, -nm:]), 1)
         else:  # best class only
-            conf, j = x[:, 5:5+nc].max(1, keepdim=True)
-            x = np.concatenate((box, conf, j.float()), 1)[conf.view(-1) > conf_thres] if nm == 0 else \
-                np.concatenate((box, conf, j.float(), x[:, -nm:]), 1)[conf.view(-1) > conf_thres]
+            conf = x[:, 5:5+nc].max(1, keepdims=True)  # get maximum conf
+            j = np.argmax(x[:, 5:5+nc], axis=1,keepdims=True)  # get maximum index
+            x = np.concatenate((box, conf, j.astype(np.float32)), 1)[conf.flatten() > conf_thres] if nm == 0 else \
+                np.concatenate((box, conf, j.astype(np.float32), x[:, -nm:]), 1)[conf.flatten() > conf_thres]
+
 
         # Filter by class
         if classes is not None:
