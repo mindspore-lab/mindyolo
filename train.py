@@ -183,7 +183,7 @@ def train(args):
             rank_size=args.rank_size,
             shuffle=False,
             drop_remainder=False,
-            num_parallel_workers=args.data.num_parallel_workers,
+            num_parallel_workers=1,
             python_multiprocessing=True,
         )
     else:
