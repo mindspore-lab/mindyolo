@@ -1,20 +1,12 @@
-# COCO 2017 dataset http://cocodataset.org
-
 data:
-#   dataset_name: coco
   dataset_name: visdrone
-  
-  train_set: /home/aistudio/data/src/visdrone/train.txt  # 118287 images
-  val_set: /home/aistudio/data/src/visdrone/val.txt  # 5000 images
-  test_set: /home/aistudio/data/src/visdrone/val.txt  # 20288 of 40670 images, submit to https://competitions.codalab.org/competitions/20794
-
-
+  train_set: ./visdrone/train.txt
+  val_set: ./visdrone/val.txt
+  test_set: ./visdrone/val.txt
   nc: 12
-
   # class names
   names: [ 'ignored regions', 'pedestrian', 'people', 'bicycle', 'car', 
            'van', 'truck', 'tricycle', 'awning-tricycle', 'bus',
            'motor', 'others' ]
-
   train_transforms: []
   test_transforms: []
