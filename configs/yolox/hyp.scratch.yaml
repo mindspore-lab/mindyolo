@@ -56,7 +56,6 @@ data:
       ],
       [
         { func_name: letterbox, scaleup: False },
-        { func_name: resample_segments },
         { func_name: hsv_augment, prob: 1.0, hgain: 0.015, sgain: 0.7, vgain: 0.4 },
         { func_name: fliplr, prob: 0.5 },
         { func_name: label_norm, xyxy2xywh_: True },
