@@ -1,0 +1,12 @@
+data:
+  dataset_name: visdrone
+  train_set: ./visdrone/train.txt
+  val_set: ./visdrone/val.txt
+  test_set: ./visdrone/val.txt
+  nc: 12
+  # class names
+  names: [ 'ignored regions', 'pedestrian', 'people', 'bicycle', 'car', 
+           'van', 'truck', 'tricycle', 'awning-tricycle', 'bus',
+           'motor', 'others' ]
+  train_transforms: []
+  test_transforms: []
