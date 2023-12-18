@@ -342,6 +342,7 @@ class COCODataset:
         self,
         sample,
         mosaic9_prob=0.0,
+        post_transform=None,
     ):
         segment_format = sample['segment_format']
         bbox_format = sample['bbox_format']
@@ -350,9 +351,17 @@ class COCODataset:
 
         mosaic9_prob = min(1.0, max(mosaic9_prob, 0.0))
         if random.random() < (1 - mosaic9_prob):
-            return self._mosaic4(sample)
+            sample = self._mosaic4(sample)
         else:
-            return self._mosaic9(sample)
+            sample = self._mosaic9(sample)
+
+        if post_transform:
+            for _i, ori_trans in enumerate(post_transform):
+                _trans = ori_trans.copy()
+                func_name, prob = _trans.pop("func_name"), _trans.pop("prob", 1.0)
+                sample = getattr(self, func_name)(sample, **_trans)
+
+        return sample
 
     def _mosaic4(self, sample):
         # loads images in a 4-mosaic
@@ -936,7 +945,7 @@ class COCODataset:
         sample['bboxes'] = bboxes
 
         # flip seg
-        if 'segments' in sample:
+        if self.return_segments:
             segment_format, segments = sample['segment_format'], sample['segments']
             assert segment_format == 'polygon', \
                 f'FlipLR: The segment format should be polygon, but got {segment_format}'
@@ -959,16 +968,21 @@ class COCODataset:
 
         if not new_shape:
             new_shape = self.img_size
+
+        if isinstance(new_shape, int):
+            new_shape = (new_shape, new_shape)
+
         image = sample['img']
+        shape = image.shape[:2]  # current shape [height, width]
+        if shape == new_shape:
+            return sample
+
         bboxes = sample['bboxes']
         ori_shape = sample['ori_shape']
 
-        shape = image.shape[:2]  # current shape [height, width]
         h, w = shape[:]
         h0, w0 = ori_shape
         hw_scale = np.array([h / h0, w / w0])
-        if isinstance(new_shape, int):
-            new_shape = (new_shape, new_shape)
 
         # Scale ratio (new / old)
         r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
