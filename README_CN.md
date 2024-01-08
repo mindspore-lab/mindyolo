@@ -16,7 +16,7 @@ MindYOLO是[MindSpore Lab](https://github.com/mindspore-lab)开发的AI套件，
 
 MindYOLO使用Python语言编写，基于 [MindSpore](https://mindspore.cn/) AI框架开发。
 
-master 分支配套 **MindSpore 2.0**。
+master 分支配套 **MindSpore 2.2.10**。
 
 <img src="https://raw.githubusercontent.com/mindspore-lab/mindyolo/master/.github/000000137950.jpg" />
 
@@ -60,7 +60,7 @@ master 分支配套 **MindSpore 2.0**。
 
 ## 注意
 
-⚠️当前版本基于GRAPH的[静态Shape]((https://mindspore.cn/docs/en/r2.0/note/static_graph_syntax_support.html))。后续将添加PYNATIVE的动态Shape支持，敬请期待。
+⚠️当前版本基于GRAPH的[静态Shape]((https://www.mindspore.cn/docs/en/r2.2/note/static_graph_syntax_support.html))。后续将添加PYNATIVE的动态Shape支持，敬请期待。
 
 ### 贡献方式
 
