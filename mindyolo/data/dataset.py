@@ -962,7 +962,6 @@ class COCODataset:
 
     def letterbox(self, sample, new_shape=None, xywhn2xyxy_=True, scaleup=False, only_image=False, color=(114, 114, 114)):
         # Resize and pad image while meeting stride-multiple constraints
-
         if sample['bbox_format'] == 'ltrb':
             xywhn2xyxy_ = False
 
@@ -974,15 +973,12 @@ class COCODataset:
 
         image = sample['img']
         shape = image.shape[:2]  # current shape [height, width]
-        if shape == new_shape:
-            return sample
-
-        bboxes = sample['bboxes']
-        ori_shape = sample['ori_shape']
 
         h, w = shape[:]
+        ori_shape = sample['ori_shape']
         h0, w0 = ori_shape
         hw_scale = np.array([h / h0, w / w0])
+        sample['hw_scale'] = hw_scale
 
         # Scale ratio (new / old)
         r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
@@ -997,12 +993,16 @@ class COCODataset:
         dh /= 2
         hw_pad = np.array([dh, dw])
 
-        if shape[::-1] != new_unpad:  # resize
-            image = cv2.resize(image, new_unpad, interpolation=cv2.INTER_LINEAR)
-        top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
-        left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
-        image = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
-
+        if shape != new_shape:
+            if shape[::-1] != new_unpad:  # resize
+                image = cv2.resize(image, new_unpad, interpolation=cv2.INTER_LINEAR)
+            top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
+            left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+            image = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
+            sample['hw_pad'] = hw_pad
+        else:
+            sample['hw_pad'] = np.array([0., 0.])
+        bboxes = sample['bboxes']
         if not only_image:
             # convert bboxes
             if len(bboxes):
@@ -1013,6 +1013,7 @@ class COCODataset:
                     bboxes[:, [0, 2]] += dw
                     bboxes[:, [1, 3]] += dh
                 sample['bboxes'] = bboxes
+            sample['bbox_format'] = 'ltrb'
 
             # convert segments
             if 'segments' in sample:
@@ -1040,10 +1041,6 @@ class COCODataset:
                     sample['segments'] = segments
 
         sample['img'] = image
-        sample['hw_scale'] = hw_scale
-        sample['hw_pad'] = hw_pad
-        sample['bbox_format'] = 'ltrb'
-
         return sample
 
     def label_norm(self, sample, xyxy2xywh_=True):
