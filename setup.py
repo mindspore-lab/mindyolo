@@ -54,6 +54,7 @@ setup(
     },
     description="A toolbox of vision models and algorithms based on MindSpore.",
     long_description=long_description,
+    long_description_content_type="text/markdown",
     license="Apache Software License 2.0",
     include_package_data=True,
     packages=find_packages(include=["mindyolo", "mindyolo.*"]),
