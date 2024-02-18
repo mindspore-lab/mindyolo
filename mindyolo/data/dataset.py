@@ -193,7 +193,7 @@ class COCODataset:
                 elif mini > 1:
                     shapes[i] = [1, 1 / mini]
 
-            self.batch_shapes = np.ceil(np.array(shapes) * img_size / stride + pad).astype(np.int) * stride
+            self.batch_shapes = np.ceil(np.array(shapes) * img_size / stride + pad).astype(np.int_) * stride
 
         self.imgIds = [int(Path(im_file).stem) for im_file in self.img_files]
 
@@ -786,7 +786,7 @@ class COCODataset:
                     r_image = cv2.resize(sample_images[sel_ind], (r_w, r_h))
                     temp_crop = image[ymin: ymin + r_h, xmin: xmin + r_w]
                     m_ind = r_mask > 0
-                    if m_ind.astype(np.int).sum() > 60:
+                    if m_ind.astype(np.int_).sum() > 60:
                         temp_crop[m_ind] = r_image[m_ind]
                         box = np.array([xmin, ymin, xmin + r_w, ymin + r_h], dtype=np.float32)
                         if len(bboxes):
