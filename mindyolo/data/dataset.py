@@ -138,7 +138,7 @@ class COCODataset:
         if exists:
             d = f"Scanning '{cache_path}' images and labels... {nf} found, {nm} missing, {ne} empty, {nc} corrupted"
             tqdm(None, desc=d, total=n, initial=n)  # display cache results
-        assert nf > 0 or not augment, f"No labels in {cache_path}. Can not train without labels. See {self.help_url}"
+        assert nf > 0 or not augment, f"No labels in {cache_path}. Can not train without labels."
 
         # Read cache
         cache.pop("hash")  # remove hash
@@ -286,7 +286,7 @@ class COCODataset:
         pbar.close()
 
         if nf == 0:
-            print(f"WARNING: No labels found in {path}. See {self.help_url}")
+            print(f"WARNING: No labels found in {path}.")
 
         x["hash"] = self._get_hash(self.label_files + self.img_files)
         x["results"] = nf, nm, ne, nc, len(self.img_files)
