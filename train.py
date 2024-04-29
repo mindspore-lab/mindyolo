@@ -23,7 +23,6 @@ def get_parser_train(parents=None):
     parser.add_argument("--task", type=str, default="detect", choices=["detect", "segment"])
     parser.add_argument("--device_target", type=str, default="Ascend", help="device target, Ascend/GPU/CPU")
     parser.add_argument("--save_dir", type=str, default="./runs", help="save dir")
-    parser.add_argument("--device_per_servers", type=int, default=8, help="device number on a server")
     parser.add_argument("--log_level", type=str, default="INFO", help="log level to print")
     parser.add_argument("--is_parallel", type=ast.literal_eval, default=False, help="Distribute train or not")
     parser.add_argument("--ms_mode", type=int, default=0,
