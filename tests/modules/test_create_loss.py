@@ -29,14 +29,9 @@ def test_create_loss(yaml_name, mode):
     bs = 2
     nc = 16
 
-    if yaml_name == 'yolox-nano.yaml':
-        loss_fn = create_loss(
-            **cfg.loss, anchors=cfg.network.get("anchors", 1), stride=cfg.network.stride, num_class=nc
-        )
-    else:
-        loss_fn = create_loss(
-            **cfg.loss, anchors=cfg.network.get("anchors", 1), stride=cfg.network.stride, nc=nc
-        )
+    loss_fn = create_loss(
+        **cfg.loss, anchors=cfg.network.get("anchors", 1), stride=cfg.network.stride, nc=nc
+    )
 
     input_size = cfg.img_size
     stride = cfg.network.stride
