@@ -17,7 +17,7 @@ class YOLOXLoss(nn.Cell):
 
     def __init__(
         self,
-        num_class=80,
+        nc=80,
         input_size=(640, 640),
         num_candidate_ota=10,
         strides=(8, 16, 32),
@@ -29,7 +29,7 @@ class YOLOXLoss(nn.Cell):
         self.n_candidate_k = num_candidate_ota
         self.on_value = Tensor(1.0, ms.float32)
         self.off_value = Tensor(0.0, ms.float32)
-        self.num_class = num_class
+        self.num_class = nc
 
         self.unsqueeze = ops.ExpandDims()
         self.reshape = ops.Reshape()
