@@ -110,6 +110,12 @@ MindYOLO支持yaml文件继承机制，因此新编写的配置文件只需要�
 
 <img src="./pic/yolov7-tiny-results.png" alt="yolov7-tiny-results" style="zoom:70%;" />
 
+## 优化策略
+* 数据增强：采用随机翻转、旋转、缩放、裁剪、颜色变换等，增加模型的泛化能力，增强模型的鲁棒性。
+* 模型选择：采用更深层、参数更庞大的网络，提取和表达特征的能力更强。
+* 超参数优化：选择合适的初始学习率和学习率调度策略；根据NPU内存调整Batch Size，更大的批量可以提高训练稳定性。
+
+
 ## yolo7l实验过程
 ### 编写yaml配置文件
 同样利用文件继承机制，编写yolov7在UA-DETRAC数据集上的配置文件，详见[yolov7l_ud.yaml](./yolov7l_ud.yaml)
