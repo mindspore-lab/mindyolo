@@ -12,9 +12,17 @@
     </a>
 </p>
 
-MindYOLO is [MindSpore Lab](https://github.com/mindspore-lab)'s software toolbox that implements state-of-the-art YOLO series algorithms, [support list and benchmark](MODEL_ZOO.md). It is written in Python and powered by the [MindSpore](https://mindspore.cn/) AI framework.
+MindYOLO implements state-of-the-art YOLO series algorithms based on MindSpore.
 
-The master branch supporting **MindSpore 2.0/2.1**.
+The following is the corresponding `mindyolo` versions and supported
+mindspore versions.
+| `mindspore` | `mindyolo` | `tested hardware`
+| :--:| :--:| :-- |
+| `master`  | `master`| `ascend 910*`| 
+| `2.3.0`   | `0.4`  |  `ascend 910*`|
+| `2.2.10`  | `0.3` |  `ascend 910*`|
+| `2.0`     | `0.2` | `ascend 910*`|
+| `1.8`     | `0.1`  |`ascend 910*`|
 
 <img src="https://raw.githubusercontent.com/mindspore-lab/mindyolo/master/.github/000000137950.jpg" />
 
@@ -54,13 +62,6 @@ See [INSTALLATION](docs/en/installation.md) for details.
 
 See [GETTING STARTED](GETTING_STARTED.md) for details.
 
-## Learn More about MindYOLO
-
-To be supplemented.
-
-## Notes
-
-⚠️ The current version is based on the [static shape of GRAPH](https://mindspore.cn/docs/en/r2.0/note/static_graph_syntax_support.html). The dynamic shape of the PYNATIVE will be supported later. Please look forward to it.
 
 ### How to Contribute
 
@@ -88,3 +89,4 @@ If you find this project useful in your research, please consider cite:
     year={2023}
 }
 ```
+
