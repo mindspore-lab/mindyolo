@@ -15,7 +15,6 @@ from pycocotools.mask import encode
 import mindspore as ms
 from mindspore import Tensor, context, nn, ParallelMode
 from mindspore.communication import init, get_rank, get_group_size
-from mindspore._c_expression import ms_ctx_param
 
 from mindyolo.data import COCO80_TO_COCO91_CLASS, COCODataset, create_loader
 from mindyolo.models.model_factory import create_model
@@ -72,8 +71,6 @@ def get_parser_test(parents=None):
 def set_default_test(args):
     # Set Context
     context.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
-    if "jit_config" in ms_ctx_param.__members__ and args.mode == 0:
-        ms.set_context(jit_config={"jit_level": "O2"})
     if args.device_target == "Ascend":
         context.set_context(device_id=int(os.getenv("DEVICE_ID", 0)))
     elif args.device_target == "GPU" and args.ms_enable_graph_kernel:
