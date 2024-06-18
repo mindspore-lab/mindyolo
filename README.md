@@ -21,8 +21,8 @@ mindspore versions.
 | `master`  | `master`| `ascend 910*`| 
 | `2.3.0`   | `0.4`  |  `ascend 910*`|
 | `2.2.10`  | `0.3` |  `ascend 910*`|
-| `2.0`     | `0.2` | `ascend 910*`|
-| `1.8`     | `0.1`  |`ascend 910*`|
+| `2.0`     | `0.2` | `ascend 910`|
+| `1.8`     | `0.1`  |`ascend 910`|
 
 <img src="https://raw.githubusercontent.com/mindspore-lab/mindyolo/master/.github/000000137950.jpg" />
 
