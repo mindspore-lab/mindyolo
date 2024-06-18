@@ -6,9 +6,10 @@ from datetime import datetime
 import numpy as np
 
 import mindspore as ms
-from mindspore import context, ops, Tensor, nn
+from mindspore import ops, Tensor, nn
 from mindspore.communication.management import get_group_size, get_rank, init
-from mindspore.context import ParallelMode
+from mindspore import ParallelMode
+from mindspore._c_expression import ms_ctx_param
 
 from mindyolo.utils import logger
 
@@ -21,22 +22,24 @@ def set_seed(seed=2):
 
 def set_default(args):
     # Set Context
-    context.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
+    ms.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
+    if "jit_config" in ms_ctx_param.__members__ and args.mode == 0:
+        ms.set_context(jit_config={"jit_level": "O2"})
     if args.device_target == "Ascend":
         device_id = int(os.getenv("DEVICE_ID", 0))
-        context.set_context(device_id=device_id)
+        ms.set_context(device_id=device_id)
     elif args.device_target == "GPU" and args.ms_enable_graph_kernel:
-        context.set_context(enable_graph_kernel=True)
+        ms.set_context(enable_graph_kernel=True)
     # Set Parallel
     if args.is_parallel:
         init()
         args.rank, args.rank_size, parallel_mode = get_rank(), get_group_size(), ParallelMode.DATA_PARALLEL
-        context.set_auto_parallel_context(device_num=args.rank_size, parallel_mode=parallel_mode, gradients_mean=True)
+        ms.set_auto_parallel_context(device_num=args.rank_size, parallel_mode=parallel_mode, gradients_mean=True)
     else:
         args.rank, args.rank_size = 0, 1
     # Set Default
     args.total_batch_size = args.per_batch_size * args.rank_size
-    args.sync_bn = args.sync_bn and context.get_context("device_target") == "Ascend" and args.rank_size > 1
+    args.sync_bn = args.sync_bn and ms.get_context("device_target") == "Ascend" and args.rank_size > 1
     args.accumulate = max(1, np.round(args.nbs / args.total_batch_size)) if args.auto_accumulate else args.accumulate
     # optimizer
     args.optimizer.warmup_epochs = args.optimizer.get("warmup_epochs", 0)
