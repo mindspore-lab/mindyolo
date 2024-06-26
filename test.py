@@ -13,7 +13,7 @@ from pycocotools.coco import COCO
 from pycocotools.mask import encode
 
 import mindspore as ms
-from mindspore import Tensor, context, nn, ParallelMode
+from mindspore import Tensor, nn, ParallelMode
 from mindspore.communication import init, get_rank, get_group_size
 
 from mindyolo.data import COCO80_TO_COCO91_CLASS, COCODataset, create_loader
@@ -70,16 +70,18 @@ def get_parser_test(parents=None):
 
 def set_default_test(args):
     # Set Context
-    context.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
+    ms.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
+    if args.ms_mode == 0:
+        ms.set_context(jit_config={"jit_level": "O2"})
     if args.device_target == "Ascend":
-        context.set_context(device_id=int(os.getenv("DEVICE_ID", 0)))
+        ms.set_context(device_id=int(os.getenv("DEVICE_ID", 0)))
     elif args.device_target == "GPU" and args.ms_enable_graph_kernel:
-        context.set_context(enable_graph_kernel=True)
+        ms.set_context(enable_graph_kernel=True)
     # Set Parallel
     if args.is_parallel:
         init()
         args.rank, args.rank_size, parallel_mode = get_rank(), get_group_size(), ParallelMode.DATA_PARALLEL
-        context.set_auto_parallel_context(device_num=args.rank_size, parallel_mode=parallel_mode)
+        ms.set_auto_parallel_context(device_num=args.rank_size, parallel_mode=parallel_mode)
     else:
         args.rank, args.rank_size = 0, 1
     # Set Data

@@ -10,7 +10,7 @@ import yaml
 from datetime import datetime
 
 import mindspore as ms
-from mindspore import Tensor, context, nn
+from mindspore import Tensor, nn
 
 from mindyolo.data import COCO80_TO_COCO91_CLASS
 from mindyolo.models import create_model
@@ -52,11 +52,13 @@ def get_parser_infer(parents=None):
 
 def set_default_infer(args):
     # Set Context
-    context.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
+    ms.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
+    if args.ms_mode == 0:
+        ms.set_context(jit_config={"jit_level": "O2"})
     if args.device_target == "Ascend":
-        context.set_context(device_id=int(os.getenv("DEVICE_ID", 0)))
+        ms.set_context(device_id=int(os.getenv("DEVICE_ID", 0)))
     elif args.device_target == "GPU" and args.ms_enable_graph_kernel:
-        context.set_context(enable_graph_kernel=True)
+        ms.set_context(enable_graph_kernel=True)
     args.rank, args.rank_size = 0, 1
     # Set Data
     args.data.nc = 1 if args.single_cls else int(args.data.nc)  # number of classes
