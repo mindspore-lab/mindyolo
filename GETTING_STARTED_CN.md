@@ -4,8 +4,8 @@
 
 ### 使用预训练模型进行推理
 
-1. 从[model zoo](MODEL_ZOO.md)中选择一个模型及其配置文件，例如， `./configs/yolov7/yolov7.yaml`.
-2. 从[model zoo](MODEL_ZOO.md)中下载相应的预训练模型权重文件。
+1. 从[模型仓库](benchmark_results.md)中选择一个模型及其配置文件，例如， `./configs/yolov7/yolov7.yaml`.
+2. 从[模型仓库](benchmark_results.md)中下载相应的预训练模型权重文件。
 3. 使用内置配置进行推理，请运行以下命令：
 
 ```shell

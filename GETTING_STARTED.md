@@ -5,9 +5,9 @@ This document provides a brief introduction to the usage of built-in command-lin
 ### Inference Demo with Pre-trained Models
 
 1. Pick a model and its config file from the
-  [model zoo](MODEL_ZOO.md),
+  [Model Zoo](benchmark_results.md),
   such as, `./configs/yolov7/yolov7.yaml`.
-2. Download the corresponding pre-trained checkpoint from the [model zoo](MODEL_ZOO.md) of each model.
+2. Download the corresponding pre-trained checkpoint from the [Model Zoo](benchmark_results.md) of each model.
 3. To run YOLO object detection with the built-in configs, please run:
 
 ```

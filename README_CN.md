@@ -12,27 +12,30 @@
     </a>
 </p>
 
-MindYOLO是[MindSpore Lab](https://github.com/mindspore-lab)开发的AI套件，实现了最先进的YOLO系列算法，[查看支持的模型算法](MODEL_ZOO.md)。
-
-MindYOLO使用Python语言编写，基于 [MindSpore](https://mindspore.cn/) AI框架开发。
-
-master 分支配套 **MindSpore 2.0**。
+MindYOLO是基于MindSpore实现的最先进的YOLO系列算法。
+以下是相应的`mindyolo`版本和支持的`mindspore`版本
+|  mindyolo  |  mindspore  |  tested hardware
+|    :--:    |     :--:    |     :--:       |
+|   master   |    master   |   Ascend 910* & Ascend 910 | 
+|    0.4     |    2.3.0    |   Ascend 910* & Ascend 910 |    
+|    0.3     |    2.2.10   |   Ascend 910* & Ascend 910 |
+|    0.2     |    2.0      |   Ascend 910   |
+|    0.1     |    1.8      |   Ascend 910   |
 
 <img src="https://raw.githubusercontent.com/mindspore-lab/mindyolo/master/.github/000000137950.jpg" />
-
 
 ## 新特性 
 
 - 2023/06/15
 
-1. 支持 YOLOv3/v4/v5/v7/v8/X 等6个模型，发布了23个模型weights，详情请参考 [MODEL ZOO](MODEL_ZOO.md)。
+1. 支持 YOLOv3/v4/v5/v7/v8/X 等6个模型，发布了23个模型weights，详情请参考 [模型仓库](benchmark_results.md)。
 2. 配套 MindSpore 2.0。
 3. 支持 MindSpore lite 2.0 推理。
 4. 新的教程文档上线！
 
 ## 基准和模型仓库 
 
-查看 [MODEL ZOO](MODEL_ZOO.md).
+查看 [基准和模型仓库](benchmark_results.md).
 
 <details open markdown>
 <summary><b>支持的算法</b></summary>
