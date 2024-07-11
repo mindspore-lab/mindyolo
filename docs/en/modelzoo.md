@@ -6,4 +6,4 @@ hide:
 
 # Model Zoo
 
-{% include-markdown "../../MODEL_ZOO.md" %}
+{% include-markdown "../../benchmark_results.md" %}
