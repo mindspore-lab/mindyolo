@@ -100,7 +100,7 @@ optimizer:
 参数继承关系和参数说明可参考[configuration_CN.md](../../tutorials/configuration_CN.md)。
 
 #### 下载预训练模型
-可选用MindYOLO提供的[MODEL_ZOO](../../MODEL_ZOO.md)作为自定义数据集的预训练模型，预训练模型在COCO数据集上已经有较好的精度表现，相比从头训练，加载预训练模型一般会拥有更快的收敛速度以及更高的最终精度，并且大概率能避免初始化不当导致的梯度消失、梯度爆炸等问题。
+可选用MindYOLO提供的[模型仓库](../../benchmark_results.md)作为自定义数据集的预训练模型，预训练模型在COCO数据集上已经有较好的精度表现，相比从头训练，加载预训练模型一般会拥有更快的收敛速度以及更高的最终精度，并且大概率能避免初始化不当导致的梯度消失、梯度爆炸等问题。
 
 自定义数据集类别数通常与COCO数据集不一致，MindYOLO中各模型的检测头head结构跟数据集类别数有关，直接将预训练模型导入可能会因为shape不一致而导入失败，可以在yaml配置文件中设置strict_load参数为False，MindYOLO将自动舍弃shape不一致的参数，并抛出该module参数并未导入的告警
 #### 模型微调(Finetune)

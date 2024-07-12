@@ -25,19 +25,27 @@ AP (65.7% AP50) for the MS COCO dataset at a realtime speed of 65 FPS on Tesla V
 
 ## Results
 
-<div align="center">
+<details open markdown>
+<summary><b>performance tested on Ascend 910(8p) with graph mode</b></summary>
 
-| Name   | Scale        | Context  | ImageSize | Dataset      | Box mAP (%) | Params | FLOPs | Recipe                                                                                   | Download                                                                                                             |
-|--------|--------------|----------|-----------|--------------|-------------|--------|-------|------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
-| YOLOv4 | CSPDarknet53 | D910x8-G | 608       | MS COCO 2017 | 45.4        | 27.6M  | 52G   | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov4/yolov4.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_320e_map454-50172f93.ckpt)      |
-| YOLOv4 | CSPDarknet53(silu) | D910x8-G | 608       | MS COCO 2017 | 45.8        | 27.6M  | 52G   | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov4/yolov4-silu.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_silu_320e_map458-bdfc3205.ckpt) |
+| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | Params |                Recipe                        | Download                                                                                                             |
+|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---: |                :---:                         |        :---:       |
+| YOLOv4 | CSPDarknet53       |  16 * 8   |    608    | MS COCO 2017 |    45.4     | 27.6M  | [yaml](./configs/yolov4/yolov4.yaml)         | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_320e_map454-50172f93.ckpt)      |
+| YOLOv4 | CSPDarknet53(silu) |  16 * 8   |    608    | MS COCO 2017 |    45.8     | 27.6M  | [yaml](./configs/yolov4/yolov4-silu.yaml)    | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_silu_320e_map458-bdfc3205.ckpt) |
+</details>
 
-</div>
+<details open markdown>
+<summary><b>performance tested on Ascend 910*(8p)</b></summary>
+
+| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | ms/step | Params |                Recipe                        | Download                                                                                                             |
+|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---:  |  :---: |                :---:                         |        :---:       |
+| YOLOv4 | CSPDarknet53       |  16 * 8   |    608    | MS COCO 2017 |     46.1    | 337.25  | 27.6M  | [yaml](./configs/yolov4/yolov4.yaml)         | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_320e_map454-50172f93.ckpt)      |
+</details>
+
 <br>
 
 #### Notes
 
-- Context: Training context denoted as {device}x{pieces}-{MS mode}, where mindspore mode can be G - graph mode or F - pynative mode with ms function. For example, D910x8-G is for training on 8 pieces of Ascend 910 NPU using graph mode.
 - Box mAP: Accuracy reported on the validation set.
 
 ## Quick Start
