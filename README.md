@@ -12,31 +12,21 @@
     </a>
 </p>
 
-MindYOLO is [MindSpore Lab](https://github.com/mindspore-lab)'s software toolbox that implements state-of-the-art YOLO series algorithms, [support list and benchmark](MODEL_ZOO.md). It is written in Python and powered by the [MindSpore](https://mindspore.cn/) AI framework.
-
-The master branch supporting **MindSpore 2.0/2.1**.
+MindYOLO implements state-of-the-art YOLO series algorithms based on MindSpore.
+The following is the corresponding `mindyolo` versions and supported `mindspore` versions.
+|  mindyolo  |  mindspore  |
+|    :--:    |     :--:    |
+|   master   |    master   |
+|    0.4     |    2.3.0    | 
+|    0.3     |    2.2.10   | 
+|    0.2     |    2.0      | 
+|    0.1     |    1.8      |
 
 <img src="https://raw.githubusercontent.com/mindspore-lab/mindyolo/master/.github/000000137950.jpg" />
 
-
-## What is New
-
-- 2023/09/05
-
-1. Add YOLOv8-X segment model.
-2. Dataset pipeline reconstruction(current supports seg/detect tasks).
-3. Add IoU custom operators example on GPU.
-4. Add distribute eval function.
-5. Add fast coco eval api.
-6. Tutorials and [Docs](https://mindspore-lab.github.io/mindyolo/) update(e.q. [Write a new model](https://mindspore-lab.github.io/mindyolo/zh/how_to_guides/write_a_new_model/), [Train Process Tutorial](https://mindspore-lab.github.io/mindyolo/zh/tutorials/quick_start/), ...).
-
-## Benchmark and Model Zoo
-
-See [MODEL ZOO](MODEL_ZOO.md).
-
-<details open markdown>
-<summary><b>Supported Algorithms</b></summary>
-
+## supported model list
+- [ ] YOLOv10 (welcome to contribute)
+- [ ] YOLOv9 (welcome to contribute)
 - [x] [YOLOv8](configs/yolov8)
 - [x] [YOLOv7](configs/yolov7)
 - [x] [YOLOX](configs/yolox)
@@ -44,7 +34,6 @@ See [MODEL ZOO](MODEL_ZOO.md).
 - [x] [YOLOv4](configs/yolov4)
 - [x] [YOLOv3](configs/yolov3)
 
-</details>
 
 ## Installation
 
@@ -54,13 +43,10 @@ See [INSTALLATION](docs/en/installation.md) for details.
 
 See [GETTING STARTED](GETTING_STARTED.md) for details.
 
-## Learn More about MindYOLO
-
-To be supplemented.
-
 ## Notes
 
-⚠️ The current version is based on the [static shape of GRAPH](https://mindspore.cn/docs/en/r2.0/note/static_graph_syntax_support.html). The dynamic shape of the PYNATIVE will be supported later. Please look forward to it.
+⚠️ The current version is based on the [static shape of GRAPH](https://mindspore.cn/docs/en/r2.0/note/static_graph_syntax_support.html). 
+The dynamic shape of verision will be supported later. Please look forward to it.
 
 ### How to Contribute
 
