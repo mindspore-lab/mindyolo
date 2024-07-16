@@ -16,41 +16,27 @@ MindYOLO implements state-of-the-art YOLO series algorithms based on MindSpore.
 The following is the corresponding `mindyolo` versions and supported `mindspore` versions.
 |  mindyolo  |  mindspore  |  tested hardware
 |    :--:    |     :--:    |     :--:       |
-|   master   |    master   |   Ascend 910* & Ascend 910 | 
-|    0.4     |    2.3.0    |   Ascend 910* & Ascend 910 |    
+|   master   |    master   |   Ascend 910*  | 
+|    0.4     |    2.3.0    |   Ascend 910*  |    
 |    0.3     |    2.2.10   |   Ascend 910* & Ascend 910 |
 |    0.2     |    2.0      |   Ascend 910   |
 |    0.1     |    1.8      |   Ascend 910   |
 
 <img src="https://raw.githubusercontent.com/mindspore-lab/mindyolo/master/.github/000000137950.jpg" />
 
-
-## What is New
-
-- 2023/09/05
-
-1. Add YOLOv8-X segment model.
-2. Dataset pipeline reconstruction(current supports seg/detect tasks).
-3. Add IoU custom operators example on GPU.
-4. Add distribute eval function.
-5. Add fast coco eval api.
-6. Tutorials and [Docs](https://mindspore-lab.github.io/mindyolo/) update(e.q. [Write a new model](https://mindspore-lab.github.io/mindyolo/zh/how_to_guides/write_a_new_model/), [Train Process Tutorial](https://mindspore-lab.github.io/mindyolo/zh/tutorials/quick_start/), ...).
-
 ## Benchmark and Model Zoo
 
 See [Benchmark Results](benchmark_results.md).
 
-<details open markdown>
-<summary><b>Supported Algorithms</b></summary>
-
+## supported model list
+- [ ] YOLOv10 (welcome to contribute)
+- [ ] YOLOv9 (welcome to contribute)
 - [x] [YOLOv8](configs/yolov8)
 - [x] [YOLOv7](configs/yolov7)
 - [x] [YOLOX](configs/yolox)
 - [x] [YOLOv5](configs/yolov5)
 - [x] [YOLOv4](configs/yolov4)
 - [x] [YOLOv3](configs/yolov3)
-
-</details>
 
 ## Installation
 
