@@ -13,3 +13,4 @@ data:
   nc: 13
   # class names
   names: ['rider', 'pedestrian', 'trailer', 'train','bus','car','truck','traffic sign','traffic light','other person','motorcycle','bicycle',"van" ]
+  

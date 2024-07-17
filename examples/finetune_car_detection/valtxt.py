@@ -25,3 +25,4 @@ with open(output_file, 'w') as f:
         f.write(f"{path}\n")
 
 print(f"Successfully created train.txt at {output_file}")
+  

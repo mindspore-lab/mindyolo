@@ -19,3 +19,4 @@ for i, file in enumerate(files, start=start_num):
     #print(f"Renamed '{file}' to '{new_filename}'")
 
 print("All files have been renamed.")
+  
