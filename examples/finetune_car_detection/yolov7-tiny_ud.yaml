@@ -14,3 +14,4 @@ data:
   names: ['car',"bus","van","others", ]
 optimizer:
   lr_init: 0.001  # initial learning rate
+  
