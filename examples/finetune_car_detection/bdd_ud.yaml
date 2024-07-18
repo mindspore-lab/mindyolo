@@ -1,0 +1,16 @@
+
+__BASE__: [
+  '../../configs/yolov7/yolov7.yaml',
+]
+per_batch_size: 16 # 16 * 8 = 128
+#weight: ./yolov8-s_500e_mAP446-3086f0c9.ckpt
+strict_load: False
+data:
+  dataset_name: bdd_ud
+  train_set: ./bdd_ud/train.txt
+  val_set: ./bdd_ud/val.txt
+  test_set: ./bdd_ud/val.txt
+  nc: 13
+  # class names
+  names: ['rider', 'pedestrian', 'trailer', 'train','bus','car','truck','traffic sign','traffic light','other person','motorcycle','bicycle',"van" ]
+  

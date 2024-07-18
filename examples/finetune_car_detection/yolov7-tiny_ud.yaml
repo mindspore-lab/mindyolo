@@ -1,0 +1,17 @@
+__BASE__: [
+  '../../configs/yolov7/yolov7-tiny.yaml',
+]
+per_batch_size: 16 # 16 * 8 = 128
+weight: ./yolov7-tiny_300e_mAP375-d8972c94.ckpt
+strict_load: False
+data:
+  dataset_name: UA-DETRAC
+  train_set: ./UA-DETRAC/train.txt
+  val_set: ./UA-DETRAC/val.txt
+  test_set: ./UA-DETRAC/val.txt
+  nc: 4
+  # class names
+  names: ['car',"bus","van","others", ]
+optimizer:
+  lr_init: 0.001  # initial learning rate
+  
