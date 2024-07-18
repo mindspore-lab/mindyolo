@@ -5,4 +5,4 @@ hide:
 ---
 
 
-{% include-markdown "../../README_CN.md" %}
+{% include-markdown "../../README.md" %}
