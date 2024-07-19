@@ -11,18 +11,26 @@ We present some updates to YOLO! We made a bunch of little design changes to mak
 
 ## Results
 
-<div align="center">
+<details open markdown>
+<summary><b>performance tested on Ascend 910(8p) with graph mode</b></summary>
 
-| Name   | Scale     | Context  | ImageSize | Dataset      | Box mAP (%) | Params  | FLOPs  | Recipe                                                                                        | Download                                                                                                      |
-|--------|-----------|----------|-----------|--------------|-------------|---------|--------|-----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| YOLOv3 | Darknet53 | D910x8-G | 640       | MS COCO 2017 | 45.5        | 61.9M   | 156.4G | [yaml](https://github.com/mindspore-lab/mindyolo/blob/master/configs/yolov3/yolov3.yaml)      | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov3/yolov3-darknet53_300e_mAP455-adfb27af.ckpt)  |
+| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | Params |                Recipe                        | Download                                                                                                             |
+|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---: |                :---:                         |        :---:       |
+| YOLOv3 | Darknet53          |  16 * 8   |    640    | MS COCO 2017 |    45.5     | 61.9M  | [yaml](./configs/yolov3/yolov3.yaml)         | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov3/yolov3-darknet53_300e_mAP455-adfb27af.ckpt)         |
+</details>
 
-</div>
+<details open markdown>
+<summary><b>performance tested on Ascend 910*(8p)</b></summary>
+
+| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | ms/step | Params |                Recipe                        | Download                                                                                                             |
+|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---:  |  :---: |                :---:                         |        :---:       |
+| YOLOv3 | Darknet53          |  16 * 8   |    640    | MS COCO 2017 |     46.6    | 396.60  | 61.9M  | [yaml](./configs/yolov3/yolov3.yaml)         | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov3/yolov3-darknet53_300e_mAP455-81895f09-910v2.ckpt)         |
+</details>
+
 <br>
 
 #### Notes
 
-- Context: Training context denoted as {device}x{pieces}-{MS mode}, where mindspore mode can be G - graph mode or F - pynative mode with ms function. For example, D910x8-G is for training on 8 pieces of Ascend 910 NPU using graph mode.
 - Box mAP: Accuracy reported on the validation set.
 - We referred to a commonly used third-party [YOLOv3](https://github.com/ultralytics/yolov3) implementation.
 

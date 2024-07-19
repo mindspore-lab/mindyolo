@@ -14,15 +14,19 @@
 
 MindYOLO implements state-of-the-art YOLO series algorithms based on MindSpore.
 The following is the corresponding `mindyolo` versions and supported `mindspore` versions.
-|  mindyolo  |  mindspore  |
-|    :--:    |     :--:    |
-|   master   |    master   |
-|    0.4     |    2.3.0    | 
-|    0.3     |    2.2.10   | 
-|    0.2     |    2.0      | 
-|    0.1     |    1.8      |
+|  mindyolo  |  mindspore  |  tested hardware |
+|    :--:    |     :--:    |     :--:       |
+|   master   |    master   |   Ascend 910*  | 
+|    0.4     |    2.3.0    |   Ascend 910*  |    
+|    0.3     |    2.2.10   |   Ascend 910* & Ascend 910 |
+|    0.2     |    2.0      |   Ascend 910   |
+|    0.1     |    1.8      |   Ascend 910   |
 
 <img src="https://raw.githubusercontent.com/mindspore-lab/mindyolo/master/.github/000000137950.jpg" />
+
+## Benchmark and Model Zoo
+
+See [Benchmark Results](benchmark_results.md).
 
 ## supported model list
 - [ ] YOLOv10 (welcome to contribute)
@@ -33,7 +37,6 @@ The following is the corresponding `mindyolo` versions and supported `mindspore`
 - [x] [YOLOv5](configs/yolov5)
 - [x] [YOLOv4](configs/yolov4)
 - [x] [YOLOv3](configs/yolov3)
-
 
 ## Installation
 
