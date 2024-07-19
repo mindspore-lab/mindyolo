@@ -14,7 +14,7 @@
 
 MindYOLO implements state-of-the-art YOLO series algorithms based on MindSpore.
 The following is the corresponding `mindyolo` versions and supported `mindspore` versions.
-|  mindyolo  |  mindspore  |  tested hardware
+|  mindyolo  |  mindspore  |  tested hardware |
 |    :--:    |     :--:    |     :--:       |
 |   master   |    master   |   Ascend 910*  | 
 |    0.4     |    2.3.0    |   Ascend 910*  |    
@@ -45,6 +45,11 @@ See [INSTALLATION](docs/en/installation.md) for details.
 ## Getting Started
 
 See [GETTING STARTED](GETTING_STARTED.md) for details.
+
+## Notes
+
+⚠️ The current version is based on the [static shape of GRAPH](https://mindspore.cn/docs/en/r2.0/note/static_graph_syntax_support.html). 
+The dynamic shape of verision will be supported later. Please look forward to it.
 
 ### How to Contribute
 
