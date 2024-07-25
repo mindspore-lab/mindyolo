@@ -17,6 +17,7 @@ from mindyolo.utils.callback import create_callback
 from mindyolo.utils.utils import (freeze_layers, load_pretrain, set_default,
                                   set_seed, Synchronizer)
 
+os.environ["MS_ASCEND_CHECK_OVERFLOW_MODE"] = "SATURATION_MODE"
 
 def get_parser_train(parents=None):
     parser = argparse.ArgumentParser(description="Train", parents=[parents] if parents else [])
