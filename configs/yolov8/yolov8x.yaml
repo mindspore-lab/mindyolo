@@ -4,6 +4,7 @@ __BASE__: [
   './yolov8-base.yaml'
 ]
 
+overflow_still_update: False
 network:
   depth_multiple: 1.00  # scales module repeats
   width_multiple: 1.25  # scales convolution channels
