@@ -70,20 +70,23 @@ python mindyolo/utils/convert_weight_cspdarknet53.py
 It is easy to reproduce the reported results with the pre-defined training recipe. For distributed training on multiple Ascend 910 devices, please run
 ```shell
 # distributed training on multiple GPU/Ascend devices
-mpirun -n 8 python train.py --config ./configs/yolov4/yolov4-silu.yaml --device_target Ascend --is_parallel True --epochs 320
+msrun --master_port=8200 --worker_num=8 --local_worker_num=8 --log_dir="output_log" python train.py --config ./configs/yolov4/yolov4-silu.yaml --device_target Ascend --is_parallel True --epochs 320
 ```
-> If the script is executed by the root user, the `--allow-run-as-root` parameter must be added to `mpirun`.
-
-Similarly, you can train the model on multiple GPU devices with the above mpirun command.
 
 For detailed illustration of all hyper-parameters, please refer to [config.py](https://github.com/mindspore-lab/mindyolo/blob/master/mindyolo/utils/config.py).
 
-#### Notes 
+#### Notes
 - As the global batch size  (batch_size x num_devices) is an important hyper-parameter, it is recommended to keep the global batch size unchanged for reproduction or adjust the learning rate linearly to a new global batch size.
 - If the following warning occurs, setting the environment variable PYTHONWARNINGS='ignore:semaphore_tracker:UserWarning' will fix it.
 ```shell
 multiprocessing/semaphore_tracker.py: 144 UserWarning: semaphore_tracker: There appear to be 235 leaked semaphores to clean up at shutdown len(cache))
 ```
+- The command above will run a 8-card training and save the log files into "output_log". `--master_port` specifies the scheduler binding port number.  `--worker_num` and `--local_worker_num` should be the same to the number of running devices, e.g., 8.
+- In case of the following error:
+```bash
+RuntimtError: Failed to register the compute graph node: 0. Reason: Repeated registration node: 0
+```
+Please edit the `master_port` to a different port number in the range 1024 to 65535, and run the script again.
 
 #### - Standalone Training
 

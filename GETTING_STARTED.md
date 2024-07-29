@@ -50,7 +50,7 @@ to understand their behavior. Some common arguments are:
 
 * To train a model on 8 NPUs/GPUs:
   ```
-  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
+  msrun --master_port=8200 --worker_num=8 --local_worker_num=8 --log_dir="output_log" python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
   ```
 
 * To train a model on 1 NPU/GPU/CPU:
@@ -64,10 +64,16 @@ to understand their behavior. Some common arguments are:
   ```
 * To evaluate a model's performance 8 NPUs/GPUs:
   ```
-  mpirun --allow-run-as-root -n 8 python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
+  msrun --master_port=8200 --worker_num=8 --local_worker_num=8 --log_dir="output_log" python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
   ```
 *Notes: (1) The default hyper-parameter is used for 8-card training, and some parameters need to be adjusted in the case of a single card. (2) The default device is Ascend, and you can modify it by specifying 'device_target' as Ascend/GPU/CPU, as these are currently supported.*
 * For more options, see `train/test.py -h`.
+* Train on ModelArts, please refer [here](./tutorials/cloud/modelarts_CN.md).
+* If the following error occurs when the msrun command is executed: 
+```
+RuntimeError: Failed to register the compute graph node: 0. Reason: Repeated registration node:  0
+```
+please edit the `master_port` to a different port number in the range 1024 to 65535, and run the script again.
 
 
 ### Deployment

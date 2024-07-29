@@ -48,7 +48,7 @@ python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_c
 * 在多卡NPU/GPU上进行分布式模型训练，以8卡为例:
 
   ```shell
-  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
+  msrun --master_port=8200 --worker_num=8 --local_worker_num=8 --log_dir="output_log" python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
   ```
 
 * 在单卡NPU/GPU/CPU上训练模型：
@@ -65,12 +65,17 @@ python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_c
 * 在多卡NPU/GPU上进行分布式评估模型的精度：
 
   ```shell
-  mpirun --allow-run-as-root -n 8 python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
+  msrun --master_port=8200 --worker_num=8 --local_worker_num=8 --log_dir="output_log" python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
   ```
   
 *注意：默认超参为8卡训练，单卡情况需调整部分参数。 默认设备为Ascend，您可以指定'device_target'的值为Ascend/GPU/CPU。*
 * 有关更多选项，请参阅 `train/test.py -h`.
 * 在云脑上进行训练，请在[这里](./tutorials/cloud/modelarts_CN.md)查看
+* 如果执行以上msrun命令时日志出现以下错误：
+```
+RuntimeError: Failed to register the compute graph node: 0. Reason: Repeated registration node: 0
+```
+请将'master_port' 修改为范围在1024至65535之间的不同端口号，然后重新运行脚本。
 
 ### 部署
 

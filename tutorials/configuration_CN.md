@@ -38,7 +38,7 @@ __BASE__: [
 该部分参数通常由命令行传入，示例如下：
 
   ```shell
-  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True --log_interval 50
+  msrun --master_port=8200 --worker_num=8 --local_worker_num=8 --log_dir="output_log" python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True --log_interval 50
   ```
 
 ## 数据集
