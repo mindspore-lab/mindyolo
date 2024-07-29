@@ -2,7 +2,7 @@
 
 ## 依赖
    ```shell
-   pip install -r requirement.txt
+   pip install -r requirements.txt
    ```
 
 ## MindSpore Lite环境准备
