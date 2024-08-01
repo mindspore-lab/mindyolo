@@ -1,6 +1,0 @@
-# Loss
-
-
-## Loss Factory
-
-

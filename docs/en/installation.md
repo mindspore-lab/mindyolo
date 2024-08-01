@@ -8,7 +8,7 @@ hide:
 
 ## Dependency
 
-- mindspore >= 2.0
+- mindspore >= 2.3
 - numpy >= 1.17.0
 - pyyaml >= 5.3
 - openmpi 4.0.3 (for distributed mode)

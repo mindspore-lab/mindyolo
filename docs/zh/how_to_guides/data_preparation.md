@@ -54,5 +54,5 @@ instances_val2017.json为coco格式的验证集标注，可直接调用coco api�
 
 训练&推理时，需修改`configs/coco.yaml`中的`train_set`,`val_set`,`test_set`为真实数据路径
 
-使用MindYOLO套件完成自定义数据集finetune的实际案例可参考[README.md](https://github.com/mindspore-lab/mindyolo/blob/master/examples/finetune_SHWD/README.md)
+使用MindYOLO套件完成自定义数据集finetune的实际案例可参考 [微调](../tutorials/finetune.md)
 
