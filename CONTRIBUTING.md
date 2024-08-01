@@ -13,12 +13,6 @@
 
 <!-- /TOC -->
 
-## Contributor License Agreement
-
-It's required to sign CLA before your first code submission to MindYOLO community.
-
-For individual contributor, please refer to [ICLA online document](https://www.mindspore.cn/icla) for the detailed information.
-
 ## Getting Started
 
 - Fork the repository on [Github](https://github.com/mindspore-lab/mindyolo).

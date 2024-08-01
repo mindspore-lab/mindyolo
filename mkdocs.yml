@@ -6,7 +6,15 @@ copyright: Copyright &copy; 2022 - 2023 MindSpore Lab
 
 nav:
   - Home: index.md
-  - Benchmark: modelzoo.md
+  - Installation: installation.md
+  - Model Zoo:
+      - Benchmark: modelzoo/benchmark.md
+      - YOLOv3: modelzoo/yolov3.md
+      - YOLOv4: modelzoo/yolov4.md
+      - YOLOv5: modelzoo/yolov5.md
+      - YOLOv7: modelzoo/yolov7.md
+      - YOLOv8: modelzoo/yolov8.md
+      - YOLOx: modelzoo/yolox.md
   - Tutorials:  # Learning Oriented
       - Quick Start: tutorials/quick_start.md
       - Configuration: tutorials/configuration.md
@@ -20,10 +28,10 @@ nav:
       - Write A New Model: how_to_guides/write_a_new_model.md
       - Callback: how_to_guides/callback.md
   - Reference:
-      - data: reference/data.md
-#      - loss: reference/loss.md
+      - Data: reference/data.md
+#      - loss: reference/models.md
 #      - models.layers: reference/models.layers.md
-      - models: reference/models.md
+      - Models: reference/models.md
 #      - optim: reference/optim.md
 #      - scheduler: reference/scheduler.md
 #      - utils: reference/utils.md
@@ -102,8 +110,6 @@ markdown_extensions:
   - pymdownx.tilde
 
 
-hooks:
-  - docs/gen_ref_pages.py
 
 plugins:
   - search
@@ -152,6 +158,10 @@ plugins:
           Augmentation(custom): 自定义数据增强
           Write A New Model: 自定义模型
           Callback: 回调函数用法
+          Data: 数据
+          Models: 模型
+          Contributing: 参与项目
+
 
 
 

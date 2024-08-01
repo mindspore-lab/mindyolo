@@ -3,7 +3,7 @@
 **回调函数**：当程序运行到某个挂载点时，会自动调用在运行时注册到该挂载点的所有方法。
 通过回调函数的形式可以增加程序的灵活性和扩展性，因为用户可以将自定义方法注册到要调用的挂载点，而无需修改程序中的代码。
 
-在MindYOLO中，回调函数具体实现在mindyolo/utils/callback.py文件中。
+在MindYOLO中，回调函数具体实现在[mindyolo/utils/callback.py](https://github.com/mindspore-lab/mindyolo/blob/master/mindyolo/utils/callback.py)文件中。
 ```python
 #mindyolo/utils/callback.py
 @CALLBACK_REGISTRY.registry_module()
