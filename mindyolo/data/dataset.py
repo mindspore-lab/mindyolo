@@ -1171,7 +1171,7 @@ class COCODataset:
             keypoints = [sample.pop('keypoints', None) for sample in batch_samples]
             return_items.append(np.stack(keypoints, 0))
 
-        return return_items
+        return tuple(return_items)
 
     def test_collate_fn(self, batch_samples, batch_info):
         imgs = [sample.pop('img') for sample in batch_samples]
