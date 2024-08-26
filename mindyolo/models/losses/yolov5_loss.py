@@ -130,6 +130,8 @@ class YOLOv5Loss(nn.Cell):
         bs = p[0].shape[0]  # batch size
 
         loss = lbox + lobj + lcls
+        # Make sure lcls is mindspore tensor
+        lcls = get_tensor(lcls)
         loss_item = ops.stop_gradient(ops.stack((loss, lbox, lobj, lcls)))
         return loss * bs, loss_item
 
