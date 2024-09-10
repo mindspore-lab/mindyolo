@@ -1,0 +1,16 @@
+__BASE__: [
+  '../../configs/yolov8/yolov8n.yaml',
+]
+
+data:
+  dataset_name: seed
+  train_set: ./seed/train.txt
+  val_set: ./seed/val.txt
+  nc: 1
+  # class names
+  names: [ 'seed' ]
+
+optimizer:
+  lr_init: 0.001  # initial learning rate
+  warmup_bias_lr: 0.01 # warmup initial bias lr
+  min_warmup_step: 10 # minmum warmup step

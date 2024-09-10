@@ -82,4 +82,3 @@ for img_name in os.listdir(os.path.join(images_path, split)):
     # 为每个分区保存JSON文件
 with open(f"./annotations/instances_val2017.json", "w") as json_file:
     json.dump(coco_format, json_file, indent=4)
-  

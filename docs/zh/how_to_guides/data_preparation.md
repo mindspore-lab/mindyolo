@@ -6,13 +6,13 @@
 ```
 └─ coco2017_yolo
     ├─ annotations
-        └─ instances_val2017.json
+    │    └─ instances_val2017.json
     ├─ images
-        ├─ train2017   # coco2017 原始图片
-        └─ val2017     # coco2017 原始图片
+    │    ├─ train2017   # coco2017 原始图片
+    │    └─ val2017     # coco2017 原始图片
     ├─ labels
-        ├─ train2017
-        └─ val2017
+    │    ├─ train2017
+    │    └─ val2017
     ├─ train2017.txt
     ├─ val2017.txt
     └─ test-dev2017.txt

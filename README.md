@@ -47,6 +47,10 @@ See [INSTALLATION](docs/en/installation.md) for details.
 
 See [GETTING STARTED](GETTING_STARTED.md) for details.
 
+## Custom dataset examples
+
+See [examples](examples)
+
 ## Notes
 
 ⚠️ The current version is based on the [static shape of GRAPH](https://mindspore.cn/docs/en/r2.0/note/static_graph_syntax_support.html). 
