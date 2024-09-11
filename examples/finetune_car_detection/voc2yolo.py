@@ -43,7 +43,7 @@ def xml2txt(xml, labels, name_list, img_path):
         fil_name = root.find('filename').text[:-4]
         if not os.path.exists(labels):  # 如果路径不存在则创建
             os.mkdir(labels)
-        out = open(labels + './' + fil_name + '.txt', 'w+')
+        out = open(labels + '/' + fil_name + '.txt', 'w+')
         for obj in root.iter('object'):
 
             x_min = float(obj.find('bndbox').find('xmin').text)
@@ -75,7 +75,7 @@ def xml2txt(xml, labels, name_list, img_path):
             # print(h)
 
             #class_dict = dict(zip(name_list, range(0, len(name_list))))
-            class_dict={'rider':0, 'pedestrian':1, 'trailer':2, 'train':3,'bus':4,'car':5,'truck':6,'traffic sign':7,'traffic light':8,'other person':9,'motorcycle':10,'bicycle':11}
+            class_dict = {name: i for i, name in enumerate(name_list)}
             class_name = obj.find('name').text
             if class_name not in name_list:
                 pass
