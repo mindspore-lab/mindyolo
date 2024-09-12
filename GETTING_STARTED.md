@@ -50,7 +50,7 @@ to understand their behavior. Some common arguments are:
 
 * To train a model on 8 NPUs/GPUs:
   ```
-  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
+  msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7_log python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
   ```
 
 * To train a model on 1 NPU/GPU/CPU:
@@ -64,7 +64,7 @@ to understand their behavior. Some common arguments are:
   ```
 * To evaluate a model's performance 8 NPUs/GPUs:
   ```
-  mpirun --allow-run-as-root -n 8 python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
+  msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7_log python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
   ```
 *Notes: (1) The default hyper-parameter is used for 8-card training, and some parameters need to be adjusted in the case of a single card. (2) The default device is Ascend, and you can modify it by specifying 'device_target' as Ascend/GPU/CPU, as these are currently supported.*
 * For more options, see `train/test.py -h`.
