@@ -50,7 +50,7 @@ python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_c
 * 在多卡NPU/GPU上进行分布式模型训练，以8卡为例:
 
   ```shell
-  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
+  msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7_log python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
   ```
 
 * 在单卡NPU/GPU/CPU上训练模型：
@@ -67,7 +67,7 @@ python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_c
 * 在多卡NPU/GPU上进行分布式评估模型的精度：
 
   ```shell
-  mpirun --allow-run-as-root -n 8 python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
+  msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7_log python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
   ```
   
 *注意：*

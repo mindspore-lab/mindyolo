@@ -42,7 +42,7 @@ __BASE__: [
 This part of the parameters is usually passed in from the command line. Examples are as follows:
 
   ```shell
-  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True --log_interval 50
+  msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7_log python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True --log_interval 50
   ```
 
 ## Dataset
