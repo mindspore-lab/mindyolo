@@ -114,7 +114,7 @@ optimizer:
 * 在多卡NPU/GPU上进行分布式模型训练，以8卡为例:
 
   ```shell
-  mpirun --allow-run-as-root -n 8 python train.py --config ./examples/finetune_SHWD/yolov7-tiny_shwd.yaml --is_parallel True
+  msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7-tiny_log python train.py --config ./examples/finetune_SHWD/yolov7-tiny_shwd.yaml --is_parallel True
   ```
 
 * 在单卡NPU/GPU/CPU上训练模型：
