@@ -48,27 +48,32 @@ to understand their behavior. Some common arguments are:
   ```
   </details>
 
-* To train a model on 8 NPUs/GPUs:
-  ```
-  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
-  ```
-
 * To train a model on 1 NPU/GPU/CPU:
   ```
   python train.py --config ./configs/yolov7/yolov7.yaml 
   ```
-
+* To train a model on 8 NPUs/GPUs:
+  ```
+  msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7_log python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
+  ```
 * To evaluate a model's performance on 1 NPU/GPU/CPU:
   ```
   python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt
   ```
 * To evaluate a model's performance 8 NPUs/GPUs:
   ```
-  mpirun --allow-run-as-root -n 8 python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
+  msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7_log python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
   ```
 *Notes: (1) The default hyper-parameter is used for 8-card training, and some parameters need to be adjusted in the case of a single card. (2) The default device is Ascend, and you can modify it by specifying 'device_target' as Ascend/GPU/CPU, as these are currently supported.*
 * For more options, see `train/test.py -h`.
 
+* Notice that if you are using `msrun` startup with 2 devices, please add `--bind_core=True` to improve performance. For example:
+```
+  msrun --bind_core=True --worker_num=2--local_worker_num=2 --master_port=8118 \
+        --log_dir=msrun_log --join=True --cluster_time_out=300 \
+        python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
+```
+> For more information, please refer to [here](https://www.mindspore.cn/tutorials/experts/en/r2.3.1/parallel/startup_method.html).
 
 ### Deployment
 

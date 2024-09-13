@@ -117,7 +117,7 @@ Since the SHWD training set only has about 6,000 images, the yolov7-tiny model w
 * Distributed model training on multi-card NPU/GPU, taking 8 cards as an example:
 
   ```shell
-  mpirun --allow-run-as-root -n 8 python train.py --config ./examples/finetune_SHWD/yolov7-tiny_shwd.yaml --is_parallel True
+  msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7-tiny_log python train.py --config ./examples/finetune_SHWD/yolov7-tiny_shwd.yaml --is_parallel True
   ```
 
 * Train the model on a single card NPU/GPU/CPU:

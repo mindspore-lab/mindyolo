@@ -71,7 +71,7 @@ MindYOLO支持yaml文件继承机制，因此新编写的配置文件只需要�
 也可以选择在终端用命令行进行训练：
 * 在多卡NPU/GPU上进行分布式模型训练，以8卡为例:
   ```shell
-  mpirun --allow-run-as-root -n 8 python train.py --config ./yolov7-tiny_ud.yaml --is_parallel True
+  msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7-tiny_log python train.py --config ./yolov7-tiny_ud.yaml --is_parallel True
   ```
 
 * 在单卡NPU/GPU/CPU上训练模型：
@@ -90,7 +90,7 @@ MindYOLO支持yaml文件继承机制，因此新编写的配置文件只需要�
 * 在多卡NPU/GPU上进行分布式评估模型的精度：
 
   ```shell
-  mpirun --allow-run-as-root -n 8 python test.py --config ./yolov7-tiny_ud.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
+  msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7-tiny_log python test.py --config ./yolov7-tiny_ud.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
   ```
 
   

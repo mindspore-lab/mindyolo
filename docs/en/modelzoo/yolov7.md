@@ -54,11 +54,11 @@ Please refer to the [QUICK START](../tutorials/quick_start.md) in MindYOLO for d
 It is easy to reproduce the reported results with the pre-defined training recipe. For distributed training on multiple Ascend 910 devices, please run
 ```shell
 # distributed training on multiple GPU/Ascend devices
-mpirun -n 8 python train.py --config ./configs/yolov7/yolov7.yaml --device_target Ascend --is_parallel True
+msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7_log python train.py --config ./configs/yolov7/yolov7.yaml --device_target Ascend --is_parallel True
 ```
-> If the script is executed by the root user, the `--allow-run-as-root` parameter must be added to `mpirun`.
 
-Similarly, you can train the model on multiple GPU devices with the above mpirun command.
+Similarly, you can train the model on multiple GPU devices with the above msrun command.
+**Note:** For more information about msrun configuration, please refer to [here](https://www.mindspore.cn/tutorials/experts/en/r2.3.1/parallel/msrun_launcher.html).
 
 For detailed illustration of all hyper-parameters, please refer to [config.py](https://github.com/mindspore-lab/mindyolo/blob/master/mindyolo/utils/config.py).
 
