@@ -68,6 +68,11 @@ mpirun -n 8 python train.py --config ./configs/yolov4/yolov4-silu.yaml --device_
 
 Similarly, you can train the model on multiple GPU devices with the above mpirun command.
 
+* Notice that if you are using `mpirun` startup with 2 devices, please add `--bind-to numa` to improve performance. For example:
+```
+  mpirun --allow-run-as-root -n 2 --bind-to numa python train.py --config ./configs/yolov4/yolov4-silu.yaml  --is_parallel True
+```
+
 For detailed illustration of all hyper-parameters, please refer to [config.py](https://github.com/mindspore-lab/mindyolo/blob/master/mindyolo/utils/config.py).
 
 #### Notes 

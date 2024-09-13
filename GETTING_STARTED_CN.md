@@ -44,26 +44,22 @@ python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_c
             # label files that are mentioned in the corresponding train/val2017.txt
   ```
   </details>
-
-* 在多卡NPU/GPU上进行分布式模型训练，以8卡为例:
-
-  ```shell
-  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
-  ```
-
 * 在单卡NPU/GPU/CPU上训练模型：
 
   ```shell
   python train.py --config ./configs/yolov7/yolov7.yaml 
   ```
+* 在多卡NPU/GPU上进行分布式模型训练，以8卡为例:
 
+  ```shell
+  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
+  ```
 * 在单卡NPU/GPU/CPU上评估模型的精度：
 
   ```shell
   python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt
   ```
 * 在多卡NPU/GPU上进行分布式评估模型的精度：
-
   ```shell
   mpirun --allow-run-as-root -n 8 python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
   ```
@@ -71,6 +67,11 @@ python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_c
 *注意：默认超参为8卡训练，单卡情况需调整部分参数。 默认设备为Ascend，您可以指定'device_target'的值为Ascend/GPU/CPU。*
 * 有关更多选项，请参阅 `train/test.py -h`.
 * 在云脑上进行训练，请在[这里](./tutorials/cloud/modelarts_CN.md)查看
+
+*注意：如果您在 2 个设备上使用`mpirun`指令启动，请添加`--bind-to numa`以提高性能。例如：
+```
+  mpirun --allow-run-as-root -n 2 --bind-to numa python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
+```
 
 ### 部署
 

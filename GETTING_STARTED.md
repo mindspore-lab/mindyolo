@@ -47,17 +47,14 @@ to understand their behavior. Some common arguments are:
             # label files that are mentioned in the corresponding train/val2017.txt
   ```
   </details>
-
-* To train a model on 8 NPUs/GPUs:
-  ```
-  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
-  ```
-
 * To train a model on 1 NPU/GPU/CPU:
   ```
   python train.py --config ./configs/yolov7/yolov7.yaml 
   ```
-
+* To train a model on 8 NPUs/GPUs:
+  ```
+  mpirun --allow-run-as-root -n 8 python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
+  ```
 * To evaluate a model's performance on 1 NPU/GPU/CPU:
   ```
   python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt
@@ -66,9 +63,14 @@ to understand their behavior. Some common arguments are:
   ```
   mpirun --allow-run-as-root -n 8 python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
   ```
+
 *Notes: (1) The default hyper-parameter is used for 8-card training, and some parameters need to be adjusted in the case of a single card. (2) The default device is Ascend, and you can modify it by specifying 'device_target' as Ascend/GPU/CPU, as these are currently supported.*
 * For more options, see `train/test.py -h`.
 
+* Notice that if you are using `mpirun` startup with 2 devices, please add `--bind-to numa` to improve performance. For example:
+```
+  mpirun --allow-run-as-root -n 2 --bind-to numa python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
+```
 
 ### Deployment
 
