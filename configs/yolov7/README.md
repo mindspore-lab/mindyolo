@@ -48,6 +48,11 @@ mpirun -n 8 python train.py --config ./configs/yolov7/yolov7.yaml --device_targe
 
 Similarly, you can train the model on multiple GPU devices with the above mpirun command.
 
+* Notice that if you are using `mpirun` startup with 2 devices, please add `--bind-to numa` to improve performance. For example:
+```
+  mpirun --allow-run-as-root -n 2 --bind-to numa python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
+```
+
 For detailed illustration of all hyper-parameters, please refer to [config.py](https://github.com/mindspore-lab/mindyolo/blob/master/mindyolo/utils/config.py).
 
 **Note:**  As the global batch size  (batch_size x num_devices) is an important hyper-parameter, it is recommended to keep the global batch size unchanged for reproduction or adjust the learning rate linearly to a new global batch size.
