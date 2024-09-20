@@ -188,6 +188,10 @@ def train(args):
     else:
         eval_dataset, eval_dataloader = None, None
 
+    # Scale loss hyps
+    args.loss.cls *= args.data.nc / 80
+    args.loss.obj *= (args.img_size / 640) ** 2
+    
     # Create Loss
     loss_fn = create_loss(
         **args.loss, anchors=args.network.get("anchors", 1), stride=args.network.stride, nc=args.data.nc
