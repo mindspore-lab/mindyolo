@@ -67,17 +67,10 @@ def get_parser_test(parents=None):
     )
     return parser
 
-def is_yolov7(args):
-    if "yolov7" not in args.config:
-        pass 
-    else:
-        ms.set_context(ascend_config={"precision_mode":"allow_fp32_to_fp16"})
 
 def set_default_test(args):
     # Set Context
     ms.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
-    # MaxPool2d does not support dtype=fp32, ops's bug. Needed to be updated when ops's demand is done.
-    is_yolov7(args)
     if args.ms_mode == 0:
         ms.set_context(jit_config={"jit_level": "O2"})
     if args.device_target == "Ascend":
