@@ -33,6 +33,9 @@ def get_parser_test(parents=None):
     parser.add_argument(
         "--ms_enable_graph_kernel", type=ast.literal_eval, default=False, help="use enable_graph_kernel or not"
     )
+    parser.add_argument(
+        "--precision_mode", type=str, default=None, help="set accuracy mode of network model"
+    )
     parser.add_argument("--weight", type=str, default="yolov7_300.ckpt", help="model.ckpt path(s)")
     parser.add_argument("--per_batch_size", type=int, default=32, help="size of each image batch")
     parser.add_argument("--img_size", type=int, default=640, help="inference size (pixels)")
@@ -71,6 +74,8 @@ def get_parser_test(parents=None):
 def set_default_test(args):
     # Set Context
     ms.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
+    if args.precision_mode is not None:
+        ms.set_context(ascend_config={"precision_mode":args.precision_mode})
     if args.ms_mode == 0:
         ms.set_context(jit_config={"jit_level": "O2"})
     if args.device_target == "Ascend":
