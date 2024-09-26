@@ -6,6 +6,7 @@ __BASE__: [
 per_batch_size: 16 # 16 * 8 = 128
 img_size: 640 # image sizes
 sync_bn: True
+precision_mode: 'allow_fp32_to_fp16'
 
 network:
   model_name: yolov7
