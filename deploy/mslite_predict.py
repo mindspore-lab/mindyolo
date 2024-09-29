@@ -1,16 +1,16 @@
-"""MindYolo predict Script. Support evaluation of one image file"""
+"""yolo prediction example script"""
 
 import argparse
 import ast
 import os
+import sys
 import time
-
 import cv2
 import numpy as np
 import yaml
 from datetime import datetime
 
-from mindspore import context, nn
+import mindspore_lite as mslite
 
 from mindyolo.data import COCO80_TO_COCO91_CLASS
 from mindyolo.utils import logger
@@ -21,29 +21,17 @@ from mindyolo.utils.utils import draw_result, set_seed
 
 def get_parser_infer(parents=None):
     parser = argparse.ArgumentParser(description="Infer", parents=[parents] if parents else [])
-    parser.add_argument("--task", type=str, default="detect", choices=["detect"])
-    parser.add_argument("--device_target", type=str, default="Ascend", help="device target, Ascend/GPU/CPU")
-    parser.add_argument("--ms_mode", type=int, default=0, help="train mode, graph/pynative")
-    parser.add_argument("--ms_amp_level", type=str, default="O0", help="amp level, O0/O1/O2")
-    parser.add_argument(
-        "--ms_enable_graph_kernel", type=ast.literal_eval, default=False, help="use enable_graph_kernel or not"
-    )
-    parser.add_argument("--weight", type=str, default="yolov7_300.ckpt", help="model.ckpt path(s)")
     parser.add_argument("--img_size", type=int, default=640, help="inference size (pixels)")
     parser.add_argument("--seed", type=int, default=2, help="set global seed")
-
-    parser.add_argument("--model_type", type=str, default="MindX", help="model type MindX/Lite/MindIR/ONNX")
-    parser.add_argument("--model_path", type=str, default="./models/yolov5s.om", help="model weight path")
-
-    parser.add_argument("--save_dir", type=str, default="./runs_infer", help="save dir")
-    parser.add_argument("--log_level", type=str, default="INFO", help="save dir")
+    parser.add_argument("--mindir_path", type=str, help="mindir path")
+    parser.add_argument("--result_folder", type=str, default="./log_result", help="predicted results folder")
+    parser.add_argument("--log_level", type=str, default="INFO", help="log level")
     parser.add_argument("--conf_thres", type=float, default=0.25, help="object confidence threshold")
     parser.add_argument("--iou_thres", type=float, default=0.65, help="IOU threshold for NMS")
     parser.add_argument(
         "--conf_free", type=ast.literal_eval, default=False, help="Whether the prediction result include conf"
     )
     parser.add_argument("--nms_time_limit", type=float, default=60.0, help="time limit for NMS")
-
     parser.add_argument("--image_path", type=str, help="path to image")
     parser.add_argument("--save_result", type=ast.literal_eval, default=True, help="whether save the inference result")
     parser.add_argument(
@@ -52,16 +40,7 @@ def get_parser_infer(parents=None):
 
     return parser
 
-
 def set_default_infer(args):
-    # Set Context
-    context.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
-    if args.device_target == "Ascend":
-        context.set_context(device_id=int(os.getenv("DEVICE_ID", 0)))
-    elif args.device_target == "GPU" and args.ms_enable_graph_kernel:
-        context.set_context(enable_graph_kernel=True)
-    args.rank, args.rank_size = 0, 1
-    # Set Data
     args.data.nc = 1 if args.single_cls else int(args.data.nc)  # number of classes
     args.data.names = ["item"] if args.single_cls and len(args.names) != 1 else args.data.names  # class names
     assert len(args.data.names) == args.data.nc, "%g names found for nc=%g dataset in %s" % (
@@ -70,18 +49,17 @@ def set_default_infer(args):
         args.config,
     )
     # Directories and Save run settings
-    args.save_dir = os.path.join(args.save_dir, datetime.now().strftime("%Y.%m.%d-%H:%M:%S"))
-    os.makedirs(args.save_dir, exist_ok=True)
-    if args.rank % args.rank_size == 0:
-        with open(os.path.join(args.save_dir, "cfg.yaml"), "w") as f:
-            yaml.dump(vars(args), f, sort_keys=False)
+    args.result_folder = os.path.join(args.result_folder, datetime.now().strftime("%Y.%m.%d-%H:%M:%S"))
+    os.makedirs(args.result_folder, exist_ok=True)
+    with open(os.path.join(args.result_folder, "cfg.yaml"), "w") as f:
+        yaml.dump(vars(args), f, sort_keys=False)
     # Set Logger
-    logger.setup_logging(logger_name="MindYOLO", log_level="INFO", rank_id=args.rank, device_per_servers=args.rank_size)
-    logger.setup_logging_file(log_dir=os.path.join(args.save_dir, "logs"))
+    logger.setup_logging(logger_name="MindYOLO", log_level="INFO")
+    logger.setup_logging_file(log_dir=os.path.join(args.result_folder, "logs"))
 
 
 def detect(
-    network: nn.Cell,
+    mindir_path: str,
     img: np.ndarray,
     conf_thres: float = 0.25,
     iou_thres: float = 0.65,
@@ -113,10 +91,23 @@ def detect(
     img = np.ascontiguousarray(img)
     # Run infer
     _t = time.time()
-    out = network.infer(img)[0]  # inference and training outputs
+    # init mslite model to predict
+    context = mslite.Context()
+    context.target = ["Ascend"]
+    model = mslite.Model()
+    logger.info('mslite model init...')
+    model.build_from_file(mindir_path,mslite.ModelType.MINDIR,context)
+    inputs = model.get_inputs()
+    model.resize(inputs,[list(img.shape)])
+    inputs[0].set_data_from_numpy(img)
+    
+    outputs = model.predict(inputs)
+    outputs = [output.get_data_to_numpy().copy() for output in outputs]
+    out = outputs[0]
     infer_times = time.time() - _t
 
     # Run NMS
+    logger.info('perform nms...')
     t = time.time()
     out = non_max_suppression(
         out,
@@ -159,58 +150,35 @@ def detect(
 
     return result_dict
 
-
 def infer(args):
     # Init
     set_seed(args.seed)
     set_default_infer(args)
 
-    # Create Network
-    if args.model_type == "MindX":
-        from infer_engine.mindx import MindXModel
-        network = MindXModel(args.model_path)
-    elif args.model_type == "Lite":
-        from infer_engine.lite import LiteModel
-        network = LiteModel(args.model_path)
-    elif args.model_type == "MindIR":
-        from infer_engine.mindir import MindIRModel
-        network = MindIRModel(args.model_path)
-    elif args.model_type == "ONNX":
-        from infer_engine.onnxruntime import ONNXRuntimeModel
-        network = ONNXRuntimeModel(args.model_path)
-    else:
-        raise TypeError("the type only supposed MindX/Lite/MindIR/ONNX")
-
     # Load Image
     if isinstance(args.image_path, str) and os.path.isfile(args.image_path):
-        import cv2
-
         img = cv2.imread(args.image_path)
     else:
         raise ValueError("Detect: input image file not available.")
-
-    # Detect
     is_coco_dataset = "coco" in args.data.dataset_name
-    if args.task == "detect":
-        result_dict = detect(
-            network=network,
-            img=img,
-            conf_thres=args.conf_thres,
-            iou_thres=args.iou_thres,
-            conf_free=args.conf_free,
-            nms_time_limit=args.nms_time_limit,
-            img_size=args.img_size,
-            is_coco_dataset=is_coco_dataset,
+    # Detect
+    result_dict = detect(
+        mindir_path=args.mindir_path,
+        img=img,
+        conf_thres=args.conf_thres,
+        iou_thres=args.iou_thres,
+        conf_free=args.conf_free,
+        nms_time_limit=args.nms_time_limit,
+        img_size=args.img_size,
+        is_coco_dataset=is_coco_dataset,
         )
-        if args.save_result:
-            save_path = os.path.join(args.save_dir, "detect_results")
-            draw_result(args.image_path, result_dict, args.data.names, save_path=save_path)
-    else:
+    if args.save_result:
+        save_path = os.path.join(args.result_folder, "detect_results")
+        draw_result(args.image_path, result_dict, args.data.names, save_path=save_path)
+    else:        
         raise NotImplementedError
 
-    logger.info("Infer completed.")
-
-
+    logger.info("predict completed.")
 if __name__ == "__main__":
     parser = get_parser_infer()
     args = parse_args(parser)

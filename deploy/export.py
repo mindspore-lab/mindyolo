@@ -20,7 +20,6 @@ def get_parser_export(parents=None):
     parser = argparse.ArgumentParser(description="Export", parents=[parents] if parents else [])
     parser.add_argument("--device_target", type=str, default="Ascend", help="device target, Ascend/GPU/CPU")
     parser.add_argument("--ms_mode", type=int, default=0, help="train mode, graph/pynative")
-    parser.add_argument("--ms_amp_level", type=str, default="O0", help="amp level, O0/O1/O2")
     parser.add_argument("--weight", type=str, default="yolov7_300.ckpt", help="model.ckpt path(s)")
     parser.add_argument("--img_size", type=int, default=640, help="inference size (pixels)")
     parser.add_argument("--per_batch_size", type=int, default=1, help="size of each image batch")
@@ -68,15 +67,12 @@ def export_weight(args):
         checkpoint_path=args.weight,
     )
     network.set_train(False)
-    ms.amp.auto_mixed_precision(network, amp_level=args.ms_amp_level)
-
     # Export
     input_arr = Tensor(np.ones([args.per_batch_size, 3, args.img_size, args.img_size]), ms.float32)
     file_name = os.path.basename(args.config)[:-5]  # delete ".yaml"
     export(network, input_arr, file_name=file_name, file_format=args.file_format)
 
     logger.info("Export completed.")
-
 
 if __name__ == "__main__":
     parser = get_parser_export()
