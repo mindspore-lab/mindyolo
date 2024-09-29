@@ -9,9 +9,9 @@
 
 ### 2 安装MindSpore Lite
    MindSpore Lite官方页面请查阅：[MindSpore Lite](https://mindspore.cn/lite) <br>
-   - 下载tar.gz包并解压配置环境变量
+   - 下载tar.gz包并解压，同时配置环境变量LITE_HOME,LD_LIBRARY_PATH,PATH
    ```shell
-   tar -zxvf mmindspore_lite-[xxx].tar.gz
+   tar -zxvf mindspore_lite-[xxx].tar.gz
    export LITE_HOME=/[path_to_mindspore_lite_xxx]
    export LD_LIBRARY_PATH=$LITE_HOME/runtime/lib:$LITE_HOME/tools/converter/lib:$LD_LIBRARY_PATH
    export PATH=$LITE_HOME/tools/converter/converter:$LITE_HOME/tools/benchmark:$PATH
@@ -19,12 +19,12 @@
    LITE_HOME为tar.gz解压出的文件夹路径，请设置绝对路径
    - 安装whl包
    ```shell
-   pip install mindspore_lite-[xxx]whl
+   pip install mindspore_lite-[xxx].whl
    ```
  - 验证过的mindspore lite版本为：2.2.14/2.3.0/2.3.1
  - 请安装相对应的ascend driver/firmware/ascend-toolkit
 ### 3 模型转换 ckpt -> mindir（可选）
-   训练完成的模型ckpt权重转为mindir，此步骤需在Ascend910上进行。
+   训练完成的模型ckpt权重转为mindir
    例如
    ```shell
    python ./deploy/export.py --config ./configs/yolov5/yolov5n.yaml --weight yolov5.ckpt --file_format MINDIR --device_target Ascend
@@ -43,7 +43,7 @@
    ```
   yolov5n.mindir 是已经从ckpt转好的mindir文件。可从mindir支持列表中下载
 
-### mindir支持列表
+## mindir支持列表
 
 | model  | scale | img size | dataset | map| recipe | mindir|
 |--------|:-----:|-----|--------|--------|--------|-------|
