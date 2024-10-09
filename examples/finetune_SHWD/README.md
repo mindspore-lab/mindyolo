@@ -2,6 +2,13 @@
 
 本文以安全帽佩戴检测数据集(SHWD)为例，介绍自定义数据集在MindYOLO上进行finetune的主要流程。
 
+#### 版本信息
+* os: Linux EulerOS 2.0
+* ascend driver: 23.0.6.b010
+* ascend firmware: 7.1.0.11.220
+* cann: 7.5.T7.0.B053
+* mindspore: 2.3.1
+
 #### 数据集格式转换
 
 [SHWD数据集](https://github.com/njvisionpower/Safety-Helmet-Wearing-Dataset/tree/master)采用voc格式的数据标注，其文件目录如下所示：
@@ -122,7 +129,7 @@ optimizer:
   ```shell
   python train.py --config ./examples/finetune_SHWD/yolov7-tiny_shwd.yaml 
   ```
-*注意：直接用yolov7-tiny默认参数在SHWD数据集上训练，可取得AP50 87.0的精度。将lr_init参数由0.01改为0.001，即可实现ap50为89.2的精度结果。*
+*注意：直接用yolov7-tiny默认参数在SHWD数据集上训练，可取得AP50 87.0的精度。将lr_init参数由0.01改为0.001，即可实现ap50为90.5的精度结果。*
 
 #### 可视化推理
 使用/demo/predict.py即可用训练好的模型进行可视化推理，运行方式如下：
