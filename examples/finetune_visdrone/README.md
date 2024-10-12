@@ -1,5 +1,17 @@
 # 基于MindYOLO的无人机航拍图像检测案例输出
 
+## 运行环境介绍
+
+本项目基于以下环境实现：
+
+* NVIDIA Tesla V100 32GB
+* Ubuntu 18.04.5 LTS
+* conda 4.10.3
+* CUDA 11.1
+* Python 3.7.11
+* mindspore 2.0.0
+
+
 ## 数据集介绍
 
 [VisDrone-Dataset](https://github.com/VisDrone/VisDrone-Dataset)是2019年由天津大学发布的一项无人机识别挑战中的数据集，其共有5个子任务，包括图像目标检测、视频目标检测、单目标跟踪、多目标跟踪、人群计数等。
