@@ -150,6 +150,12 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
             DWConvNormAct,
             DWBottleneck,
             DWC3,
+            ELAN1,
+            RepNCSPELAN4,
+            SPPELAN,
+            SCDown,
+            PSA,
+            C2fCIB,
         ):
             c1, c2 = ch[f], args[0]
             if max_channels:
@@ -172,7 +178,7 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
                 DWC3,
             ):
                 kwargs["sync_bn"] = sync_bn
-            if m in (DownC, SPPCSPC, C3, C2f, DWC3):
+            if m in (DownC, SPPCSPC, C3, C2f, DWC3, C2fCIB):
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m in (nn.BatchNorm2d, nn.SyncBatchNorm):
@@ -185,7 +191,7 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
             args.append([ch[x] for x in f])
             if isinstance(args[1], int):  # number of anchors
                 args[1] = [list(range(args[1] * 2))] * len(f)
-        elif m in (YOLOv8Head, YOLOv8SegHead, YOLOXHead):  # head of anchor free
+        elif m in (YOLOv10Head, YOLOv9Head, YOLOv8Head, YOLOv8SegHead, YOLOXHead):  # head of anchor free
             args.append([ch[x] for x in f])
             if m in (YOLOv8SegHead,):
                 args[3] = math.ceil(min(args[3], max_channels) * gw / 8) * 8
