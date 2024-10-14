@@ -67,14 +67,14 @@ class C2f(nn.Cell):
         self, c1, c2, n=1, shortcut=False, g=1, e=0.5, momentum=0.97, eps=1e-3, sync_bn=False
     ):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
-        _c = int(c2 * e)  # hidden channels
-        self.cv1 = ConvNormAct(c1, 2 * _c, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
+        self.c = int(c2 * e)  # hidden channels
+        self.cv1 = ConvNormAct(c1, 2 * self.c, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
         self.cv2 = ConvNormAct(
-            (2 + n) * _c, c2, 1, momentum=momentum, eps=eps, sync_bn=sync_bn
+            (2 + n) * self.c, c2, 1, momentum=momentum, eps=eps, sync_bn=sync_bn
         )  # optional act=FReLU(c2)
         self.m = nn.CellList(
             [
-                Bottleneck(_c, _c, shortcut, k=(3, 3), g=(1, g), e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn)
+                Bottleneck(self.c, self.c, shortcut, k=(3, 3), g=(1, g), e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn)
                 for _ in range(n)
             ]
         )
@@ -136,3 +136,110 @@ class DWC3(nn.Cell):
         c5 = self.conv3(c4)
 
         return c5
+    
+class SCDown(nn.Cell):
+    def __init__(self, c1, c2, k, s):
+        super().__init__()
+        self.cv1 = ConvNormAct(c1, c2, k=1, s=1)
+        self.cv2 = ConvNormAct(c2, c2, k=k, s=s, g=c2, act=False)
+    
+    def construct(self, x):
+        return self.cv2(self.cv1(x))
+
+class Attention(nn.Cell):
+    def __init__(self, dim, num_heads=8, attn_ratio=0.5):
+        super().__init__()
+        self.num_heads = num_heads
+        self.head_dim = dim // num_heads
+        self.key_dim = int(self.head_dim * attn_ratio)
+        self.scale = self.key_dim ** -0.5
+        nh_kd = self.key_dim * num_heads
+        h = dim + nh_kd * 2
+        self.qkv = ConvNormAct(c1=dim, c2=h, k=1, act=False)
+        self.proj = ConvNormAct(c1=dim, c2=dim, k=1, act=False)
+        self.pe = ConvNormAct(c1=dim, c2=dim, k=3, s=1, g=dim, act=False)
+
+    def construct(self, x):
+        B, C, H, W = x.shape
+        N = H * W
+        qkv = self.qkv(x)
+        q, k, v = qkv.view(B, self.num_heads, self.key_dim*2 + self.head_dim, N).split([self.key_dim, self.key_dim, self.head_dim], axis=2)
+        
+        attn = (
+            (ops.transpose(q, (0, 1, 3, 2)) @ k) * self.scale
+        )
+        attn = ops.softmax(attn)
+        x = (v @ ops.transpose(attn, (0, 1, 3, 2))).view(B, C, H, W) + self.pe(v.reshape(B, C, H, W))
+        x = self.proj(x)
+        return x
+    
+class PSA(nn.Cell):
+    def __init__(self, c1, c2, e=0.5):
+        super().__init__()
+        assert(c1 == c2)
+        self.c = int(c1 * e)
+        self.cv1 = ConvNormAct(c1, 2 * self.c, 1, 1)
+        self.cv2 = ConvNormAct(2 * self.c, c1, 1)
+
+        self.attn = Attention(self.c, attn_ratio=0.5, num_heads=self.c // 64)
+        self.ffn = nn.SequentialCell(
+            [
+                ConvNormAct(self.c, self.c*2, 1),
+                ConvNormAct(self.c*2, self.c, 1, act=False)
+            ]
+        )
+    
+    def construct(self, x):
+        a, b = self.cv1(x).split((self.c, self.c), axis=1)
+        b = b + self.attn(b)
+        b = b + self.ffn(b)
+        return self.cv2(ops.concat((a, b), 1))
+
+class RepVGGDW(nn.Cell):
+    def __init__(self, ed):
+        super().__init__()
+        self.conv = ConvNormAct(ed, ed, k=7, s=1, p=3, g=ed, act=False)
+        self.conv1 = ConvNormAct(ed, ed, k=3, s=1, p=1, g=ed, act=False)
+        self.dim = ed
+        self.act = nn.SiLU()
+    
+    def construct(self, x):
+        return self.act(self.conv(x) + self.conv1(x))
+
+class CIB(nn.Cell):
+    # Standard bottleneck
+    def __init__(
+        self, c1, c2, shortcut=True, e=0.5, lk=False, act=True, momentum=0.97, eps=1e-3, sync_bn=False
+    ):  # ch_in, ch_out, shortcut, kernels, groups, expand
+        super().__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = nn.SequentialCell(
+            [
+                ConvNormAct(c1, c1, 3, g=c1, act=act, momentum=momentum, eps=eps, sync_bn=sync_bn),
+                ConvNormAct(c1, 2 * c_, 1, act=act, momentum=momentum, eps=eps, sync_bn=sync_bn),
+                ConvNormAct(2 * c_, 2 * c_, 3, g=2 * c_, act=act, momentum=momentum, eps=eps, sync_bn=sync_bn) if not lk else RepVGGDW(2 * c_),
+                ConvNormAct(2 * c_, c2, 1, act=act, momentum=momentum, eps=eps, sync_bn=sync_bn),
+                ConvNormAct(c2, c2, 3, g=c2, act=act, momentum=momentum, eps=eps, sync_bn=sync_bn),
+            ]
+        )
+        self.add = shortcut and c1 == c2
+    
+    def construct(self, x):
+        if self.add:
+            out = x + self.cv1(x)
+        else:
+            out = self.cv1(x)
+        return out
+
+class C2fCIB(C2f):
+    # CSP Bottleneck with 2 convolutions
+    def __init__(
+        self, c1, c2, n=1, shortcut=False, lk=False, g=1, e=0.5, momentum=0.97, eps=1e-3, sync_bn=False
+    ):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super().__init__(c1, c2, n, shortcut, g, e, momentum, eps, sync_bn)
+        self.m = nn.CellList(
+            [
+                CIB(self.c, self.c, shortcut, e=1.0, lk=lk, momentum=momentum, eps=eps, sync_bn=sync_bn)
+                for _ in range(n)
+            ]
+        )

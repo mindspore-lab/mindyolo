@@ -56,7 +56,7 @@ class Albumentations:
 
             sample['img'] = new['image']
             sample['bboxes'] = np.array(new['bboxes'])
-            sample['cls'] = np.array(new['class_labels'])
+            sample['cls'] = np.array(new['class_labels']).reshape(-1, 1)
             sample['bbox_format'] = "xywhn"
 
         return sample

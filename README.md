@@ -30,8 +30,8 @@ The following is the corresponding `mindyolo` versions and supported `mindspore`
 See [Benchmark Results](benchmark_results.md).
 
 ## supported model list
-- [ ] YOLOv10 (welcome to contribute)
-- [ ] YOLOv9 (welcome to contribute)
+- [x] [YOLOv10](configs/yolov10)
+- [x] [YOLOv9](configs/yolov9)
 - [x] [YOLOv8](configs/yolov8)
 - [x] [YOLOv7](configs/yolov7)
 - [x] [YOLOX](configs/yolox)
