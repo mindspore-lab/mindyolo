@@ -49,7 +49,7 @@ class ConvNormAct(nn.Cell):
             self.bn = nn.SyncBatchNorm(c2, momentum=momentum, eps=eps)
         else:
             self.bn = nn.BatchNorm2d(c2, momentum=momentum, eps=eps)
-        self.act = nn.SiLU() if act is True else (act if isinstance(act, nn.Cell) else Identity)
+        self.act = nn.SiLU() if act is True else (act if isinstance(act, nn.Cell) else Identity())
 
     def construct(self, x):
         return self.act(self.bn(self.conv(x)))
@@ -96,7 +96,7 @@ class RepConv(nn.Cell):
 
         padding_11 = autopad(k, p) - k // 2
 
-        self.act = nn.SiLU() if act is True else (act if isinstance(act, nn.Cell) else Identity)
+        self.act = nn.SiLU() if act is True else (act if isinstance(act, nn.Cell) else Identity())
 
         if sync_bn:
             BatchNorm = nn.SyncBatchNorm

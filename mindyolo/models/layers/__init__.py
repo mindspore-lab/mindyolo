@@ -34,4 +34,7 @@ __all__ = [
     "SPPF",
     "Upsample",
     "Residualblock",
+    "SCDown",
+    "PSA",
+    "C2fCIB",
 ]

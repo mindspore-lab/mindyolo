@@ -14,7 +14,7 @@ __all__ = ["YOLOv8Loss", "YOLOv8SegLoss"]
 
 @register_model
 class YOLOv8Loss(nn.Cell):
-    def __init__(self, box, cls, dfl, stride, nc, reg_max=16, **kwargs):
+    def __init__(self, box, cls, dfl, stride, nc, reg_max=16, tal_topk=10, **kwargs):
         super(YOLOv8Loss, self).__init__()
 
         self.bce = nn.BCEWithLogitsLoss(reduction="none")
@@ -27,7 +27,7 @@ class YOLOv8Loss(nn.Cell):
         self.reg_max = reg_max
 
         self.use_dfl = reg_max > 1
-        self.assigner = TaskAlignedAssigner(topk=10, num_classes=self.nc, alpha=0.5, beta=6.0)
+        self.assigner = TaskAlignedAssigner(topk=tal_topk, num_classes=self.nc, alpha=0.5, beta=6.0)
         self.bbox_loss = BboxLoss(reg_max, use_dfl=self.use_dfl)
         self.proj = mnp.arange(reg_max)
 
