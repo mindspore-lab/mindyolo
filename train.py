@@ -30,6 +30,7 @@ def get_parser_train(parents=None):
     parser.add_argument("--ms_amp_level", type=str, default="O0", help="amp level, O0/O1/O2/O3")
     parser.add_argument("--keep_loss_fp32", type=ast.literal_eval, default=True,
                         help="Whether to maintain loss using fp32/O0-level calculation")
+    parser.add_argument("--anchor_base", type=ast.literal_eval, default=True, help="Anchor-base")
     parser.add_argument("--ms_loss_scaler", type=str, default="static", help="train loss scaler, static/dynamic/none")
     parser.add_argument("--ms_loss_scaler_value", type=float, default=1024.0, help="static loss scale value")
     parser.add_argument("--ms_jit", type=ast.literal_eval, default=True, help="use jit or not")
@@ -189,8 +190,11 @@ def train(args):
         eval_dataset, eval_dataloader = None, None
 
     # Scale loss hyps
-    args.loss.cls *= args.data.nc / 80
-    args.loss.obj *= (args.img_size / 640) ** 2
+    nl = network.model.model[-1].nl
+    args.loss.box *= 3 / nl  # scale to layers
+    args.loss.cls *= args.data.nc / 80 * 3 / nl  # scale to classes and layers
+    if args.anchor_base:
+        args.loss.obj *= (args.img_size / 640) ** 2 * 3 / nl  # scale to image size and layers
     
     # Create Loss
     loss_fn = create_loss(

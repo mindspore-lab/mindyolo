@@ -4,6 +4,7 @@ img_size: 640
 iou_thres: 0.7
 conf_free: True
 sync_bn: True
+anchor_base: False
 opencv_threads_num: 0  # opencv: disable threading optimizations
 
 network:
