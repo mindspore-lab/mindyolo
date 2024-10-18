@@ -55,8 +55,8 @@ class Albumentations:
             new = self.transform(image=im, bboxes=bboxes, class_labels=cls)  # transformed
 
             sample['img'] = new['image']
-            sample['bboxes'] = np.array(new['bboxes']).reshape(-1, 1)
-            sample['cls'] = np.array(new['class_labels'])
+            sample['bboxes'] = np.array(new['bboxes'])
+            sample['cls'] = np.array(new['class_labels']).reshape(-1, 1)
             sample['bbox_format'] = "xywhn"
 
         return sample
