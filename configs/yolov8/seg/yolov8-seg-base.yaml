@@ -4,6 +4,7 @@ img_size: 640
 conf_thres: 0.001
 iou_thres: 0.7
 conf_free: True
+anchor_base: False
 sync_bn: True
 clip_grad: True
 clip_grad_value: 10.0
