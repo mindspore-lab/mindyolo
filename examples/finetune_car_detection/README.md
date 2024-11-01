@@ -1,5 +1,11 @@
 # 基于MindYOLO的车辆检测案例输出
 
+Requirements
+
+| mindspore | ascend driver | firmware | cann toolkit/kernel
+| :---: | :---: | :---: | :---:
+| 2.2.10 | 23.0.2         |  7.1.0.4.220   | 7.0.0.beta1
+
 ## 数据集介绍
 本次实验使用了BDD100K和UA-DETRAC两个数据集，需要进行相应的格式转换和数据集整合。
 
