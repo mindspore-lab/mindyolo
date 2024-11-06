@@ -9,34 +9,11 @@ YOLOv7 surpasses all known object detectors in both speed and accuracy in the ra
 <img src="https://raw.githubusercontent.com/zhanghuiyao/pics/main/mindyolo1680834261686.jpg"/>
 </div>
 
-## Results
+## Requirements
 
-<details open markdown>
-<summary><b>performance tested on Ascend 910(8p) with graph mode</b></summary>
-
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---: |                :---:                         |        :---:       |
-| YOLOv7 | Tiny               |  16 * 8   |    640    | MS COCO 2017 |    37.5     | 6.2M   | [yaml](./yolov7-tiny.yaml)    | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7-tiny_300e_mAP375-d8972c94.ckpt)              |
-| YOLOv7 | L                  |  16 * 8   |    640    | MS COCO 2017 |    50.8     | 36.9M  | [yaml](./yolov7.yaml)         | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7_300e_mAP508-734ac919.ckpt)                   |
-| YOLOv7 | X                  |  12 * 8   |    640    | MS COCO 2017 |    52.4     | 71.3M  | [yaml](./yolov7-x.yaml)       | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7-x_300e_mAP524-e2f58741.ckpt)                 |
-</details>
-
-<details open markdown>
-<summary><b>performance tested on Ascend 910*(8p)</b></summary>
-
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | ms/step | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---:  |  :---: |                :---:                         |        :---:       |
-| YOLOv7 | Tiny               |  16 * 8   |    640    | MS COCO 2017 |     37.5    | 496.21  | 6.2M   | [yaml](./yolov7-tiny.yaml)    | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov7/yolov7-tiny_300e_mAP375-1d2ddf4b-910v2.ckpt)              |
-</details>
-
-<br>
-
-#### Notes
-
-- Context: Training context denoted as {device}x{pieces}-{MS mode}, where mindspore mode can be G - graph mode or F - pynative mode with ms function. For example, D910x8-G is for training on 8 pieces of Ascend 910 NPU using graph mode.
-- Box mAP: Accuracy reported on the validation set.
-- We refer to the official [YOLOV7](https://github.com/WongKinYiu/yolov7) to reproduce the P5 series model, and the differences are as follows:
-  1. We use 8x NPU(Ascend910) for training, and the single-NPU batch size for tiny/l/x is 16/16/12. This is different from the official code.
+| mindspore | ascend driver | firmware     | cann toolkit/kernel |
+| :-------: | :-----------: | :----------: |:-------------------:|
+| 2.3.1     | 24.1.RC2      | 7.3.0.1.231  |   8.0.RC2.beta1     |
 
 ## Quick Start
 
@@ -45,6 +22,7 @@ Please refer to the [GETTING_STARTED](https://github.com/mindspore-lab/mindyolo/
 ### Training
 
 <details open>
+<summary><b>View More</b></summary>
 
 #### - Distributed Training
 
@@ -80,9 +58,31 @@ To validate the accuracy of the trained model, you can use `test.py` and parse t
 python test.py --config ./configs/yolov7/yolov7.yaml --device_target Ascend --weight /PATH/TO/WEIGHT.ckpt
 ```
 
-### Deployment
+## Performance
 
-See [here](../../deploy/README.md).
+Experiments are tested on Ascend 910* with mindspore 2.3.1 graph mode.
+
+|  model name  |  scale  | cards  | batch size | resolution |  jit level  | graph compile | ms/step | img/s  |  map  |            recipe             |                                                             weight                                                            |
+|  :--------:  |  :---:  |  :---: |   :---:    |   :---:    |    :---:    |     :---:     |  :---:  |  :---: |:-----:|:-----------------------------:|:-----------------------------------------------------------------------------------------------------------------------------:|
+|    YOLOv7    |   Tiny  |    8   |    16      |  640x640   |     O2      |    363.74s    |  352.92 | 362.69 | 37.5% | [yaml](./yolov7-tiny.yaml)    | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov7/yolov7-tiny_300e_mAP375-1d2ddf4b-910v2.ckpt)         |
+
+
+Experiments are tested on Ascend 910 with mindspore 2.3.1 graph mode.
+
+|  model name  |  scale  | cards  | batch size | resolution |  jit level  | graph compile | ms/step | img/s  |  map  |           recipe               |                                                 weight                                                  |
+|  :--------:  |  :---:  |  :---: |   :---:    |   :---:    |    :---:    |     :---:     |  :---:  |  :---: |:-----:|           :---:                |:-------------------------------------------------------------------------------------------------------:|
+|    YOLOv7    |   Tiny  |    8   |    16      |  640x640   |     O2      |    232.63s    |  472.37 | 270.97 | 37.5% |   [yaml](./yolov7-tiny.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7-tiny_300e_mAP375-d8972c94.ckpt) |
+|    YOLOv7    |    L    |    8   |    16      |  640x640   |     O2      |    290.93s    |  678.07 | 188.77 | 50.8% |   [yaml](./yolov7.yaml)        |   [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7_300e_mAP508-734ac919.ckpt)    |
+|    YOLOv7    |    X    |    8   |    12      |  640x640   |     O2      |    404.77s    |  636.36 | 150.86 | 52.4% |   [yaml](./yolov7-x.yaml)      |  [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7-x_300e_mAP524-e2f58741.ckpt)   |
+
+
+<br>
+
+### Notes
+
+- map: Accuracy reported on the validation set.
+- We refer to the official [YOLOV7](https://github.com/WongKinYiu/yolov7) to reproduce the P5 series model, and the differences are as follows:
+  The single-device batch size for tiny/l/x is 16/16/12. This is different from the official codes.
 
 ## References
 
