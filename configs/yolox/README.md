@@ -11,23 +11,23 @@ YOLOX is a new high-performance detector with some experienced improvements to Y
 <details open markdown>
 <summary><b>performance tested on Ascend 910(8p) with graph mode</b></summary>
 
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---: |                :---:                         |        :---:       |
-| YOLOX  | N                  |   8 * 8   |    416    | MS COCO 2017 |    24.1     | 0.9M   | [yaml](./yolox-nano.yaml)      | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-n_300e_map241-ec9815e3.ckpt)                  |
-| YOLOX  | Tiny               |   8 * 8   |    416    | MS COCO 2017 |    33.3     | 5.1M   | [yaml](./yolox-tiny.yaml)      | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-tiny_300e_map333-e5ae3a2e.ckpt)               |
-| YOLOX  | S                  |   8 * 8   |    640    | MS COCO 2017 |    40.7     | 9.0M   | [yaml](./yolox-s.yaml)         | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-s_300e_map407-0983e07f.ckpt)                  |
-| YOLOX  | M                  |   8 * 8   |    640    | MS COCO 2017 |    46.7     | 25.3M  | [yaml](./yolox-m.yaml)         | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-m_300e_map467-1db321ee.ckpt)                  |
-| YOLOX  | L                  |   8 * 8   |    640    | MS COCO 2017 |    49.2     | 54.2M  | [yaml](./yolox-l.yaml)         | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-l_300e_map492-52a4ab80.ckpt)                  |
-| YOLOX  | X                  |   8 * 8   |    640    | MS COCO 2017 |    51.6     | 99.1M  | [yaml](./yolox-x.yaml)         | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-x_300e_map516-52216d90.ckpt)                  |
-| YOLOX  | Darknet53          |   8 * 8   |    640    | MS COCO 2017 |    47.7     | 63.7M  | [yaml](./yolox-darknet53.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-darknet53_300e_map477-b5fcaba9.ckpt)          |
+|  Model Name  |  Scale  | Cards  | BatchSize | ImageSize |  jit_level  | graph compile | Box mAP (%) | Params |            Recipe                 | Weight                                                                                                             |
+|  :--------:  |  :---:  |  :---: |   :---:   |   :---:   |    :---:    |     :---:     |    :---:    |  :---: |            :---:                   |        :---:       |
+|    YOLOX     |    N    |    8   |     8     |    416    |     O2      |    3~5 mins     |    24.1     |  0.9M  |   [yaml](./yolox-nano.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-n_300e_map241-ec9815e3.ckpt)                  |
+|    YOLOX     |   Tiny  |    8   |     8     |    416    |     O2      |    3~5 mins     |    33.3     |  5.1M  |   [yaml](./yolox-tiny.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-tiny_300e_map333-e5ae3a2e.ckpt)               |
+|    YOLOX     |    S    |    8   |     8     |    640    |     O2      |    3~5 mins     |    40.7     |  9.0M  |   [yaml](./yolox-s.yaml)           | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-s_300e_map407-0983e07f.ckpt)                  |
+|    YOLOX     |    M    |    8   |     8     |    640    |     O2      |    3~5 mins     |    46.7     | 25.3M  |   [yaml](./yolox-m.yaml)           | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-m_300e_map467-1db321ee.ckpt)                  |
+|    YOLOX     |    L    |    8   |     8     |    640    |     O2      |    4~6 mins     |    49.2     | 54.2M  |   [yaml](./yolox-l.yaml)           | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-l_300e_map492-52a4ab80.ckpt)                  |
+|    YOLOX     |    X    |    8   |     8     |    640    |     O2      |    6~8 mins     |    51.6     | 99.1M  |   [yaml](./yolox-x.yaml)           | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-x_300e_map516-52216d90.ckpt)                  |
+|    YOLOX     |Darknet53|    8   |     8     |    640    |     O2      |    3~5 mins     |    47.7     | 63.7M  |   [yaml](./yolox-darknet53.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolox/yolox-darknet53_300e_map477-b5fcaba9.ckpt)          |
 </details>
 
 <details open markdown>
-<summary><b>performance tested on Ascend 910*(8p)</b></summary>
+<summary><b>performance tested on Ascend 910*(8p) with graph mode</b></summary>
 
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | ms/step | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---:  |  :---: |                :---:                         |        :---:       |
-| YOLOX  | S                  |   8 * 8   |    640    | MS COCO 2017 |     41.0    | 242.15  | 9.0M   | [yaml](./yolox-s.yaml)         | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolox/yolox-s_300e_map407-cebd0183-910v2.ckpt)                   |
+|  Model Name  |  Scale  | Cards  | BatchSize | ImageSize |  jit_level  | graph compile | Box mAP (%) | ms/step | Params |          Recipe              | Weight                                                                                                             |
+|  :--------:  |  :---:  |  :---: |   :---:   |   :---:   |    :---:    |     :---:     |    :---:    |  :---:  |  :---: |           :---:              |        :---:       |
+|    YOLOX     |    S    |    8   |     8     |    640    |     O2      |    3~5 mins     |     41.0    | 242.15  |  9.0M  |    [yaml](./yolox-s.yaml)    | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolox/yolox-s_300e_map407-cebd0183-910v2.ckpt)                   |
 </details>
 
 <br>
@@ -41,9 +41,16 @@ YOLOX is a new high-performance detector with some experienced improvements to Y
 
 Please refer to the [GETTING_STARTED](https://github.com/mindspore-lab/mindyolo/blob/master/GETTING_STARTED.md) in MindYOLO for details.
 
+### Requirements
+
+| mindspore | ascend driver | firmware     | cann toolkit/kernel
+| :-------: | :-----------: | :----------: | :----------------:
+| 2.3.1     | 24.1.RC2      | 7.3.0.1.231  | 8.0.RC2.beta1
+
 ### Training
 
 <details open>
+<summary><b>View More</b></summary>
 
 #### - Distributed Training
 
