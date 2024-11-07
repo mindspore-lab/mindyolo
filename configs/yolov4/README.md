@@ -28,18 +28,18 @@ AP (65.7% AP50) for the MS COCO dataset at a realtime speed of 65 FPS on Tesla V
 <details open markdown>
 <summary><b>performance tested on Ascend 910(8p) with graph mode</b></summary>
 
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---: |                :---:                         |        :---:       |
-| YOLOv4 | CSPDarknet53       |  16 * 8   |    608    | MS COCO 2017 |    45.4     | 27.6M  | [yaml](./yolov4.yaml)         | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_320e_map454-50172f93.ckpt)      |
-| YOLOv4 | CSPDarknet53(silu) |  16 * 8   |    608    | MS COCO 2017 |    45.8     | 27.6M  | [yaml](./yolov4-silu.yaml)    | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_silu_320e_map458-bdfc3205.ckpt) |
+| Model Name |     Backbone       | Cards  | BatchSize | ImageSize |  jit_level  | graph compile | Box mAP (%) | Params |          Recipe            | Weight                                                                                    |
+| :--------: |        :---:       |  :---: |   :---:   |   :---:   |    :---:    |     :---:     |    :---:    |  :---: |          :---:             |        :---:       |
+|   YOLOv4   |    CSPDarknet53    |    8   |     16    |    608    |     O2      |    3~5 mins     |    45.4     | 27.6M  | [yaml](./yolov4.yaml)      | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_320e_map454-50172f93.ckpt)      |
+|   YOLOv4   | CSPDarknet53(silu) |    8   |     16    |    608    |     O2      |    4~6 mins     |    45.8     | 27.6M  | [yaml](./yolov4-silu.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_silu_320e_map458-bdfc3205.ckpt) |
 </details>
 
 <details open markdown>
-<summary><b>performance tested on Ascend 910*(8p)</b></summary>
+<summary><b>performance tested on Ascend 910*(8p) with graph mode</b></summary>
 
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | ms/step | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---:  |  :---: |                :---:                         |        :---:       |
-| YOLOv4 | CSPDarknet53       |  16 * 8   |    608    | MS COCO 2017 |     46.1    | 337.25  | 27.6M  | [yaml](./yolov4.yaml)         | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_320e_map454-64b8506f-910v2.ckpt)      |
+| Model Name |     Backbone    | Cards  | BatchSize | ImageSize |  jit_level  | graph compile | Box mAP (%) | ms/step | Params |          Recipe        | Weight                                                                                                             |
+| :--------: |      :---:      |  :---: |   :---:   |   :---:   |    :---:    |     :---:     |    :---:    |  :---:  |  :---: |          :---:         |        :---:       |
+|   YOLOv4   |   CSPDarknet53  |    8   |     16    |    608    |     O2      |    3~5 mins     |    46.1     | 337.25  | 27.6M  | [yaml](./yolov4.yaml)  | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov4/yolov4-cspdarknet53_320e_map454-64b8506f-910v2.ckpt)      |
 </details>
 
 <br>
@@ -52,9 +52,16 @@ AP (65.7% AP50) for the MS COCO dataset at a realtime speed of 65 FPS on Tesla V
 
 Please refer to the [GETTING_STARTED](https://github.com/mindspore-lab/mindyolo/blob/master/GETTING_STARTED.md) in MindYOLO for details.
 
+### Requirements
+
+| mindspore | ascend driver | firmware     | cann toolkit/kernel
+| :-------: | :-----------: | :----------: | :----------------:
+| 2.3.1     | 24.1.RC2      | 7.3.0.1.231  | 8.0.RC2.beta1
+
 ### Training
 
 <details open>
+<summary><b>View More</b></summary>
 
 #### - Pretraining Model
 
