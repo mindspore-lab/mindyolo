@@ -11,22 +11,22 @@ YOLOv5 is a family of object detection architectures and models pretrained on th
 <details open markdown>
 <summary><b>performance tested on Ascend 910(8p) with graph mode</b></summary>
 
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---: |                :---:                         |        :---:       |
-| YOLOv5 | N                  |  32 * 8   |    640    | MS COCO 2017 |    27.3     | 1.9M   | [yaml](./yolov5n.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5n_300e_mAP273-9b16bd7b.ckpt)                  |
-| YOLOv5 | S                  |  32 * 8   |    640    | MS COCO 2017 |    37.6     | 7.2M   | [yaml](./yolov5s.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5s_300e_mAP376-860bcf3b.ckpt)                  |
-| YOLOv5 | M                  |  32 * 8   |    640    | MS COCO 2017 |    44.9     | 21.2M  | [yaml](./yolov5m.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5m_300e_mAP449-e7bbf695.ckpt)                  |
-| YOLOv5 | L                  |  32 * 8   |    640    | MS COCO 2017 |    48.5     | 46.5M  | [yaml](./yolov5l.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5l_300e_mAP485-a28bce73.ckpt)                  |
-| YOLOv5 | X                  |  16 * 8   |    640    | MS COCO 2017 |    50.5     | 86.7M  | [yaml](./yolov5x.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5x_300e_mAP505-97d36ddc.ckpt)                  |
+|  model name  |  scale  | cards  | batch size | resolution |  jit level  | graph compile | Box mAP (%) |           recipe           | weight                                                                       |
+|  :--------:  |  :---:  |  :---: |    :---:   |   :---:    |    :---:    |     :---:     |    :---:    |           :---:            |        :---:       |
+|   YOLOv5     |    N    |    8   |    32      |  640x640   |     O2      |    3~5 mins     |    27.3     |   [yaml](./yolov5n.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5n_300e_mAP273-9b16bd7b.ckpt)                  |
+|   YOLOv5     |    S    |    8   |    32      |  640x640   |     O2      |    3~5 mins     |    37.6     |   [yaml](./yolov5s.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5s_300e_mAP376-860bcf3b.ckpt)                  |
+|   YOLOv5     |    M    |    8   |    32      |  640x640   |     O2      |    4~6 mins     |    44.9     |   [yaml](./yolov5m.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5m_300e_mAP449-e7bbf695.ckpt)                  |
+|   YOLOv5     |    L    |    8   |    32      |  640x640   |     O2      |    5~7 mins     |    48.5     |   [yaml](./yolov5l.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5l_300e_mAP485-a28bce73.ckpt)                  |
+|   YOLOv5     |    X    |    8   |    16      |  640x640   |     O2      |    8~10 mins    |    50.5     |   [yaml](./yolov5x.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5x_300e_mAP505-97d36ddc.ckpt)                  |
 </details>
 
 <details open markdown>
-<summary><b>performance tested on Ascend 910*(8p)</b></summary>
+<summary><b>performance tested on Ascend 910*(8p) with graph mode</b></summary>
 
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | ms/step | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---:  |  :---: |                :---:                         |        :---:       |
-| YOLOv5 | N                  |  32 * 8   |    640    | MS COCO 2017 |     27.4    | 736.08  | 1.9M   | [yaml](./yolov5n.yaml)        | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5n_300e_mAP273-bedf9a93-910v2.ckpt)                  |
-| YOLOv5 | S                  |  32 * 8   |    640    | MS COCO 2017 |     37.6    | 787.34  | 7.2M   | [yaml](./yolov5s.yaml)        | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5s_300e_mAP376-df4a45b6-910v2.ckpt)                  |
+| model name   |  scale  | cards  | batch size | resolution |  jit level  | graph compile | Box mAP (%) | ms/step |           recipe           | weight                                                                                                |
+|  :--------:  |  :---:  |  :---: |   :---:    |   :---:    |    :---:    |     :---:     |    :---:    |  :---:  |           :---:            |        :---:       |
+|   YOLOv5     |    N    |    8   |    32      |  640x640   |     O2      |    3~5 mins     |     27.4    | 736.08  |   [yaml](./yolov5n.yaml)   | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5n_300e_mAP273-bedf9a93-910v2.ckpt)       |
+|   YOLOv5     |    S    |    8   |    32      |  640x640   |     O2      |    3~5 mins     |     37.6    | 787.34  |   [yaml](./yolov5s.yaml)   | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5s_300e_mAP376-df4a45b6-910v2.ckpt)       |
 </details>
 
 <br>
@@ -41,9 +41,16 @@ YOLOv5 is a family of object detection architectures and models pretrained on th
 
 Please refer to the [GETTING_STARTED](https://github.com/mindspore-lab/mindyolo/blob/master/GETTING_STARTED.md) in MindYOLO for details.
 
+### Requirements
+
+| mindspore | ascend driver | firmware     | cann toolkit/kernel
+| :-------: | :-----------: | :----------: | :----------------:
+| 2.3.1     | 24.1.RC2      | 7.3.0.1.231  | 8.0.RC2.beta1
+
 ### Training
 
 <details open>
+<summary><b>View More</b></summary>
 
 #### - Distributed Training
 

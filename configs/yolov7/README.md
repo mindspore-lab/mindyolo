@@ -14,19 +14,19 @@ YOLOv7 surpasses all known object detectors in both speed and accuracy in the ra
 <details open markdown>
 <summary><b>performance tested on Ascend 910(8p) with graph mode</b></summary>
 
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---: |                :---:                         |        :---:       |
-| YOLOv7 | Tiny               |  16 * 8   |    640    | MS COCO 2017 |    37.5     | 6.2M   | [yaml](./yolov7-tiny.yaml)    | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7-tiny_300e_mAP375-d8972c94.ckpt)              |
-| YOLOv7 | L                  |  16 * 8   |    640    | MS COCO 2017 |    50.8     | 36.9M  | [yaml](./yolov7.yaml)         | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7_300e_mAP508-734ac919.ckpt)                   |
-| YOLOv7 | X                  |  12 * 8   |    640    | MS COCO 2017 |    52.4     | 71.3M  | [yaml](./yolov7-x.yaml)       | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7-x_300e_mAP524-e2f58741.ckpt)                 |
+|  model name  |  scale  | cards  | batch size | resolution |  jit level  | graph compile | Box mAP (%) |           recipe               | weight                                                                                                             |
+|  :--------:  |  :---:  |  :---: |   :---:    |   :---:    |    :---:    |     :---:     |    :---:    |           :---:                |        :---:       |
+|    YOLOv7    |   Tiny  |    8   |    16      |  640x640   |     O2      |    4~6 mins   |    37.5     |   [yaml](./yolov7-tiny.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7-tiny_300e_mAP375-d8972c94.ckpt)  |
+|    YOLOv7    |    L    |    8   |    16      |  640x640   |     O2      |    5~7 mins   |    50.8     |   [yaml](./yolov7.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7_300e_mAP508-734ac919.ckpt)       |
+|    YOLOv7    |    X    |    8   |    12      |  640x640   |     O2      |    7~9 mins   |    52.4     |   [yaml](./yolov7-x.yaml)      | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov7/yolov7-x_300e_mAP524-e2f58741.ckpt)     |
 </details>
 
 <details open markdown>
-<summary><b>performance tested on Ascend 910*(8p)</b></summary>
+<summary><b>performance tested on Ascend 910*(8p) with graph mode</b></summary>
 
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | ms/step | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---:  |  :---: |                :---:                         |        :---:       |
-| YOLOv7 | Tiny               |  16 * 8   |    640    | MS COCO 2017 |     37.5    | 496.21  | 6.2M   | [yaml](./yolov7-tiny.yaml)    | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov7/yolov7-tiny_300e_mAP375-1d2ddf4b-910v2.ckpt)              |
+|  model name  |  scale  | cards  | batch size | resolution |  jit level  | graph compile | Box mAP (%) | ms/step |             recipe              | weight                                                                                                             |
+|  :--------:  |  :---:  |  :---: |   :---:    |   :---:    |    :---:    |     :---:     |    :---:    |  :---:  |              :---:              |        :---:       |
+|    YOLOv7    |   Tiny  |    8   |    16      |  640x640   |     O2      |    4~6 mins   |     37.5    |  496.21 |   [yaml](./yolov7-tiny.yaml)    | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov7/yolov7-tiny_300e_mAP375-1d2ddf4b-910v2.ckpt)              |
 </details>
 
 <br>
@@ -42,9 +42,16 @@ YOLOv7 surpasses all known object detectors in both speed and accuracy in the ra
 
 Please refer to the [GETTING_STARTED](https://github.com/mindspore-lab/mindyolo/blob/master/GETTING_STARTED.md) in MindYOLO for details.
 
+### Requirements
+
+| mindspore | ascend driver | firmware     | cann toolkit/kernel
+| :-------: | :-----------: | :----------: | :----------------:
+| 2.3.1     | 24.1.RC2      | 7.3.0.1.231  | 8.0.RC2.beta1
+
 ### Training
 
 <details open>
+<summary><b>View More</b></summary>
 
 #### - Distributed Training
 

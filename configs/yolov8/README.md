@@ -14,22 +14,22 @@ Ultralytics YOLOv8, developed by Ultralytics, is a cutting-edge, state-of-the-ar
 <details open markdown>
 <summary><b>performance tested on Ascend 910(8p) with graph mode</b></summary>
 
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---: |                :---:                         |        :---:       |
-| YOLOv8 | N                  |  16 * 8   |    640    | MS COCO 2017 |    37.2     | 3.2M   | [yaml](./yolov8n.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-n_500e_mAP372-cc07f5bd.ckpt)                 |
-| YOLOv8 | S                  |  16 * 8   |    640    | MS COCO 2017 |    44.6     | 11.2M  | [yaml](./yolov8s.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-s_500e_mAP446-3086f0c9.ckpt)                 |
-| YOLOv8 | M                  |  16 * 8   |    640    | MS COCO 2017 |    50.5     | 25.9M  | [yaml](./yolov8m.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-m_500e_mAP505-8ff7a728.ckpt)                 |
-| YOLOv8 | L                  |  16 * 8   |    640    | MS COCO 2017 |    52.8     | 43.7M  | [yaml](./yolov8l.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-l_500e_mAP528-6e96d6bb.ckpt)                 |
-| YOLOv8 | X                  |  16 * 8   |    640    | MS COCO 2017 |    53.7     | 68.2M  | [yaml](./yolov8x.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-x_500e_mAP537-b958e1c7.ckpt)                 |
+|  model name  |  scale  | cards  | batch size | resolution |  jit level  | graph compile | Box mAP (%) |            recipe            | weight                                                                                                             |
+|  :--------:  |  :---:  |  :---: |   :---:    |   :---:    |    :---:    |     :---:     |    :---:    |            :---:             |        :---:       |
+|    YOLOv8    |    N    |    8   |     16     |  640x640   |     O2      |    3~5 mins   |    37.2     |    [yaml](./yolov8n.yaml)    | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-n_500e_mAP372-cc07f5bd.ckpt)                 |
+|    YOLOv8    |    S    |    8   |     16     |  640x640   |     O2      |    3~5 mins   |    44.6     |    [yaml](./yolov8s.yaml)    | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-s_500e_mAP446-3086f0c9.ckpt)                 |
+|    YOLOv8    |    M    |    8   |     16     |  640x640   |     O2      |    3~5 mins   |    50.5     |    [yaml](./yolov8m.yaml)    | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-m_500e_mAP505-8ff7a728.ckpt)                 |
+|    YOLOv8    |    L    |    8   |     16     |  640x640   |     O2      |    3~5 mins   |    52.8     |    [yaml](./yolov8l.yaml)    | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-l_500e_mAP528-6e96d6bb.ckpt)                 |
+|    YOLOv8    |    X    |    8   |     16     |  640x640   |     O2      |    3~5 mins   |    53.7     |    [yaml](./yolov8x.yaml)    | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-x_500e_mAP537-b958e1c7.ckpt)                 |
 </details>
 
 <details open markdown>
-<summary><b>performance tested on Ascend 910*(8p)</b></summary>
+<summary><b>performance tested on Ascend 910*(8p) with graph mode</b></summary>
 
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | ms/step | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---:  |  :---: |                :---:                         |        :---:       |
-| YOLOv8 | N                  |  16 * 8   |    640    | MS COCO 2017 |     37.3    | 373.55  | 3.2M   | [yaml](./yolov8n.yaml)        | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov8/yolov8-n_500e_mAP372-0e737186-910v2.ckpt)                 |
-| YOLOv8 | S                  |  16 * 8   |    640    | MS COCO 2017 |     44.7    | 365.53  | 11.2M  | [yaml](./yolov8s.yaml)        | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov8/yolov8-s_500e_mAP446-fae4983f-910v2.ckpt)  |
+|  model name  |  scale  | cards  | batch size | resolution |  jit level  | graph compile | Box mAP (%) | ms/step |          recipe              | weight                                                                                                             |
+|  :--------:  |  :---:  |  :---: |   :---:    |   :---:    |    :---:    |     :---:     |    :---:    |  :---:  |          :---:               |        :---:       |
+|    YOLOv8    |    N    |    8   |     16     |  640x640   |     O2      |    3~5 mins   |     37.3    | 373.55  |    [yaml](./yolov8n.yaml)    | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov8/yolov8-n_500e_mAP372-0e737186-910v2.ckpt)                 |
+|    YOLOv8    |    S    |    8   |     16     |  640x640   |     O2      |    3~5 mins   |     44.7    | 365.53  |    [yaml](./yolov8s.yaml)    | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov8/yolov8-s_500e_mAP446-fae4983f-910v2.ckpt)  |
 </details>
 
 ### Segmentation
@@ -37,9 +37,9 @@ Ultralytics YOLOv8, developed by Ultralytics, is a cutting-edge, state-of-the-ar
 <details open markdown>
 <summary><b>performance tested on Ascend 910(8p) with graph mode</b></summary>
 
-| Name       | Scale | BatchSize | ImageSize | Dataset      | Box mAP (%) | Mask mAP (%) | Params |                Recipe                        | Download                                                                                                       |
-|------------| :---: |   :---:   |   :---:   |--------------|    :---:    |     :---:    |  :---: |                :---:                         |        :---:       |
-| YOLOv8-seg |   X   |  16 * 8   |    640    | MS COCO 2017 |     52.5    |     42.9     |  71.8M | [yaml](./seg/yolov8x-seg.yaml) | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-x-seg_300e_mAP_mask_429-b4920557.ckpt) |
+|  model Name  |  scale  | cards  | batch size | resolution |  jit level  | graph compile | Box mAP (%) | Mask mAP (%) |              recipe                  | weight                                                                                                       |
+|  :--------:  |  :---:  |  :---: |   :---:    |   :---:    |    :---:    |     :---:     |    :---:    |     :---:    |              :---:                   |        :---:       |
+|  YOLOv8-seg  |    X    |    8   |     16     |  640x640   |     O2      |    3~5 mins   |     52.5    |     42.9     |    [yaml](./seg/yolov8x-seg.yaml)    | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov8/yolov8-x-seg_300e_mAP_mask_429-b4920557.ckpt) |
 </details>
 
 ### Notes
@@ -51,9 +51,16 @@ Ultralytics YOLOv8, developed by Ultralytics, is a cutting-edge, state-of-the-ar
 
 Please refer to the [GETTING_STARTED](https://github.com/mindspore-lab/mindyolo/blob/master/GETTING_STARTED.md) in MindYOLO for details.
 
+### Requirements
+
+| mindspore | ascend driver | firmware     | cann toolkit/kernel
+| :-------: | :-----------: | :----------: | :----------------:
+| 2.3.1     | 24.1.RC2      | 7.3.0.1.231  | 8.0.RC2.beta1
+
 ### Training
 
 <details open>
+<summary><b>View More</b></summary>
 
 #### - Distributed Training
 
