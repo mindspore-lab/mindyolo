@@ -191,9 +191,11 @@ def train(args):
 
     # Scale loss hyps
     nl = network.model.model[-1].nl
-    args.loss.box *= 3 / nl  # scale to layers
-    args.loss.cls *= args.data.nc / 80 * 3 / nl  # scale to classes and layers
-    if args.anchor_base:
+    if hasattr(args.loss, "box"):
+        args.loss.box *= 3 / nl  # scale to layers
+    if hasattr(args.loss, "cls"):
+        args.loss.cls *= args.data.nc / 80 * 3 / nl  # scale to classes and layers
+    if args.anchor_base and hasattr(args.loss, "obj"):
         args.loss.obj *= (args.img_size / 640) ** 2 * 3 / nl  # scale to image size and layers
 
     # Create Loss
