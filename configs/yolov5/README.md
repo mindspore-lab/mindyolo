@@ -6,36 +6,11 @@ YOLOv5 is a family of object detection architectures and models pretrained on th
 <img src="https://raw.githubusercontent.com/zhanghuiyao/pics/main/mindyolo20230407113509.png"/>
 </div>
 
-## Results
+## Requirements
 
-<details open markdown>
-<summary><b>performance tested on Ascend 910(8p) with graph mode</b></summary>
-
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---: |                :---:                         |        :---:       |
-| YOLOv5 | N                  |  32 * 8   |    640    | MS COCO 2017 |    27.3     | 1.9M   | [yaml](./yolov5n.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5n_300e_mAP273-9b16bd7b.ckpt)                  |
-| YOLOv5 | S                  |  32 * 8   |    640    | MS COCO 2017 |    37.6     | 7.2M   | [yaml](./yolov5s.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5s_300e_mAP376-860bcf3b.ckpt)                  |
-| YOLOv5 | M                  |  32 * 8   |    640    | MS COCO 2017 |    44.9     | 21.2M  | [yaml](./yolov5m.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5m_300e_mAP449-e7bbf695.ckpt)                  |
-| YOLOv5 | L                  |  32 * 8   |    640    | MS COCO 2017 |    48.5     | 46.5M  | [yaml](./yolov5l.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5l_300e_mAP485-a28bce73.ckpt)                  |
-| YOLOv5 | X                  |  16 * 8   |    640    | MS COCO 2017 |    50.5     | 86.7M  | [yaml](./yolov5x.yaml)        | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5x_300e_mAP505-97d36ddc.ckpt)                  |
-</details>
-
-<details open markdown>
-<summary><b>performance tested on Ascend 910*(8p)</b></summary>
-
-| Name   |        Scale       | BatchSize | ImageSize | Dataset      | Box mAP (%) | ms/step | Params |                Recipe                        | Download                                                                                                             |
-|--------|        :---:       |   :---:   |   :---:   |--------------|    :---:    |  :---:  |  :---: |                :---:                         |        :---:       |
-| YOLOv5 | N                  |  32 * 8   |    640    | MS COCO 2017 |     27.4    | 736.08  | 1.9M   | [yaml](./yolov5n.yaml)        | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5n_300e_mAP273-bedf9a93-910v2.ckpt)                  |
-| YOLOv5 | S                  |  32 * 8   |    640    | MS COCO 2017 |     37.6    | 787.34  | 7.2M   | [yaml](./yolov5s.yaml)        | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5s_300e_mAP376-df4a45b6-910v2.ckpt)                  |
-</details>
-
-<br>
-
-#### Notes
-
-- Box mAP: Accuracy reported on the validation set.
-- We refer to the official [YOLOV5](https://github.com/ultralytics/yolov5) to reproduce the P5 series model, and the differences are as follows:
-  1. We use 8x NPU(Ascend910) for training, and the single-NPU batch size is 32. This is different from the official code.
+| mindspore | ascend driver | firmware     | cann toolkit/kernel |
+| :-------: | :-----------: | :----------: |:-------------------:|
+| 2.3.1     | 24.1.RC2      | 7.3.0.1.231  |   8.0.RC2.beta1     |
 
 ## Quick Start
 
@@ -44,6 +19,7 @@ Please refer to the [GETTING_STARTED](https://github.com/mindspore-lab/mindyolo/
 ### Training
 
 <details open>
+<summary><b>View More</b></summary>
 
 #### - Distributed Training
 
@@ -79,9 +55,34 @@ To validate the accuracy of the trained model, you can use `test.py` and parse t
 python test.py --config ./configs/yolov5/yolov5n.yaml --device_target Ascend --weight /PATH/TO/WEIGHT.ckpt
 ```
 
-### Deployment
+## Performance
 
-See [here](../../deploy/README.md).
+Experiments are tested on Ascend 910* with mindspore 2.3.1 graph mode.
+
+| model name   |  scale  | cards  | batch size | resolution |  jit level  | graph compile | ms/step  | img/s  |  map  |           recipe           |                                                      weight                                                       |
+|  :--------:  |  :---:  |  :---: |   :---:    |   :---:    |    :---:    |     :---:     |   :---:  | :---:  |:-----:|           :---:            |:-----------------------------------------------------------------------------------------------------------------:|
+|   YOLOv5     |    N    |    8   |    32      |  640x640   |     O2      |    377.81s    | 520.79  | 491.56  | 27.4% |   [yaml](./yolov5n.yaml)   | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5n_300e_mAP273-bedf9a93-910v2.ckpt) |
+|   YOLOv5     |    S    |    8   |    32      |  640x640   |     O2      |    378.18s    | 526.49  | 486.30  | 37.6% |   [yaml](./yolov5s.yaml)   | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5s_300e_mAP376-df4a45b6-910v2.ckpt) |
+
+
+Experiments are tested on Ascend 910 with mindspore 2.3.1 graph mode.
+
+|  model name  |  scale  | cards  | batch size | resolution |  jit level  | graph compile | ms/step | img/s  |  map  |           recipe           |                                               weight                                                |
+|  :--------:  |  :---:  |  :---: |    :---:   |   :---:    |    :---:    |     :---:     |  :---:  | :---:  |:-----:|           :---:            |:---------------------------------------------------------------------------------------------------:|
+|   YOLOv5     |    N    |    8   |    32      |  640x640   |     O2      |    233.25s    | 650.57  | 393.50 | 27.3% |   [yaml](./yolov5n.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5n_300e_mAP273-9b16bd7b.ckpt) |
+|   YOLOv5     |    S    |    8   |    32      |  640x640   |     O2      |    166.00s    | 650.14  | 393.76 | 37.6% |   [yaml](./yolov5s.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5s_300e_mAP376-860bcf3b.ckpt) |
+|   YOLOv5     |    M    |    8   |    32      |  640x640   |     O2      |    256.51s    | 712.31  | 359.39 | 44.9% |   [yaml](./yolov5m.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5m_300e_mAP449-e7bbf695.ckpt) |
+|   YOLOv5     |    L    |    8   |    32      |  640x640   |     O2      |    274.15s    | 723.35  | 353.91 | 48.5% |   [yaml](./yolov5l.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5l_300e_mAP485-a28bce73.ckpt) |
+|   YOLOv5     |    X    |    8   |    16      |  640x640   |     O2      |    436.18s    | 569.96  | 224.58 | 50.5% |   [yaml](./yolov5x.yaml)   | [weights](https://download.mindspore.cn/toolkits/mindyolo/yolov5/yolov5x_300e_mAP505-97d36ddc.ckpt) |
+
+
+<br>
+
+### Notes
+
+- map: Accuracy reported on the validation set.
+- We refer to the official [YOLOV5](https://github.com/ultralytics/yolov5) to reproduce the P5 series model, and the differences are as follows:
+  The single-device batch size is 32. This is different from the official codes.
 
 ## References
 
