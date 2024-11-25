@@ -3,7 +3,7 @@ __BASE__: [
   './hyp.scratch-high.yaml',
 ]
 
-per_batch_size: 8  # 18 * 8 = 64
+per_batch_size: 8  # 8 * 8 = 64
 img_size: 1280
 sync_bn: True
 ms_amp_level: O0
