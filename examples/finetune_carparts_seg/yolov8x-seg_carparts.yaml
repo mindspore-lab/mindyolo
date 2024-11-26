@@ -1,0 +1,26 @@
+__BASE__: [
+  '../../configs/yolov8/seg/yolov8x-seg.yaml',
+]
+
+overflow_still_update: False
+epochs: 150
+per_batch_size: 16
+img_size: 640
+weight: ./yolov8-x-seg_300e_mAP_mask_429-b4920557.ckpt
+strict_load: False
+log_interval: 10
+
+data:
+  dataset_name: carparts-seg
+  train_set: ./examples/finetune_carparts_seg/train.txt
+  val_set: ./examples/finetune_carparts_seg/valid.txt
+  test_set: ./examples/finetune_carparts_seg/test.txt
+  nc: 23  # class names
+  names: ['back_bumper', 'back_door', 'back_glass', 'back_left_door', 'back_left_light', 'back_light', 
+          'back_right_door', 'back_right_light', 'front_bumper', 'front_door', 'front_glass', 
+          'front_left_door', 'front_left_light', 'front_light', 'front_right_door', 'front_right_light', 
+          'hood', 'left_mirror', 'object', 'right_mirror', 'tailgate', 'trunk', 'wheel']
+
+optimizer:
+  lr_init: 0.001  # initial learning rate
+  
