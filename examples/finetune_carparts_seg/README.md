@@ -91,6 +91,8 @@ MindYOLO支持yaml文件继承机制，因此新编写的配置文件只需要�
 python ./examples/finetune_carparts_seg/predict.py --config ./examples/finetune_carparts_seg/yolov8x-seg_carparts.yaml --weight=/path_to_ckpt/WEIGHT.ckpt --image_path /path_to_image/IMAGE.jpg --conf_thres 0.5
 ```
 
+![demo](https://github.com/user-attachments/assets/5ad7f53d-5d86-4c46-b98f-d7ba29926aa7)
+
 #### Notes
 
 - conf_thres：置信度阈值。用于控制显示预测概率超过conf_thres的预测结果。
