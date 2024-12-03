@@ -2,12 +2,11 @@
 
 本文以自制巧克力花生豆数据集为例，介绍单类别数据集使用MindYOLO进行训练的主要流程。
 
-#### 版本信息
-* os: Linux EulerOS 2.0
-* ascend driver: 23.0.6.b010
-* ascend firmware: 7.1.0.11.220
-* cann: 7.5.T7.0.B053
-* mindspore: 2.3.1
+Requirements
+
+| mindspore | ascend driver | firmware | cann toolkit/kernel
+| :---: | :---: | :---: | :---:
+| 2.3.1 | 24.1.RC2        |  7.3.0.1.231   | 8.0.RC2.beta1
 
 #### 数据集格式转换
 

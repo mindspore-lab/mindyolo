@@ -4,6 +4,7 @@ __BASE__: [
   './yolov8-base.yaml'
 ]
 
+overflow_still_update: False
 network:
   depth_multiple: 1.00  # scales module repeats
   width_multiple: 1.00  # scales convolution channels
@@ -11,3 +12,7 @@ network:
 
 img_size: 1760 # 2720 during validation
 per_batch_size: 2
+
+clip_grad: True
+ms_loss_scaler: dynamic
+ms_loss_scaler_value: 65536.0
