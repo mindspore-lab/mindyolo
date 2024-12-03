@@ -28,7 +28,7 @@ class MyModel(nn.Cell):
         self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1)
         #relu是一个ReLU激活函数操作。
         self.relu = ops.ReLU()
-        #axpool是一个2D最大池化层，池化窗口大小为2x2，步长为2。
+        #maxpool是一个2D最大池化层，池化窗口大小为2x2，步长为2。
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
         #conv2是另一个2D卷积层，输入通道数为16，输出通道数为32，卷积核大小为3x3，步长为1，填充为1。
         self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)

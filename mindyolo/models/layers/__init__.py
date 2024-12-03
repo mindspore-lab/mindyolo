@@ -34,4 +34,13 @@ __all__ = [
     "SPPF",
     "Upsample",
     "Residualblock",
+    "AConv",
+    "ELAN1",
+    "SPPELAN",
+    "CBLinear",
+    "CBFuse",
+    "ADown",
+    "RepNBottleneck",
+    "RepNCSP",
+    "RepNCSPELAN4"
 ]
