@@ -15,13 +15,13 @@
 MindYOLO implements state-of-the-art YOLO series algorithms based on MindSpore.
 The following is the corresponding `mindyolo` versions and supported `mindspore` versions.
 
-|  mindyolo  |  mindspore  |
-|    :--:    |     :--:    |
-|   master   |    master   |
-|    0.4     |    2.3.0    |
-|    0.3     |    2.2.10   |
-|    0.2     |    2.0      |
-|    0.1     |    1.8      |
+| mindyolo |  mindspore  |
+| :------: | :---------: |
+|  master  |   master    |
+|   0.4    | 2.3.0/2.3.1 |
+|   0.3    |   2.2.10    |
+|   0.2    |     2.0     |
+|   0.1    |     1.8     |
 
 <img src="https://raw.githubusercontent.com/mindspore-lab/mindyolo/master/.github/000000137950.jpg" />
 

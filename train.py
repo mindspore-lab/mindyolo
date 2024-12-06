@@ -27,6 +27,7 @@ def get_parser_train(parents=None):
     parser.add_argument("--is_parallel", type=ast.literal_eval, default=False, help="Distribute train or not")
     parser.add_argument("--ms_mode", type=int, default=0,
                         help="Running in GRAPH_MODE(0) or PYNATIVE_MODE(1) (default=0)")
+    parser.add_argument("--max_call_depth", type=int, default=2000, help="The maximum depth of a function call")
     parser.add_argument("--ms_amp_level", type=str, default="O0", help="amp level, O0/O1/O2/O3")
     parser.add_argument("--keep_loss_fp32", type=ast.literal_eval, default=True,
                         help="Whether to maintain loss using fp32/O0-level calculation")

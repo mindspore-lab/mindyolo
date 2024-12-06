@@ -687,7 +687,7 @@ class COCODataset:
             sample['cls'] = cls
             sample['bboxes'] = targets
             if use_segments:
-                sample['segments'] = segments[i]
+                sample['segments'] = new_segments[i]
 
         sample['img'] = img
 

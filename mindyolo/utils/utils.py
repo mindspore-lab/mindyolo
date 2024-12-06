@@ -21,7 +21,7 @@ def set_seed(seed=2):
 
 def set_default(args):
     # Set Context
-    ms.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
+    ms.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=args.max_call_depth)
     if args.ms_mode == 0:
         ms.set_context(jit_config={"jit_level": "O2"})
     if args.device_target == "Ascend":
