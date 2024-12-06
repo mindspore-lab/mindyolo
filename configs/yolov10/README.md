@@ -1,4 +1,4 @@
-# YOLOv10
+![yolov10](https://github.com/user-attachments/assets/30db7ac6-8ee6-44f9-8030-a19a3f660687)# YOLOv10
 
 ## Abstract
 Over the past years, YOLOs have emerged as the predominant paradigm in the field
@@ -25,6 +25,8 @@ the state-of-the-art performance and efficiency across various model scales. For
 example, our YOLOv10-S is 1.8× faster than RT-DETR-R18 under the similar AP on COCO, 
 meanwhile enjoying 2.8× smaller number of parameters andFLOPs. Compared with 
 YOLOv9-C, YOLOv10-B has 46% less latency and 25% fewer parameters for the same performance.
+
+![yolov10](https://github.com/user-attachments/assets/bb2354af-6b9c-463b-83ac-c382c075c6bb)
 
 ## Requirements
 
