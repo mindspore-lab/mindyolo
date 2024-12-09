@@ -1,6 +1,6 @@
 from mindspore import nn, ops
 
-from .conv import ConvNormAct, DWConvNormAct
+from .conv import ConvNormAct, DWConvNormAct, RepConv
 
 
 class Bottleneck(nn.Cell):
@@ -136,7 +136,56 @@ class DWC3(nn.Cell):
         c5 = self.conv3(c4)
 
         return c5
-    
+
+
+class RepNBottleneck(nn.Cell):
+    # Standard bottleneck
+    def __init__(self, c1, c2, shortcut=True, g=1, k=(3, 3), e=0.5, sync_bn=False):  # ch_in, ch_out, shortcut, kernels, groups, expand
+        super().__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = RepConv(c1, c_, k[0], 1, bn=False, sync_bn=sync_bn)
+        self.cv2 = ConvNormAct(c_, c2, k[1], 1, g=g, sync_bn=sync_bn)
+        self.add = shortcut and c1 == c2
+
+    def construct(self, x):
+        return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+
+
+class RepNCSP(nn.Cell):
+    # CSP Bottleneck with 3 convolutions
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5, sync_bn=False):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super(RepNCSP, self).__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = ConvNormAct(c1, c_, 1, 1, sync_bn=sync_bn)
+        self.cv2 = ConvNormAct(c1, c_, 1, 1, sync_bn=sync_bn)
+        self.cv3 = ConvNormAct(2 * c_, c2, 1, sync_bn=sync_bn)  # optional act=FReLU(c2)
+        self.m = nn.SequentialCell(*(RepNBottleneck(c_, c_, shortcut, g, e=1.0, sync_bn=sync_bn) for _ in range(n)))
+
+    def construct(self, x):
+        return self.cv3(ops.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
+
+
+class RepNCSPELAN4(nn.Cell):
+    # csp-elan
+    def __init__(self, c1, c2, c3, c4, c5=1, sync_bn=False):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super(RepNCSPELAN4, self).__init__()
+        self.c = c3//2
+        self.cv1 = ConvNormAct(c1, c3, 1, 1, sync_bn=sync_bn)
+        self.cv2 = nn.SequentialCell(RepNCSP(c3//2, c4, c5, sync_bn=sync_bn), ConvNormAct(c4, c4, 3, 1, sync_bn=sync_bn))
+        self.cv3 = nn.SequentialCell(RepNCSP(c4, c4, c5, sync_bn=sync_bn), ConvNormAct(c4, c4, 3, 1, sync_bn=sync_bn))
+        self.cv4 = ConvNormAct(c3+(2*c4), c2, 1, 1, sync_bn=sync_bn)
+
+    def construct(self, x):
+        y = ()
+        x = self.cv1(x)
+        _c = x.shape[1] // 2
+        x_tuple = ops.split(x, axis=1, split_size_or_sections=_c)
+        y += x_tuple
+        for m in [self.cv2, self.cv3]:
+            out = m(y[-1])
+            y += (out,)
+        return self.cv4(ops.cat(y, 1))
+
 class SCDown(nn.Cell):
     def __init__(self, c1, c2, k, s):
         super().__init__()
@@ -243,3 +292,4 @@ class C2fCIB(C2f):
                 for _ in range(n)
             ]
         )
+

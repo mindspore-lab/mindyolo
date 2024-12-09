@@ -48,7 +48,9 @@ def init_coco_format():
 split=''
 coco_format = init_coco_format()
 annotation_id = 1
-for img_name in os.listdir(os.path.join(images_path, split)):
+imgs_list = os.listdir(os.path.join(images_path, split))
+imgs_list.sort()
+for img_name in imgs_list:
     if img_name.lower().endswith(('.png', '.jpg', '.jpeg')):
         img_path = os.path.join(images_path, split, img_name)
         label_path = os.path.join(labels_path, split, img_name.replace("jpg", "txt"))

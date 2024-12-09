@@ -29,7 +29,7 @@ to understand their behavior. Some common arguments are:
 * Prepare your dataset in YOLO format. If trained with COCO (YOLO format), prepare it from [yolov5](https://github.com/ultralytics/yolov5) or the darknet.
   
   <details onclose>
-
+  <summary><b>View More</b></summary>
   ```
     coco/
       {train,val}2017.txt
