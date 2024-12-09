@@ -2,6 +2,7 @@ import math
 import os
 from copy import deepcopy
 
+import mindspore as ms
 from mindspore import load_checkpoint, load_param_into_net, nn, ops
 
 from mindyolo.utils import logger
@@ -102,10 +103,6 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
         logger.info("%3s%18s%3s%10s  %-60s%-40s" % ("", "from", "n", "params", "module", "arguments"))
     anchors, reg_max, max_channels = d.get("anchors", None), d.get("reg_max", None), d.get("max_channels", None)
     stride, gd, gw = d.stride, d.depth_multiple, d.width_multiple
-    nc, na = (
-        nc,
-        (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors,
-    )  # number of classes, number of anchors
 
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
     layers_param = []
@@ -138,9 +135,11 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
         if m in (
             nn.Conv2d,
             ConvNormAct,
+            AConv,
             RepConv,
             DownC,
             SPPCSPC,
+            ADown,
             SPPF,
             C3,
             C2f,
@@ -150,6 +149,9 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
             DWConvNormAct,
             DWBottleneck,
             DWC3,
+            ELAN1,
+            RepNCSPELAN4,
+            SPPELAN
         ):
             c1, c2 = ch[f], args[0]
             if max_channels:
@@ -170,6 +172,11 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
                 DWConvNormAct,
                 DWBottleneck,
                 DWC3,
+                RepNCSPELAN4,
+                AConv,
+                ELAN1,
+                SPPELAN,
+                ADown
             ):
                 kwargs["sync_bn"] = sync_bn
             if m in (DownC, SPPCSPC, C3, C2f, DWC3):
@@ -185,12 +192,20 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
             args.append([ch[x] for x in f])
             if isinstance(args[1], int):  # number of anchors
                 args[1] = [list(range(args[1] * 2))] * len(f)
-        elif m in (YOLOv8Head, YOLOv8SegHead, YOLOXHead):  # head of anchor free
+        elif m in (YOLOv9Head, YOLOv8Head, YOLOv8SegHead, YOLOXHead):  # head of anchor free
             args.append([ch[x] for x in f])
             if m in (YOLOv8SegHead,):
                 args[3] = math.ceil(min(args[3], max_channels) * gw / 8) * 8
+            if m in (YOLOv9Head,):
+                kwargs["sync_bn"] = sync_bn
         elif m is ReOrg:
             c2 = ch[f] * 4
+        elif m is CBLinear:
+            c2 = args[0]
+            c1 = ch[f]
+            args = [c1, c2, *args[1:]]
+        elif m is CBFuse:
+            c2 = ch[f[-1]]
         else:
             c2 = ch[f]
 
