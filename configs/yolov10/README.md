@@ -26,6 +26,9 @@ example, our YOLOv10-S is 1.8× faster than RT-DETR-R18 under the similar AP on 
 meanwhile enjoying 2.8× smaller number of parameters andFLOPs. Compared with 
 YOLOv9-C, YOLOv10-B has 46% less latency and 25% fewer parameters for the same performance.
 
+![yolov10](https://github.com/user-attachments/assets/0241fe17-ccbf-42db-9e0a-f9e2e8c79a1b)
+
+
 ## Requirements
 
 | mindspore | ascend driver | firmware     | cann toolkit/kernel |
