@@ -43,6 +43,7 @@ def get_parser_test(parents=None):
         "--single_cls", type=ast.literal_eval, default=False, help="train multi-class data as single-class"
     )
     parser.add_argument("--rect", type=ast.literal_eval, default=False, help="rectangular training")
+    parser.add_argument("--exec_nms", type=ast.literal_eval, default=True, help="whether to execute NMS or not")
     parser.add_argument("--nms_time_limit", type=float, default=60.0, help="time limit for NMS")
     parser.add_argument("--conf_thres", type=float, default=0.001, help="object confidence threshold")
     parser.add_argument("--iou_thres", type=float, default=0.65, help="IOU threshold for NMS")
@@ -138,6 +139,7 @@ def test_detect(
     iou_thres: float = 0.65,
     conf_free: bool = False,
     num_class: int = 80,
+    exec_nms: bool = True,
     nms_time_limit: float = -1.0,
     is_coco_dataset: bool = True,
     imgIds: list = [],
@@ -184,14 +186,15 @@ def test_detect(
         # Run NMS
         t = time.time()
         out = out.asnumpy()
-        out = non_max_suppression(
-            out,
-            conf_thres=conf_thres,
-            iou_thres=iou_thres,
-            conf_free=conf_free,
-            multi_label=True,
-            time_limit=nms_time_limit,
-        )
+        if exec_nms:
+            out = non_max_suppression(
+                out,
+                conf_thres=conf_thres,
+                iou_thres=iou_thres,
+                conf_free=conf_free,
+                multi_label=True,
+                time_limit=nms_time_limit,
+            )
         nms_times += time.time() - t
 
         # Statistics pred
@@ -279,6 +282,7 @@ def test_segment(
     iou_thres: float = 0.65,
     conf_free: bool = False,
     num_class: int = 80,
+    exec_nms: bool = True,
     nms_time_limit: float = -1.0,
     is_coco_dataset: bool = True,
     imgIds: list = [],
@@ -501,6 +505,7 @@ def main(args):
         iou_thres=args.iou_thres,
         conf_free=args.conf_free,
         num_class=args.data.nc,
+        exec_nms=args.exec_nms,
         nms_time_limit=args.nms_time_limit,
         is_coco_dataset=is_coco_dataset,
         imgIds=None if not is_coco_dataset else dataset.imgIds,

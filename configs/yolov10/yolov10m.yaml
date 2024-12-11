@@ -1,0 +1,62 @@
+__BASE__: [
+  '../coco.yaml',
+  './hyp.scratch.med.yaml',
+]
+
+epochs: 500 # total train epochs
+per_batch_size: 32  # 32 * 8 = 256
+img_size: 640
+iou_thres: 0.7
+exec_nms: False
+overflow_still_update: False
+ms_loss_scaler: dynamic
+ms_loss_scaler_value: 65536.0
+clip_grad: True
+anchor_base: False
+opencv_threads_num: 0  # opencv: disable threading optimizations
+
+network:
+  model_name: yolov10
+  nc: 80  # number of classes
+  reg_max: 16
+
+  depth_multiple: 0.67  # model depth multiple
+  width_multiple: 0.75  # layer channel multiple
+  max_channels: 768
+  stride: [8, 16, 32]
+
+  # YOLOv10.0m backbone
+  backbone:
+    # [from, repeats, module, args]
+    - [-1, 1, ConvNormAct, [64, 3, 2]]            # 0-P1/2
+    - [-1, 1, ConvNormAct, [128, 3, 2]]           # 1-P2/4
+    - [-1, 3, C2f, [128, True]]
+    - [-1, 1, ConvNormAct, [256, 3, 2]]           # 3-P3/8
+    - [-1, 6, C2f, [256, True]]
+    - [-1, 1, SCDown, [512, 3, 2]]                # 5-P4/16
+    - [-1, 6, C2f, [512, True]]
+    - [-1, 1, SCDown, [1024, 3, 2]]               # 7-P5/32
+    - [-1, 3, C2fCIB, [1024, True]]
+    - [-1, 1, SPPF, [1024, 5]]                    # 9
+    - [-1, 1, PSA, [1024]]                        # 10
+
+  # YOLOv10.0m head
+  head:
+    - [-1, 1, Upsample, [None, 2, 'nearest']]
+    - [[-1, 6], 1, Concat, [1]]                   # cat backbone P4
+    - [-1, 3, C2f, [512]]                         # 13
+
+    - [-1, 1, Upsample, [None, 2, 'nearest']]
+    - [[-1, 4], 1, Concat, [1] ]                  # cat backbone P3
+    - [-1, 3, C2f, [256]]                         # 16 (P3/8-small)
+
+    - [-1, 1, ConvNormAct, [256, 3, 2]]
+    - [[ -1, 13], 1, Concat, [1]]                 # cat head P4
+    - [-1, 3, C2fCIB, [512, True]]                # 19 (P4/16-medium)
+
+    - [-1, 1, SCDown, [512, 3, 2]]
+    - [[-1, 10], 1, Concat, [1]]                  # cat head P5
+    - [-1, 3, C2fCIB, [1024, True]]               # 22 (P5/32-large)
+
+    - [[16, 19, 22], 1, YOLOv10Head, [nc, reg_max, stride]]  # Detect(P3, P4, P5)
+  
