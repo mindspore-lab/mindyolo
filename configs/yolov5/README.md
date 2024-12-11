@@ -55,6 +55,11 @@ To validate the accuracy of the trained model, you can use `test.py` and parse t
 python test.py --config ./configs/yolov5/yolov5n.yaml --device_target Ascend --weight /PATH/TO/WEIGHT.ckpt
 ```
 
+To validate the accuracy of the trained model for resolution of 1280, you can use `test.py` and parse the checkpoint path with `--weight` and parse the image sizes with `--img_size`.
+```
+python test.py --config ./configs/yolov5/yolov5n6.yaml --device_target Ascend --weight /PATH/TO/WEIGHT.ckpt --img_size 1280
+```
+
 ## Performance
 
 Experiments are tested on Ascend 910* with mindspore 2.3.1 graph mode.
@@ -63,6 +68,11 @@ Experiments are tested on Ascend 910* with mindspore 2.3.1 graph mode.
 |  :--------:  |  :---:  |  :---: |   :---:    |   :---:    |    :---:    |     :---:     |   :---:  | :---:  |:-----:|           :---:            |:-----------------------------------------------------------------------------------------------------------------:|
 |   YOLOv5     |    N    |    8   |    32      |  640x640   |     O2      |    377.81s    | 520.79  | 491.56  | 27.4% |   [yaml](./yolov5n.yaml)   | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5n_300e_mAP273-bedf9a93-910v2.ckpt) |
 |   YOLOv5     |    S    |    8   |    32      |  640x640   |     O2      |    378.18s    | 526.49  | 486.30  | 37.6% |   [yaml](./yolov5s.yaml)   | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5s_300e_mAP376-df4a45b6-910v2.ckpt) |
+|   YOLOv5     |    N6    |   8   |    32      |  1280x1280 |     O2      |    494.36s    | 1543.35 | 165.87  | 35.7% |   [yaml](./yolov5n6.yaml)   | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5n6_300e_mAP357-49d91077.ckpt) |
+|   YOLOv5     |    S6    |   8   |    32      |  1280x1280 |     O2      |    524.91s    | 1514.98 | 168.98  | 44.4% |   [yaml](./yolov5s6.yaml)   | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5s6_300e_mAP444-aeaffe77.ckpt) |
+|   YOLOv5     |    M6    |   8   |    32      |  1280x1280 |     O2      |    572.32s    | 1769.17 | 144.70  | 51.1% |   [yaml](./yolov5m6.yaml)   | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5m6_300e_mAP511-025d9536.ckpt) |
+|   YOLOv5     |    L6    |   8   |    16      |  1280x1280 |     O2      |    800.34s    | 894.65  | 143.07  | 53.6% |   [yaml](./yolov5l6.yaml)   | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5l6_300e_mAP536-617a1cc1.ckpt) |
+|   YOLOv5     |    X6    |   8   |    8       |  1280x1280 |     O2      |    995.73s    | 864.43  | 74.04   | 54.5% |   [yaml](./yolov5x6.yaml)   | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5x6_300e_mAP545-81ebdca9.ckpt) |
 
 
 Experiments are tested on Ascend 910 with mindspore 2.3.1 graph mode.
