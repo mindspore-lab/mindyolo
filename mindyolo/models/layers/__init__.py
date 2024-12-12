@@ -42,5 +42,8 @@ __all__ = [
     "ADown",
     "RepNBottleneck",
     "RepNCSP",
-    "RepNCSPELAN4"
+    "RepNCSPELAN4",
+    "SCDown",
+    "PSA",
+    "C2fCIB",
 ]
