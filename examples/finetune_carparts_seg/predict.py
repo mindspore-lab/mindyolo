@@ -297,7 +297,7 @@ def infer(args):
         raise ValueError("Detect: input image file not available.")
 
     # Detect
-    is_coco_dataset = "coco" in args.data.dataset_name
+    is_coco_dataset = "coco" in args.data.dataset_name and args.data.val_set.endswith(f"{os.sep}val2017.txt")
     if args.task == "detect":
         result_dict = detect(
             network=network,

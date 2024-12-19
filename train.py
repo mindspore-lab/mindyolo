@@ -239,7 +239,7 @@ def train(args):
 
     # Create test function for run eval while train
     if args.run_eval:
-        is_coco_dataset = "coco" in args.data.dataset_name
+        is_coco_dataset = "coco" in args.data.dataset_name and args.data.val_set.endswith(f"{os.sep}val2017.txt")
         test_fn = partial(
             test,
             task=args.task,

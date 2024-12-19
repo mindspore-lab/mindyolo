@@ -160,7 +160,7 @@ def infer(args):
         img = cv2.imread(args.image_path)
     else:
         raise ValueError("Detect: input image file not available.")
-    is_coco_dataset = "coco" in args.data.dataset_name
+    is_coco_dataset = "coco" in args.data.dataset_name and args.data.val_set.endswith(f"{os.sep}val2017.txt")
     # Detect
     result_dict = detect(
         mindir_path=args.mindir_path,
