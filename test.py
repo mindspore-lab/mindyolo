@@ -466,7 +466,12 @@ def main(args):
 
     # Create Dataloader
     dataset_path = args.data.val_set
-    is_coco_dataset = "coco" in args.data.dataset_name
+    # referred from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/models/yolo/detect/val.py#L74
+    is_coco_dataset = (
+            isinstance(dataset_path, str)
+            and "coco" in dataset_path
+            and (args.data.val_set.endswith(f"{os.sep}val2017.txt") or args.data.val_set.endswith(f"{os.sep}test-dev2017.txt"))
+    )  # is COCO
     dataset = COCODataset(
         dataset_path=dataset_path,
         img_size=args.img_size,
