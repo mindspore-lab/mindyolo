@@ -466,7 +466,7 @@ def main(args):
 
     # Create Dataloader
     dataset_path = args.data.val_set
-    is_coco_dataset = "coco" in args.data.dataset_name
+    is_coco_dataset = "coco" in args.data.dataset_name and dataset_path.endswith(f"{os.sep}val2017.txt")
     dataset = COCODataset(
         dataset_path=dataset_path,
         img_size=args.img_size,
