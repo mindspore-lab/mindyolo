@@ -239,7 +239,12 @@ def train(args):
 
     # Create test function for run eval while train
     if args.run_eval:
-        is_coco_dataset = "coco" in args.data.dataset_name
+        # referred from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/models/yolo/detect/val.py#L74
+        is_coco_dataset = (
+                isinstance(args.data.val_set, str)
+                and "coco" in args.data.val_set
+                and (args.data.val_set.endswith(f"{os.sep}val2017.txt") or args.data.val_set.endswith(f"{os.sep}test-dev2017.txt"))
+        )  # is COCO
         test_fn = partial(
             test,
             task=args.task,
