@@ -75,12 +75,12 @@ MindYOLO支持yaml文件继承机制，因此新编写的配置文件只需要�
 这里要注意的是云平台的模型存放路径较以前有变化，若是找不到路径可以利用云平台提供的C2Net库得到预训练模型路径，在train.py中修改weight和ckpt_url参数的值。
 
 也可以选择在终端用命令行进行训练：
-* 在多卡NPU/GPU上进行分布式模型训练，以8卡为例:
+* 在多卡NPU上进行分布式模型训练，以8卡为例:
   ```shell
   msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7-tiny_log python train.py --config ./yolov7-tiny_ud.yaml --is_parallel True
   ```
 
-* 在单卡NPU/GPU/CPU上训练模型：
+* 在单卡NPU/CPU上训练模型：
   ```shell
   python train.py --config ./yolov7-tiny_ud.yaml
   ```
@@ -88,12 +88,12 @@ MindYOLO支持yaml文件继承机制，因此新编写的配置文件只需要�
 由于yolov7-tiny模型比较小，直接用单卡训练就可以满足需求，所以这里选择用单卡进行训练。
 ### yolov7-tiny的最终精度：
 保存训练得到的权重参数的ckpt文件，用来测试精度和推理。
-* 在单卡NPU/GPU/CPU上评估模型的精度：
+* 在单卡NPU/CPU上评估模型的精度：
 
   ```shell
   python test.py --config ./yolov7-tiny_ud.yaml --weight /path_to_ckpt/WEIGHT.ckpt
   ```
-* 在多卡NPU/GPU上进行分布式评估模型的精度：
+* 在多卡NPU上进行分布式评估模型的精度：
 
   ```shell
   msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7-tiny_log python test.py --config ./yolov7-tiny_ud.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
@@ -120,8 +120,6 @@ MindYOLO支持yaml文件继承机制，因此新编写的配置文件只需要�
 # NPU (默认)
 python demo/predict.py --config ./yolov7l_ud.yaml --weight=/path_to_ckpt/WEIGHT.ckpt --image_path /path_to_image/IMAGE.jpg
 
-# GPU
-python demo/predict.py --config ./yolov7l_ud.yaml --weight=/path_to_ckpt/WEIGHT.ckpt --image_path /path_to_image/IMAGE.jpg --device_target=GPU
 ```
 <img src="./pic/predict.png" alt="predict" style="zoom:70%;" />
 <img src="./pic/predict2.png" alt="predict2" style="zoom:70%;" />

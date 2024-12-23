@@ -52,11 +52,11 @@ YOLOX 是一款新型高性能检测模型，在 YOLO 系列的基础上进行�
 
 使用预置的训练配方可以轻松重现报告的结果。如需在多台Ascend 910设备上进行分布式训练，请运行
 ```shell
-# 在多台GPU/Ascend设备上进行分布式训练
+# 在多台Ascend设备上进行分布式训练
 msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolox_log python train.py --config ./configs/yolox/yolox-s.yaml --device_target Ascend --is_parallel True
 ```
 
-同样的，您可以使用上述msrun命令在多台GPU设备上训练模型。**注意:** 更多关于msrun配置的信息，请参考[这里](https://www.mindspore.cn/tutorials/experts/zh-CN/r2.3.1/parallel/msrun_launcher.html)。
+**注意:** 更多关于msrun配置的信息，请参考[这里](https://www.mindspore.cn/tutorials/experts/zh-CN/r2.3.1/parallel/msrun_launcher.html)。
 
 有关所有超参数的详细说明，请参阅[config.py](https://github.com/mindspore-lab/mindyolo/blob/master/mindyolo/utils/config.py)。
 
@@ -67,7 +67,7 @@ msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolox_log
 如果您想在较小的数据集上训练或微调模型而不进行分布式训练，请运行：
 
 ```shell
-# 在 CPU/GPU/Ascend 设备上进行单卡训练
+# 在 CPU/Ascend 设备上进行单卡训练
 python train.py --config ./configs/yolox/yolox-s.yaml --device_target Ascend
 ```
 

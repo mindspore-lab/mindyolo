@@ -52,11 +52,10 @@ Please refer to the [QUICK START](../tutorials/quick_start.md) in MindYOLO for d
 
 It is easy to reproduce the reported results with the pre-defined training recipe. For distributed training on multiple Ascend 910 devices, please run
 ```shell
-# distributed training on multiple GPU/Ascend devices
+# distributed training on multiple Ascend devices
 msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolox_log python train.py --config ./configs/yolox/yolox-s.yaml --device_target Ascend --is_parallel True
 ```
 
-Similarly, you can train the model on multiple GPU devices with the above msrun command.
 **Note:** For more information about msrun configuration, please refer to [here](https://www.mindspore.cn/tutorials/experts/en/r2.3.1/parallel/msrun_launcher.html).
 
 For detailed illustration of all hyper-parameters, please refer to [config.py](https://github.com/mindspore-lab/mindyolo/blob/master/mindyolo/utils/config.py).
@@ -68,7 +67,7 @@ For detailed illustration of all hyper-parameters, please refer to [config.py](h
 If you want to train or finetune the model on a smaller dataset without distributed training, please firstly run:
 
 ```shell
-# standalone 1st stage training on a CPU/GPU/Ascend device
+# standalone 1st stage training on a CPU/Ascend device
 python train.py --config ./configs/yolox/yolox-s.yaml --device_target Ascend
 ```
 

@@ -66,11 +66,11 @@ python mindyolo/utils/convert_weight_cspdarknet53.py
 
 使用预置的训练配方可以轻松重现报告的结果。如需在多台Ascend 910设备上进行分布式训练，请运行
 ```shell
-# distributed training on multiple GPU/Ascend devices
+# distributed training on multiple Ascend devices
 msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov4_log python train.py --config ./configs/yolov4/yolov4-silu.yaml --device_target Ascend --is_parallel True --epochs 320
 ```
 
-同样的，您可以使用上述msrun命令在多台GPU设备上训练模型。**注意:** 更多关于msrun配置的信息，请参考[这里](https://www.mindspore.cn/tutorials/experts/zh-CN/r2.3.1/parallel/msrun_launcher.html)。
+**注意:** 更多关于msrun配置的信息，请参考[这里](https://www.mindspore.cn/tutorials/experts/zh-CN/r2.3.1/parallel/msrun_launcher.html)。
 
 有关所有超参数的详细说明，请参阅[config.py](https://github.com/mindspore-lab/mindyolo/blob/master/mindyolo/utils/config.py)。
 
@@ -86,7 +86,7 @@ multiprocessing/semaphore_tracker.py: 144 UserWarning: semaphore_tracker: There 
 如果您想在较小的数据集上训练或微调模型而不进行分布式训练，请运行：
 
 ```shell
-# 在 CPU/GPU/Ascend 设备上进行单卡训练
+# 在 CPU/Ascend 设备上进行单卡训练
 python train.py --config ./configs/yolov4/yolov4-silu.yaml --device_target Ascend --epochs 320
 ```
 

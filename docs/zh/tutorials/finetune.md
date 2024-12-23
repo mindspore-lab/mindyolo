@@ -115,13 +115,13 @@ optimizer:
 * anchor可根据实际物体大小进行调整
 
 由于SHWD训练集只有约6000张图片，选用yolov7-tiny模型进行训练。
-* 在多卡NPU/GPU上进行分布式模型训练，以8卡为例:
+* 在多卡NPU上进行分布式模型训练，以8卡为例:
 
   ```shell
   msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7-tiny_log python train.py --config ./examples/finetune_SHWD/yolov7-tiny_shwd.yaml --is_parallel True
   ```
 
-* 在单卡NPU/GPU/CPU上训练模型：
+* 在单卡NPU/CPU上训练模型：
 
   ```shell
   python train.py --config ./examples/finetune_SHWD/yolov7-tiny_shwd.yaml 
