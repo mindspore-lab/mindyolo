@@ -27,7 +27,7 @@ __BASE__: [
 ## Basic Parameters
 
 ### Parameter Description
-   - device_target: device used, Ascend/GPU/CPU
+   - device_target: device used, Ascend/CPU
    - save_dir: the path to save the running results, the default is ./runs
    - log_interval: step interval to print logs, the default is 100
    - is_parallel: whether to perform distributed training, the default is False

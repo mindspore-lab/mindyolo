@@ -16,9 +16,6 @@ This document provides a brief introduction to the usage of built-in command-lin
 ```shell
 # Run with Ascend (By default)
 python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_ckpt/WEIGHT.ckpt --image_path /path_to_image/IMAGE.jpg
-
-# Run with GPU
-python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_ckpt/WEIGHT.ckpt --image_path /path_to_image/IMAGE.jpg --device_target=GPU
 ```
 
 
@@ -51,21 +48,21 @@ to understand their behavior. Some common arguments are:
   ```
   </details>
 
-* To train a model on 8 NPUs/GPUs:
+* To train a model on 8 NPUs:
   ```shell
   msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7_log python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
   ```
 
-* To train a model on 1 NPU/GPU/CPU:
+* To train a model on 1 NPU/CPU:
   ```shell
   python train.py --config ./configs/yolov7/yolov7.yaml 
   ```
 
-* To evaluate a model's performance on 1 NPU/GPU/CPU:
+* To evaluate a model's performance on 1 NPU/CPU:
   ```shell
   python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt
   ```
-* To evaluate a model's performance 8 NPUs/GPUs:
+* To evaluate a model's performance 8 NPUs:
   ```shell
   msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7_log python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
   ```
@@ -73,7 +70,7 @@ to understand their behavior. Some common arguments are:
 
 *(1) The default hyper-parameter is used for 8-card training, and some parameters need to be adjusted in the case of a single card.*
 
-*(2) The default device is Ascend, and you can modify it by specifying 'device_target' as Ascend/GPU/CPU, as these are currently supported.*
+*(2) The default device is Ascend, and you can modify it by specifying 'device_target' as Ascend/CPU, as these are currently supported.*
 
 *(3) For more options, see `train/test.py -h`.*
 

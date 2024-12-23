@@ -114,13 +114,13 @@ During the process of model fine-tuning, you can first train according to the de
 * Anchor can be adjusted according to the actual object size
 
 Since the SHWD training set only has about 6,000 images, the yolov7-tiny model was selected for training.
-* Distributed model training on multi-card NPU/GPU, taking 8 cards as an example:
+* Distributed model training on multi-card NPU, taking 8 cards as an example:
 
   ```shell
   msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7-tiny_log python train.py --config ./examples/finetune_SHWD/yolov7-tiny_shwd.yaml --is_parallel True
   ```
 
-* Train the model on a single card NPU/GPU/CPU:
+* Train the model on a single card NPU/CPU:
 
   ```shell
   python train.py --config ./examples/finetune_SHWD/yolov7-tiny_shwd.yaml

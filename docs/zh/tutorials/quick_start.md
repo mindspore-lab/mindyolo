@@ -13,9 +13,6 @@
 ```shell
 # NPU (默认)
 python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_ckpt/WEIGHT.ckpt --image_path /path_to_image/IMAGE.jpg
-
-# GPU
-python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_ckpt/WEIGHT.ckpt --image_path /path_to_image/IMAGE.jpg --device_target=GPU
 ```
 
 有关命令行参数的详细信息，请参阅`demo/predict.py -h`，或查看其[源代码](https://github.com/mindspore-lab/mindyolo/blob/master/deploy/predict.py)。
@@ -47,24 +44,24 @@ python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_c
   ```
   </details>
 
-* 在多卡NPU/GPU上进行分布式模型训练，以8卡为例:
+* 在多卡NPU上进行分布式模型训练，以8卡为例:
 
   ```shell
   msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7_log python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
   ```
 
-* 在单卡NPU/GPU/CPU上训练模型：
+* 在单卡NPU/CPU上训练模型：
 
   ```shell
   python train.py --config ./configs/yolov7/yolov7.yaml 
   ```
 
-* 在单卡NPU/GPU/CPU上评估模型的精度：
+* 在单卡NPU/CPU上评估模型的精度：
 
   ```shell
   python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt
   ```
-* 在多卡NPU/GPU上进行分布式评估模型的精度：
+* 在多卡NPU上进行分布式评估模型的精度：
 
   ```shell
   msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov7_log python test.py --config ./configs/yolov7/yolov7.yaml --weight /path_to_ckpt/WEIGHT.ckpt --is_parallel True
@@ -74,7 +71,7 @@ python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_c
 
 *(1) 默认超参为8卡训练，单卡情况需调整部分参数。*
 
-*(2) 默认设备为Ascend，您可以指定'device_target'的值为Ascend/GPU/CPU。*
+*(2) 默认设备为Ascend，您可以指定'device_target'的值为Ascend/CPU。*
 
 *(3) 有关更多选项，请参阅 `train/test.py -h`。*
 

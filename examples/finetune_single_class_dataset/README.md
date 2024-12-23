@@ -51,7 +51,7 @@ optimizer:
 ```
 #### 模型训练
 选用yolov8n模型进行训练。
-* 在多卡NPU/GPU上进行分布式模型训练，以8卡为例:
+* 在多卡NPU上进行分布式模型训练，以8卡为例:
 
   ```shell
   mpirun --allow-run-as-root -n 8 python train.py --config ./examples/finetune_single_class_dataset/yolov8n_single_class_dataset.yaml --is_parallel True

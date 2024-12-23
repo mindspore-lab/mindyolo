@@ -26,7 +26,7 @@ __BASE__: [
 ## 基础参数
 
 ### 参数说明
-   - device_target: 所用设备，Ascend/GPU/CPU
+   - device_target: 所用设备，Ascend/CPU
    - save_dir: 运行结果保存路径，默认为./runs
    - log_interval: 打印日志step间隔，默认为100
    - is_parallel: 是否分布式训练，默认为False
