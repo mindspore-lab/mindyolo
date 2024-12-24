@@ -1,5 +1,6 @@
 from mindspore import nn, ops
 
+from .activation import SiLU
 from .conv import ConvNormAct, DWConvNormAct, RepConv
 
 
@@ -250,7 +251,7 @@ class RepVGGDW(nn.Cell):
         self.conv = ConvNormAct(ed, ed, k=7, s=1, p=3, g=ed, act=False)
         self.conv1 = ConvNormAct(ed, ed, k=3, s=1, p=1, g=ed, act=False)
         self.dim = ed
-        self.act = nn.SiLU()
+        self.act = SiLU()
     
     def construct(self, x):
         return self.act(self.conv(x) + self.conv1(x))
