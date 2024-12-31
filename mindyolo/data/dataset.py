@@ -308,7 +308,8 @@ class COCODataset:
             _trans = ori_trans.copy()
             func_name, prob = _trans.pop("func_name"), _trans.pop("prob", 1.0)
             if func_name == 'copy_paste':
-                sample = self.copy_paste(sample, prob)
+                sorted = _trans.pop("sorted", False)
+                sample = self.copy_paste(sample, prob, sorted)
             elif random.random() < prob:
                 if func_name == "albumentations" and getattr(self, "albumentations", None) is None:
                     self.albumentations = Albumentations(size=self.img_size, **_trans)
@@ -576,7 +577,7 @@ class COCODataset:
         sample['segments'] = segments
         return sample
 
-    def copy_paste(self, sample, probability=0.5):
+    def copy_paste(self, sample, probability=0.5, sorted=False):
         # Implement Copy-Paste augmentation https://arxiv.org/abs/2012.07177, labels as nx5 np.array(cls, xyxy)
         bbox_format, segment_format = sample['bbox_format'], sample['segment_format']
         assert bbox_format == 'ltrb', f'The bbox format should be ltrb, but got {bbox_format}'
@@ -588,12 +589,16 @@ class COCODataset:
         segments = sample['segments']
 
         n = len(segments)
-        if probability and n:
-            h, w, _ = img.shape  # height, width, channels
-            im_new = np.zeros(img.shape, np.uint8)
+        if len(segments) == 0 or probability == 0:
+            return sample
+
+        h, w, _ = img.shape  # height, width, channels
+        im_new = np.zeros(img.shape, np.uint8)
+
+        if not sorted:
             for j in random.sample(range(n), k=round(probability * n)):
                 c, l, s = cls[j], bboxes[j], segments[j]
-                box = w - l[2], l[1], w - l[0], l[3]
+                box = np.array([[w - l[2], l[1], w - l[0], l[3]]], dtype=np.float32)
                 ioa = bbox_ioa(box, bboxes)  # intersection over area
                 if (ioa < 0.30).all():  # allow 30% obscuration of existing labels
                     cls = np.concatenate((cls, [c]), 0)
@@ -603,11 +608,31 @@ class COCODataset:
                     else:
                         segments = np.concatenate((segments, [np.concatenate((w - s[:, 0:1], s[:, 1:2]), 1)]), 0)
                     cv2.drawContours(im_new, [segments[j].astype(np.int32)], -1, (255, 255, 255), cv2.FILLED)
+        else:
+            bboxes2 = bboxes.copy()
+            bboxes2[:, 0] = w - bboxes[:, 2]
+            bboxes2[:, 2] = w - bboxes[:, 0]
 
-            result = cv2.bitwise_and(src1=img, src2=im_new)
-            result = cv2.flip(result, 1)  # augment segments (flip left-right)
-            i = result > 0  # pixels to replace
-            img[i] = result[i]  # cv2.imwrite('debug.jpg', img)  # debug
+            ioa = bbox_ioa(bboxes2, bboxes)  # intersection over area, (N, M)
+            indexes = np.nonzero((ioa < 0.30).all(1))[0]  # (N, ) allow 30% obscuration of existing labels
+
+            n = len(indexes)
+            sorted_idx = np.argsort(ioa.max(1)[indexes])
+            indexes = indexes[sorted_idx]
+            for j in indexes[: round(probability * n)]:
+                c, s = cls[j], segments[j]
+                cls = np.concatenate((cls, [c]), 0)
+                bboxes = np.concatenate((bboxes, [bboxes2[j]]), 0)
+                if isinstance(segments, list):
+                    segments.append(np.concatenate((w - s[:, 0:1], s[:, 1:2]), 1))
+                else:
+                    segments = np.concatenate((segments, [np.concatenate((w - s[:, 0:1], s[:, 1:2]), 1)]), 0)
+                cv2.drawContours(im_new, [segments[j].astype(np.int32)], -1, (255, 255, 255), cv2.FILLED)
+
+        result = cv2.bitwise_and(src1=img, src2=im_new)
+        result = cv2.flip(result, 1)  # augment segments (flip left-right)
+        i = result > 0  # pixels to replace
+        img[i] = result[i]
 
         sample['img'] = img
         sample['cls'] = cls
@@ -727,7 +752,8 @@ class COCODataset:
                 _trans = ori_trans.copy()
                 func_name, prob = _trans.pop("func_name"), _trans.pop("prob", 1.0)
                 if func_name == 'copy_paste':
-                    sample2 = self.copy_paste(sample2, prob)
+                    sorted = _trans.pop("sorted", False)
+                    sample2 = self.copy_paste(sample2, prob, sorted)
                 elif random.random() < prob:
                     if func_name == "albumentations" and getattr(self, "albumentations", None) is None:
                         self.albumentations = Albumentations(size=self.img_size, **_trans)
@@ -755,8 +781,6 @@ class COCODataset:
         assert bbox_format == 'ltrb', f'The bbox format should be ltrb, but got {bbox_format}'
         assert not self.return_segments, "pastein currently does not support seg data."
         assert not self.return_keypoints, "pastein currently does not support keypoint data."
-        sample.pop('segments', None)
-        sample.pop('keypoints', None)
 
         image = sample['img']
         cls = sample['cls']
@@ -788,7 +812,7 @@ class COCODataset:
             xmax = min(w, xmin + mask_w)
             ymax = min(h, ymin + mask_h)
 
-            box = np.array([xmin, ymin, xmax, ymax], dtype=np.float32)
+            box = np.array([[xmin, ymin, xmax, ymax]], dtype=np.float32)
             if len(bboxes):
                 ioa = bbox_ioa(box, bboxes)  # intersection over area
             else:
