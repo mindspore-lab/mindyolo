@@ -31,6 +31,7 @@ The following is the corresponding `mindyolo` versions and supported `mindspore`
 See [Benchmark Results](benchmark_results.md).
 
 ## supported model list
+- [x] [YOLOv11](configs/yolov11)
 - [x] [YOLOv10](configs/yolov10)
 - [x] [YOLOv9](configs/yolov9)
 - [x] [YOLOv8](configs/yolov8)
