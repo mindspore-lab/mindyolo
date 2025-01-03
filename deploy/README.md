@@ -15,13 +15,14 @@
    export LITE_HOME=/[path_to_mindspore_lite_xxx]
    export LD_LIBRARY_PATH=$LITE_HOME/runtime/lib:$LITE_HOME/tools/converter/lib:$LD_LIBRARY_PATH
    export PATH=$LITE_HOME/tools/converter/converter:$LITE_HOME/tools/benchmark:$PATH
+   export Convert=$LITE_HOME/tools/converter/converter/converter_lite
    ```
    LITE_HOME为tar.gz解压出的文件夹路径，请设置绝对路径
    - 安装whl包
    ```shell
    pip install mindspore_lite-[xxx].whl
    ```
- - 验证过的mindspore lite版本为：2.2.14/2.3.0/2.3.1
+ - 验证过的MindSpore Lite版本为：2.2.14/2.3.0/2.3.1
  - 请安装相对应的ascend driver/firmware/ascend-toolkit
 ### 3 模型转换 ckpt -> mindir（可选）
    训练完成的模型ckpt权重转为mindir
@@ -32,7 +33,7 @@
 
 ### 4 单张图片推理
 
-  以yolov5为例，工作目录为/work
+  - 以yolov5为例，工作目录为/work
 
    ```shell
    cd work
@@ -42,6 +43,13 @@
    python ./deploy/mslite_predict.py --mindir_path yolov5n.mindir --config ./configs/yolov5/yolov5n.yaml --image_path test_img.jpg
    ```
   yolov5n.mindir 是已经从ckpt转好的mindir文件。可从mindir支持列表中下载
+
+  - 如果想加快推理时加载模型的速度，可以把MindSpore mindir文件转换成MindSpore Lite mindir文件，直接使用lite mindir文件进行推理，例如：
+  ```shell
+  $Convert --fmk=MINDIR --modelFile=./yolov5n.mindir --outputFile=./yolov5n_lite  --saveType=MINDIR --optimize=ascend_oriented
+  python ./deploy/mslite_predict.py --mindir_path yolov5n_lite.mindir --config ./configs/yolov5/yolov5n.yaml --image_path test_img.jpg
+  ```
+  modelFile为上面ckpt转好的mindir文件；outputFile为转换生成的MindSpore Lite mindir文件，默认会加扩展名mindir
 
 ## mindir支持列表
 
