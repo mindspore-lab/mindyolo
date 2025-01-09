@@ -46,10 +46,10 @@ def create_loader(
     Returns:
         BatchDataset, dataset batched.
     """
-    de.config.set_seed(1236517205 + rank)
     cores = multiprocessing.cpu_count()
     num_parallel_workers = min(int(cores / rank_size), num_parallel_workers)
     logger.info(f"Dataloader num parallel workers: [{num_parallel_workers}]")
+    de.config.set_seed(1236517205 + rank * num_parallel_workers)
     if rank_size > 1:
         ds = de.GeneratorDataset(
             dataset,
