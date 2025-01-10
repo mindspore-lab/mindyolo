@@ -95,7 +95,7 @@ This part of the parameters is defined in [configs/yolov3/hyp.scratch.yaml](http
 
 ```yaml
 data:
-  num_parallel_workers: 4
+  num_parallel_workers: 8
 
   train_transforms:
     - { func_name: mosaic, prob: 1.0, mosaic9_prob: 0.0, translate: 0.1, scale: 0.9 }

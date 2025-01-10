@@ -23,7 +23,7 @@ loss:
   reg_max: 16
 
 data:
-  num_parallel_workers: 4
+  num_parallel_workers: 8
 
   # multi-stage data augment
   train_transforms: {
