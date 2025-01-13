@@ -86,7 +86,8 @@ class COCODataset:
         self.is_training = is_training
 
         # set column names
-        self.column_names_getitem = ['samples']
+        self.column_names_getitem = ['im_file', 'cls', 'bboxes', 'segments', 'keypoints', 'bbox_format', 'segment_format', 
+                                     'img', 'ori_shape', 'hw_scale', 'hw_pad'] if self.is_training else ['samples']
         if self.is_training:
             self.column_names_collate = ['images', 'labels']
             if self.return_segments:
@@ -169,7 +170,10 @@ class COCODataset:
         self.batch = bi  # batch index of image
 
         # Cache images into memory for faster training (WARNING: large datasets may exceed system RAM)
-        self.imgs, self.img_hw_ori, self.indices = None, None, range(n)
+        self.imgs, self.img_hw_ori, self.indices = [None] * n, [None] * n, range(n)
+        # Buffer thread for mosaic images
+        self.buffer = []
+        self.max_buffer_length = min((n, batch_size * 8, 1000)) if self.augment else 0
 
         # Rectangular Train/Test
         if self.rect:
@@ -313,6 +317,14 @@ class COCODataset:
                     sample = getattr(self, func_name)(sample, **_trans)
 
         sample['img'] = np.ascontiguousarray(sample['img'])
+        if self.is_training:
+            train_sample = []
+            for col_name in self.column_names_getitem:
+                if sample.get(col_name) is None:
+                    train_sample.append(np.nan)
+                else:
+                    train_sample.append(sample.get(col_name, np.nan))
+            return tuple(train_sample)
         return sample
 
     def __len__(self):
@@ -332,7 +344,12 @@ class COCODataset:
                 img = cv2.resize(img, (int(w_ori * r), int(h_ori * r)), interpolation=interp)
 
             sample['img'], sample['ori_shape'] = img, np.array([h_ori, w_ori])  # img, hw_original
-
+            if self.augment:
+                self.imgs[index], self.img_hw_ori[index] = img, np.array([h_ori, w_ori]) # img, hw_original
+                self.buffer.append(index)
+                if 1 < len(self.buffer) >= self.max_buffer_length:
+                    j = self.buffer.pop(0)
+                    self.imgs[j], self.img_hw_ori[j] = None, np.array([None, None])
         else:
             sample['img'], sample['ori_shape'] = self.imgs[index], self.img_hw_ori[index]  # img, hw_original
 
@@ -367,7 +384,7 @@ class COCODataset:
         # loads images in a 4-mosaic
         classes4, bboxes4, segments4 = [], [], []
         mosaic_samples = [sample, ]
-        indices = random.choices(self.indices, k=3)  # 3 additional image indices
+        indices = random.choices(self.buffer, k=3)  # 3 additional image indices
 
         segments_is_list = isinstance(sample['segments'], list)
         if segments_is_list:
@@ -444,7 +461,7 @@ class COCODataset:
         # loads images in a 9-mosaic
         classes9, bboxes9, segments9 = [], [], []
         mosaic_samples = [sample, ]
-        indices = random.choices(self.indices, k=8)  # 8 additional image indices
+        indices = random.choices(self.buffer, k=8)  # 8 additional image indices
 
         segments_is_list = isinstance(sample['segments'], list)
         if segments_is_list:
@@ -1156,21 +1173,17 @@ class COCODataset:
 
         return s
 
-    def train_collate_fn(self, batch_samples, batch_info):
-        imgs = [sample.pop('img') for sample in batch_samples]
+    def train_collate_fn(self, im_file, cls, bboxes, segments, keypoints, bbox_format, 
+                         segment_format, img, ori_shape, hw_scale, hw_pad, batch_info):
         labels = []
-        for i, sample in enumerate(batch_samples):
-            cls, bboxes = sample.pop('cls'), sample.pop('bboxes')
-            labels.append(np.concatenate((np.full_like(cls, i), cls, bboxes), axis=-1))
-        return_items = [np.stack(imgs, 0), np.stack(labels, 0)]
-
+        for i, (c, b) in enumerate(zip(cls, bboxes)):
+            labels.append(np.concatenate((np.full_like(c, i), c, b), axis=-1))
+        return_items = [np.stack(img, 0), np.stack(labels, 0)]
         if self.return_segments:
-            masks = [sample.pop('segments', None) for sample in batch_samples]
-            return_items.append(np.stack(masks, 0))
+            return_items.append(np.stack(segments, 0))
         if self.return_keypoints:
-            keypoints = [sample.pop('keypoints', None) for sample in batch_samples]
             return_items.append(np.stack(keypoints, 0))
-
+        
         return tuple(return_items)
 
     def test_collate_fn(self, batch_samples, batch_info):
