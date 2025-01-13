@@ -66,6 +66,12 @@ def export_weight(args):
         num_classes=args.data.nc,
         checkpoint_path=args.weight,
     )
+    if args.file_format == "ONNX":
+        from mindyolo.models.layers.activation import SiLU
+        for name, cell in network.name_cells().items():
+            if isinstance(cell, SiLU):
+                cell.fused_op = False
+
     network.set_train(False)
     # Export
     input_arr = Tensor(np.ones([args.per_batch_size, 3, args.img_size, args.img_size]), ms.float32)
