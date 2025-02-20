@@ -321,6 +321,8 @@ class COCODataset:
         sample['img'] = np.ascontiguousarray(sample['img'])
         if self.is_training:
             train_sample = []
+            if len(sample['segments']) > 0 and not self.return_segments:
+                    sample['segments'] = np.nan
             for col_name in self.column_names_getitem:
                 if sample.get(col_name) is None:
                     train_sample.append(np.nan)
