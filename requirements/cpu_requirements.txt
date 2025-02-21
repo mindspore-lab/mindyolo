@@ -2,7 +2,7 @@ numpy < 2
 pyyaml >= 5.3
 tqdm
 pillow == 9.5.0
-mindspore <= 2.3.0
+mindspore <= 2.4.1
 pylint
 pytest
 opencv-python
