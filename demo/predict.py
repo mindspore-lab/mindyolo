@@ -124,7 +124,7 @@ def detect(
 
     # Run infer
     _t = time.time()
-    out = network(imgs_tensor)  # inference and training outputs
+    out, _ = network(imgs_tensor)  # inference and training outputs
     out = out[0] if isinstance(out, (tuple, list)) else out
     infer_times = time.time() - _t
 
