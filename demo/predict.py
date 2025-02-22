@@ -124,22 +124,22 @@ def detect(
 
     # Run infer
     _t = time.time()
-    out = network(imgs_tensor)  # inference and training outputs
-    out = out[0] if isinstance(out, (tuple, list)) else out
+    out, _ = network(imgs_tensor)  # inference and training outputs
+    out = out[-1] if isinstance(out, (tuple, list)) else out
     infer_times = time.time() - _t
 
     # Run NMS
     t = time.time()
     out = out.asnumpy()
-    if exec_nms:
-        out = non_max_suppression(
-            out,
-            conf_thres=conf_thres,
-            iou_thres=iou_thres,
-            conf_free=conf_free,
-            multi_label=True,
-            time_limit=nms_time_limit,
-        )
+    out = non_max_suppression(
+        out,
+        conf_thres=conf_thres,
+        iou_thres=iou_thres,
+        conf_free=conf_free,
+        multi_label=True,
+        time_limit=nms_time_limit,
+        need_nms=exec_nms,
+    )
     nms_times = time.time() - t
 
     result_dict = {"category_id": [], "bbox": [], "score": []}
