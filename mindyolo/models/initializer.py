@@ -1,9 +1,9 @@
 import math
 
-from mindspore import nn
+from mindspore import nn, Parameter
 from mindspore.common import initializer as init
 
-__all__ = ["initialize_defult"]
+__all__ = ["initialize_defult", "trunc_normal_"]
 
 
 def initialize_defult(model):
@@ -43,3 +43,8 @@ def _calculate_fan_in_and_fan_out(shape):
     fan_out = num_output_fmaps * receptive_field_size
 
     return fan_in, fan_out
+
+def trunc_normal_(tensor: Parameter, mean: float = 0.0, std: float = 1.0, a: float = -2.0, b: float = 2.0):
+    tensor.set_data(
+        init.initializer(init.TruncatedNormal(std, mean, a, b), tensor.shape, tensor.dtype)
+    ) 

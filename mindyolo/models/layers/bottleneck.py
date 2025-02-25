@@ -1,7 +1,8 @@
-from mindspore import nn, ops
+from mindspore import nn, ops, Parameter
+from mindspore.common.initializer import Constant, initializer
 
 from .conv import ConvNormAct, DWConvNormAct, RepConv
-
+from ..initializer import trunc_normal_
 
 class Bottleneck(nn.Cell):
     # Standard bottleneck
@@ -37,7 +38,7 @@ class Residualblock(nn.Cell):
 
 class C3(nn.Cell):
     # CSP Bottleneck with 3 convolutions
-    def __init__(self, c1, c2, n=1, shortcut=True, e=0.5, momentum=0.97, eps=1e-3, sync_bn=False):
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5, momentum=0.97, eps=1e-3, sync_bn=False):
         super(C3, self).__init__()
         c_ = int(c2 * e)  # hidden channels
         self.conv1 = ConvNormAct(c1, c_, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
@@ -45,7 +46,7 @@ class C3(nn.Cell):
         self.conv3 = ConvNormAct(2 * c_, c2, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)  # act=FReLU(c2)
         self.m = nn.SequentialCell(
             [
-                Bottleneck(c_, c_, shortcut, k=(1, 3), e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn)
+                Bottleneck(c_, c_, shortcut, k=(1, 3), g=(1, g), e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn)
                 for _ in range(n)
             ]
         )
@@ -293,3 +294,147 @@ class C2fCIB(C2f):
             ]
         )
 
+class C3k2(C2f):
+    # CSP Bottleneck with 2 convolutions
+    def __init__(self, c1, c2, n=1, c3k=False, e=0.5, g=1, shortcut=True, sync_bn=False):  
+        # ch_in, ch_out, number, c3k, expansion, groups, shortcut, sync_bn
+        super().__init__(c1, c2, n, shortcut, g, e, sync_bn=sync_bn)
+        self.m = nn.CellList(
+            [
+                C3k(self.c, self.c, 2, shortcut, g, sync_bn=sync_bn) if c3k else Bottleneck(self.c, self.c, shortcut, k=(3, 3), g=(1, g), sync_bn=sync_bn)
+                for _ in range(n)
+            ]
+        )
+    
+class C3k(C3):
+    # C3k is a CSP bottleneck module with customizable kernel sizes for feature extraction in neural networks.
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5, k=3, sync_bn=False):
+        super().__init__(c1, c2, n, shortcut, g, e, sync_bn=sync_bn)
+        c_ = int(c2 * e)  # hidden channels
+        self.m = nn.SequentialCell(
+            [
+                Bottleneck(c_, c_, shortcut, k=(k, k), g=(1, g), e=1.0, sync_bn=sync_bn)
+                for _ in range(n)
+            ]
+        )
+
+class AAttn(nn.Cell):
+    """
+    Area-attention module for YOLO models, providing efficient attention mechanisms.
+    """
+    def __init__(self, dim, num_heads, area=1):
+        """
+        Initializes an Area-attention module for YOLO models.
+
+        Args:
+            dim (int): Number of hidden channels;
+            num_heads (int): Number of heads into which the attention mechanism is divided;
+            area (int, optional): Number of areas the feature map is divided. Defaults to 1.
+        """
+        super().__init__()
+        self.area = area
+
+        self.num_heads = num_heads
+        self.head_dim = head_dim = dim // num_heads
+        all_head_dim = head_dim * self.num_heads
+
+        self.qkv = ConvNormAct(dim, all_head_dim * 3, k=1, act=False)
+        self.proj = ConvNormAct(all_head_dim, dim, k=1, act=False)
+        self.pe = ConvNormAct(all_head_dim, dim, k=7, s=1, p=3, g=dim, act=False)
+
+    def construct(self, x):
+        B, C, H, W = x.shape
+        N = H * W
+
+        qkv = ops.transpose(ops.flatten(self.qkv(x), start_dim=2), (0, 2, 1))
+        if self.area > 1:
+            qkv = qkv.reshape(B * self.area, N // self.area, C * 3)
+            B, N, _ = qkv.shape
+        
+        q, k, v = ops.transpose(qkv.view(B, N, self.num_heads, self.head_dim * 3), (0, 2, 3, 1)).split([self.head_dim, self.head_dim, self.head_dim], axis=2)
+        attn = (
+            (ops.transpose(q, (0, 1, 3, 2)) @ k) * (self.head_dim**-0.5)
+        )
+        attn = ops.softmax(attn, -1)
+        x = v @ ops.transpose(attn, (0, 1, 3, 2))
+        x = ops.transpose(x, (0, 3, 1, 2))
+        v = ops.transpose(v, (0, 3, 1, 2))
+
+        if self.area > 1:
+            x = x.reshape(B // self.area, N * self.area, C)
+            v = v.reshape(B // self.area, N * self.area, C)
+            B, N, _ = x.shape
+        
+        x = ops.transpose(x.reshape(B, H, W, C), (0, 3, 1, 2))
+        v = ops.transpose(v.reshape(B, H, W, C), (0, 3, 1, 2))
+
+        x = x + self.pe(v)
+        return self.proj(x)
+    
+class ABlock(nn.Cell):
+    """
+    Area-attention block module for efficient feature extraction in YOLO models.
+
+    This module implements an area-attention mechanism combined with a feed-forward network for processing feature maps.
+    It uses a novel area-based attention approach that is more efficient than traditional self-attention while
+    maintaining effectiveness.
+    """
+    def __init__(self, dim, num_heads, mlp_ratio=1.2, area=1):
+        super().__init__()
+
+        self.attn = AAttn(dim, num_heads=num_heads, area=area)
+        mlp_hidden_dim = int(dim * mlp_ratio)
+        self.mlp = nn.SequentialCell(ConvNormAct(dim, mlp_hidden_dim, k=1), ConvNormAct(mlp_hidden_dim, dim, k=1, act=False))
+
+    def _init_weights(self, m):
+        # Initialize weights using a truncated normal distribution
+        if isinstance(m, nn.Conv2d):
+            trunc_normal_(m.weight, std=0.02)
+            if m.bias is not None:
+                m.bias.set_data(initializer(Constant(0), shape=m.bias.shape, dtype=m.bias.dtype))
+
+    def construct(self, x):
+        # Performs a forward pass through ABlock, applying area-attention and feed-forward layers to the input tensor.
+        x = x + self.attn(x)
+        return x + self.mlp(x)
+
+class A2C2f(nn.Cell):
+    """
+    Area-Attention C2f module for enhanced feature extraction with area-based attention mechanisms.
+    This module extends the C2f architecture by incorporating area-attention and ABlock layers for improved feature
+    processing. It supports both area-attention and standard convolution modes.    
+    """
+    def __init__(self, c1, c2, n=1, a2=True, area=1, residual=False, mlp_ratio=2.0, e=0.5, g=1, shortcut=True):
+        super().__init__()
+        c_ = int(c2 * e)  # hidden channels
+        assert c_ % 32 == 0, "Dimension of ABlock be a multiple of 32."
+        num_heads = c_ // 32
+
+        self.cv1 = ConvNormAct(c1, c_, k=1, s=1)
+        self.cv2 = ConvNormAct((1 + n) * c_, c2, k=1)
+
+        init_values = 0.01
+        self.gamma = Parameter(init_values * ops.ones((c2)), requires_grad=True) if a2 and residual else None
+
+        self.m = nn.CellList(
+        [
+            nn.SequentialCell(
+                [
+                    ABlock(c_, num_heads, mlp_ratio, area) for _ in range(2)
+                ]
+            ) if a2 else C3k(c_, c_, 2, shortcut, g)
+            for _ in range(n)
+        ])
+
+    def construct(self, x):
+        # Performs a forward pass through R-ELAN layer.
+        x1 = self.cv1(x)
+        y = (x1, )
+        for i in range(len(self.m)):
+            m = self.m[i]
+            out = m(y[-1])
+            y += (out,)
+        y = self.cv2(ops.concat(y, 1))
+        if self.gamma is not None:
+            return x + self.gamma.view(1, -1, 1, 1) * y
+        return y
