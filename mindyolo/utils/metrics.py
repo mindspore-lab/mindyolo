@@ -18,6 +18,7 @@ def non_max_suppression(
     agnostic=False,
     multi_label=False,
     time_limit=20.0,
+    need_nms=True,
 ):
     """Runs Non-Maximum Suppression (NMS) on inference results
 
@@ -41,6 +42,14 @@ def non_max_suppression(
             (prediction[..., :4], prediction[..., 4:].max(-1, keepdims=True), prediction[..., 4:]), axis=-1
         )
 
+    max_det = 300  # maximum number of detections per image
+    if not need_nms: # end-to-end model
+        output = [pred[pred[:, 4] > conf_thres][:max_det] for pred in prediction]
+        if classes is not None:
+            output = [pred[(pred[:, 5:6] == np.array(classes)).any(1)] for pred in output]
+        
+        return output
+
     nm = 0
     if mask_coefficient is not None:
         assert mask_coefficient.shape[:2] == prediction.shape[:2], \
@@ -51,7 +60,6 @@ def non_max_suppression(
 
     # Settings
     min_wh, max_wh = 2, 4096  # (pixels) minimum and maximum box width and height
-    max_det = 300  # maximum number of detections per image
     max_nms = 30000  # maximum number of boxes into torchvision.ops.nms()
     time_limit = time_limit if time_limit > 0 else 1e3  # seconds to quit after
     redundant = True  # require redundant detections
