@@ -322,6 +322,8 @@ class COCODataset:
         if self.is_training:
             train_sample = []
             for col_name in self.column_names_getitem:
+                if len(sample['segments']) > 0 and not self.return_segments:
+                    sample['segments'] = np.nan
                 if sample.get(col_name) is None:
                     train_sample.append(np.nan)
                 else:
