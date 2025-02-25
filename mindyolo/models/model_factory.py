@@ -155,6 +155,8 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
             SCDown,
             PSA,
             C2fCIB,
+            C3k2,
+            A2C2f,
         ):
             c1, c2 = ch[f], args[0]
             if max_channels:
@@ -182,9 +184,13 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
                 ADown
             ):
                 kwargs["sync_bn"] = sync_bn
-            if m in (DownC, SPPCSPC, C3, C2f, DWC3, C2fCIB):
+            if m in (DownC, SPPCSPC, C3, C2f, DWC3, C2fCIB, C3k2, A2C2f):
                 args.insert(2, n)  # number of repeats
                 n = 1
+            if m is C3k2 and d.get("scale") in "mlx":
+                args[3] = True
+            if m is A2C2f and d.get("scale") in "lx":
+                args.extend((True, 1.2))
         elif m in (nn.BatchNorm2d, nn.SyncBatchNorm):
             args = [ch[f]]
         elif m in (Concat,):
@@ -195,7 +201,7 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
             args.append([ch[x] for x in f])
             if isinstance(args[1], int):  # number of anchors
                 args[1] = [list(range(args[1] * 2))] * len(f)
-        elif m in (YOLOv10Head, YOLOv9Head, YOLOv8Head, YOLOv8SegHead, YOLOXHead):  # head of anchor free
+        elif m in (YOLOv12Head, YOLOv10Head, YOLOv9Head, YOLOv8Head, YOLOv8SegHead, YOLOXHead):  # head of anchor free
             args.append([ch[x] for x in f])
             if m in (YOLOv8SegHead,):
                 args[3] = math.ceil(min(args[3], max_channels) * gw / 8) * 8
