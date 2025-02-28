@@ -63,7 +63,7 @@ It is easy to reproduce the reported results with the pre-defined training recip
 msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov3_log python train.py --config ./configs/yolov3/yolov3.yaml --device_target Ascend --is_parallel True
 ```
 
-**Note:** For more information about msrun configuration, please refer to [here](https://www.mindspore.cn/tutorials/experts/en/r2.3.1/parallel/msrun_launcher.html).
+**Note:** For more information about msrun configuration, please refer to [here](https://www.mindspore.cn/docs/en/r2.5.0/model_train/parallel/msrun_launcher.html).
 
 For detailed illustration of all hyper-parameters, please refer to [config.py](https://github.com/mindspore-lab/mindyolo/blob/master/mindyolo/utils/config.py).
 

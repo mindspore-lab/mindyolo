@@ -24,6 +24,7 @@ MindYOLO基于mindspore实现了最新的YOLO系列算法。以下是mindyolo的
 |  mindyolo  |  mindspore  |
 |    :--:    |     :--:    |
 |   master   |    master   |
+|   0.5    |    2.5.0    |
 |    0.4     |    2.3.0/2.3.1    |
 |    0.3     |    2.2.10   |
 |    0.2     |    2.0      |
