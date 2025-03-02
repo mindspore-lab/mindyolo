@@ -1,0 +1,12 @@
+__BASE__: [
+  '../coco.yaml',
+  './hyp.scratch.l.yaml',
+  './yolov12-base.yaml',
+]
+
+overflow_still_update: False
+network:
+  scale: l
+  depth_multiple: 1.00  # model depth multiple
+  width_multiple: 1.00  # layer channel multiple
+  max_channels: 512
