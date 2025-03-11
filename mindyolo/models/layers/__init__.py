@@ -46,4 +46,6 @@ __all__ = [
     "SCDown",
     "PSA",
     "C2fCIB",
+    "C3k2",
+    "A2C2f",
 ]
