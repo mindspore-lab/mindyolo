@@ -755,8 +755,6 @@ class COCODataset:
         assert bbox_format == 'ltrb', f'The bbox format should be ltrb, but got {bbox_format}'
         assert not self.return_segments, "pastein currently does not support seg data."
         assert not self.return_keypoints, "pastein currently does not support keypoint data."
-        sample.pop('segments', None)
-        sample.pop('keypoints', None)
 
         image = sample['img']
         cls = sample['cls']
