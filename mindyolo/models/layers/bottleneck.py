@@ -37,7 +37,7 @@ class Residualblock(nn.Cell):
 
 class C3(nn.Cell):
     # CSP Bottleneck with 3 convolutions
-    def __init__(self, c1, c2, n=1, shortcut=True, e=0.5, momentum=0.97, eps=1e-3, sync_bn=False):
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5, momentum=0.97, eps=1e-3, sync_bn=False):
         super(C3, self).__init__()
         c_ = int(c2 * e)  # hidden channels
         self.conv1 = ConvNormAct(c1, c_, 1, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)
@@ -45,7 +45,7 @@ class C3(nn.Cell):
         self.conv3 = ConvNormAct(2 * c_, c2, 1, momentum=momentum, eps=eps, sync_bn=sync_bn)  # act=FReLU(c2)
         self.m = nn.SequentialCell(
             [
-                Bottleneck(c_, c_, shortcut, k=(1, 3), e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn)
+                Bottleneck(c_, c_, shortcut, k=(1, 3), g=(1, g), e=1.0, momentum=momentum, eps=eps, sync_bn=sync_bn)
                 for _ in range(n)
             ]
         )
@@ -186,6 +186,7 @@ class RepNCSPELAN4(nn.Cell):
             y += (out,)
         return self.cv4(ops.cat(y, 1))
 
+
 class SCDown(nn.Cell):
     def __init__(self, c1, c2, k, s):
         super().__init__()
@@ -194,6 +195,7 @@ class SCDown(nn.Cell):
     
     def construct(self, x):
         return self.cv2(self.cv1(x))
+
 
 class Attention(nn.Cell):
     def __init__(self, dim, num_heads=8, attn_ratio=0.5):
@@ -221,7 +223,8 @@ class Attention(nn.Cell):
         x = (v @ ops.transpose(attn, (0, 1, 3, 2))).view(B, C, H, W) + self.pe(v.reshape(B, C, H, W))
         x = self.proj(x)
         return x
-    
+
+
 class PSA(nn.Cell):
     def __init__(self, c1, c2, e=0.5):
         super().__init__()
@@ -244,6 +247,7 @@ class PSA(nn.Cell):
         b = b + self.ffn(b)
         return self.cv2(ops.concat((a, b), 1))
 
+
 class RepVGGDW(nn.Cell):
     def __init__(self, ed):
         super().__init__()
@@ -254,6 +258,7 @@ class RepVGGDW(nn.Cell):
     
     def construct(self, x):
         return self.act(self.conv(x) + self.conv1(x))
+
 
 class CIB(nn.Cell):
     # Standard bottleneck
@@ -280,6 +285,7 @@ class CIB(nn.Cell):
             out = self.cv1(x)
         return out
 
+
 class C2fCIB(C2f):
     # CSP Bottleneck with 2 convolutions
     def __init__(
@@ -293,3 +299,104 @@ class C2fCIB(C2f):
             ]
         )
 
+
+class C3k2(C2f):
+    """Faster Implementation of CSP Bottleneck with 2 convolutions."""
+
+    def __init__(self, c1, c2, n=1, c3k=False, e=0.5, g=1, shortcut=True, sync_bn=False):
+        """Initializes the C3k2 module, a faster CSP Bottleneck with 2 convolutions and optional C3k blocks."""
+        super().__init__(c1, c2, n, shortcut, g, e, sync_bn=sync_bn)
+        self.m = nn.CellList(
+            [C3k(self.c, self.c, 2, shortcut, g, sync_bn=sync_bn) if c3k else Bottleneck(self.c, self.c, shortcut, k=(3, 3), g=(1,g), sync_bn=sync_bn) for _ in range(n)]
+        )
+
+
+class C3k(C3):
+    """C3k is a CSP bottleneck module with customizable kernel sizes for feature extraction in neural networks."""
+
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5, k=3, sync_bn=False):
+        """Initializes the C3k module with specified channels, number of layers, and configurations."""
+        super().__init__(c1, c2, n, shortcut, g, e, sync_bn=sync_bn)
+        c_ = int(c2 * e)  # hidden channels
+        # self.m = nn.Sequential(*(RepBottleneck(c_, c_, shortcut, g, k=(k, k), e=1.0) for _ in range(n)))
+        self.m = nn.SequentialCell(*(Bottleneck(c_, c_, shortcut, k=(k, k), g=(1, g), e=1.0, sync_bn=sync_bn) for _ in range(n)))
+
+
+class PSABlock(nn.Cell):
+    """
+    PSABlock class implementing a Position-Sensitive Attention block for neural networks.
+
+    This class encapsulates the functionality for applying multi-head attention and feed-forward neural network layers
+    with optional shortcut connections.
+
+    Attributes:
+        attn (Attention): Multi-head attention module.
+        ffn (nn.Sequential): Feed-forward neural network module.
+        add (bool): Flag indicating whether to add shortcut connections.
+
+    Methods:
+        forward: Performs a forward pass through the PSABlock, applying attention and feed-forward layers.
+
+    Examples:
+        Create a PSABlock and perform a forward pass
+        >>> psablock = PSABlock(c=128, attn_ratio=0.5, num_heads=4, shortcut=True)
+        >>> input_tensor = mindspore.randn(1, 128, 32, 32)
+        >>> output_tensor = psablock(input_tensor)
+    """
+
+    def __init__(self, c, attn_ratio=0.5, num_heads=4, shortcut=True, sync_bn=False) -> None:
+        """Initializes the PSABlock with attention and feed-forward layers for enhanced feature extraction."""
+        super().__init__()
+
+        self.attn = Attention(c, attn_ratio=attn_ratio, num_heads=num_heads)
+        self.ffn = nn.SequentialCell(ConvNormAct(c, c * 2, 1, sync_bn=sync_bn), ConvNormAct(c * 2, c, 1, act=False, sync_bn=sync_bn))
+        self.add = shortcut
+
+    def construct(self, x):
+        """Executes a forward pass through PSABlock, applying attention and feed-forward layers to the input tensor."""
+        x = x + self.attn(x) if self.add else self.attn(x)
+        x = x + self.ffn(x) if self.add else self.ffn(x)
+        return x
+
+
+class C2PSA(nn.Cell):
+    """
+    C2PSA module with attention mechanism for enhanced feature extraction and processing.
+
+    This module implements a convolutional block with attention mechanisms to enhance feature extraction and processing
+    capabilities. It includes a series of PSABlock modules for self-attention and feed-forward operations.
+
+    Attributes:
+        c (int): Number of hidden channels.
+        cv1 (Conv): 1x1 convolution layer to reduce the number of input channels to 2*c.
+        cv2 (Conv): 1x1 convolution layer to reduce the number of output channels to c.
+        m (nn.Sequential): Sequential container of PSABlock modules for attention and feed-forward operations.
+
+    Methods:
+        forward: Performs a forward pass through the C2PSA module, applying attention and feed-forward operations.
+
+    Notes:
+        This module essentially is the same as PSA module, but refactored to allow stacking more PSABlock modules.
+
+    Examples:
+        >>> c2psa = C2PSA(c1=256, c2=256, n=3, e=0.5)
+        >>> input_tensor = mindspore.randn(1, 256, 64, 64)
+        >>> output_tensor = c2psa(input_tensor)
+    """
+
+    def __init__(self, c1, c2, n=1, e=0.5, sync_bn=False):
+        """Initializes the C2PSA module with specified input/output channels, number of layers, and expansion ratio."""
+        super().__init__()
+        assert c1 == c2
+        self.c = int(c1 * e)
+        self.cv1 = ConvNormAct(c1, 2 * self.c, 1, 1, sync_bn=sync_bn)
+        self.cv2 = ConvNormAct(2 * self.c, c1, 1, sync_bn=sync_bn)
+
+        self.m = nn.SequentialCell(*(PSABlock(self.c, attn_ratio=0.5, num_heads=self.c // 64, sync_bn=sync_bn) for _ in range(n)))
+
+    def construct(self, x):
+        """Processes the input tensor 'x' through a series of PSA blocks and returns the transformed tensor."""
+        x = self.cv1(x)
+        a, b = ops.split(x, axis=1, split_size_or_sections=self.c)
+        b = self.m(b)
+        return self.cv2(ops.cat((a, b), 1))

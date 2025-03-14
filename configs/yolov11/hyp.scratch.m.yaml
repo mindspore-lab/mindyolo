@@ -1,0 +1,45 @@
+data:
+  num_parallel_workers: 16
+
+  # multi-stage data augment
+  train_transforms: {
+    stage_epochs: [ 590, 10 ],
+    trans_list: [
+      [
+        { func_name: mosaic, prob: 1.0 },
+        { func_name: copy_paste, prob: 0.4, sorted: True },
+        {func_name: resample_segments},
+        { func_name: random_perspective, prob: 1.0, degrees: 0.0, translate: 0.1, scale: 0.9, shear: 0.0 },
+        { func_name: mixup, alpha: 32.0, beta: 32.0, prob: 0.15, pre_transform: [
+          { func_name: mosaic, prob: 1.0 },
+          { func_name: copy_paste, prob: 0.4, sorted: True },
+          { func_name: resample_segments },
+          { func_name: random_perspective, prob: 1.0, degrees: 0.0, translate: 0.1, scale: 0.9, shear: 0.0 }, ]
+        },
+        {func_name: albumentations},
+        {func_name: hsv_augment, prob: 1.0, hgain: 0.015, sgain: 0.7, vgain: 0.4},
+        {func_name: fliplr, prob: 0.5},
+        {func_name: label_norm, xyxy2xywh_: True},
+        {func_name: label_pad, padding_size: 160, padding_value: -1},
+        {func_name: image_norm, scale: 255.},
+        {func_name: image_transpose, bgr2rgb: True, hwc2chw: True}
+      ],
+      [
+        {func_name: letterbox, scaleup: True},
+        {func_name: resample_segments},
+        {func_name: random_perspective, prob: 1.0, degrees: 0.0, translate: 0.1, scale: 0.9, shear: 0.0},
+        {func_name: albumentations},
+        {func_name: hsv_augment, prob: 1.0, hgain: 0.015, sgain: 0.7, vgain: 0.4},
+        {func_name: fliplr, prob: 0.5},
+        {func_name: label_norm, xyxy2xywh_: True},
+        {func_name: label_pad, padding_size: 160, padding_value: -1},
+        {func_name: image_norm, scale: 255.},
+        {func_name: image_transpose, bgr2rgb: True, hwc2chw: True}
+      ]]
+  }
+
+  test_transforms: [
+    {func_name: letterbox, scaleup: False, only_image: True},
+    {func_name: image_norm, scale: 255.},
+    {func_name: image_transpose, bgr2rgb: True, hwc2chw: True}
+  ]
