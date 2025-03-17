@@ -55,15 +55,15 @@ def get_parser_infer(parents=None):
 
 def set_default_infer(args):
     # Set Context
-    ms.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
+    ms.set_context(mode=args.ms_mode)
+    ms.set_device(args.device_target)
+    ms.set_recursion_limit(2000)
     if args.precision_mode is not None:
-        ms.set_context(ascend_config={"precision_mode":args.precision_mode})
+        ms.device_context.ascend.op_precision.precision_mode(args.precision_mode)
     if args.ms_mode == 0:
         ms.set_context(jit_config={"jit_level": "O2"})
     if args.device_target == "Ascend":
-        ms.set_context(device_id=int(os.getenv("DEVICE_ID", 0)))
-    elif args.device_target == "GPU" and args.ms_enable_graph_kernel:
-        ms.set_context(enable_graph_kernel=True)
+        ms.set_device("Ascend", int(os.getenv("DEVICE_ID", 0)))
     args.rank, args.rank_size = 0, 1
     # Set Data
     args.data.nc = 1 if args.single_cls else int(args.data.nc)  # number of classes

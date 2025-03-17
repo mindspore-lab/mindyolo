@@ -53,7 +53,8 @@ def bbox_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, eps=1e-7
     return iou  # IoU
 
 if __name__ =="__main__":
-    ms.set_context(device_target="GPU", mode=ms.GRAPH_MODE)
+    ms.set_context(mode=ms.GRAPH_MODE)
+    ms.set_device("GPU")
     box1 = Tensor(np.random.rand(32, 4).astype(np.float32))
     box2 = Tensor(np.random.rand(32, 4).astype(np.float32))
     iou = bbox_iou(box1, box2, xywh=True, CIoU=True)
