@@ -75,7 +75,6 @@ def get_parser_test(parents=None):
 def set_default_test(args):
     # Set Context
     ms.set_context(mode=args.ms_mode)
-    ms.set_device(args.device_target)
     ms.set_recursion_limit(2000)
     if args.precision_mode is not None:
         ms.device_context.ascend.op_precision.precision_mode(args.precision_mode)

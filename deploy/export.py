@@ -38,7 +38,6 @@ def get_parser_export(parents=None):
 def set_default_export(args):
     # Set Context
     context.set_context(mode=args.ms_mode)
-    ms.set_device(args.device_target)
     ms.set_recursion_limit(2000)
     if args.device_target == "Ascend":
         ms.set_device("Ascend", int(os.getenv("DEVICE_ID", 0)))
