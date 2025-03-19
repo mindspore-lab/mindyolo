@@ -22,7 +22,6 @@ def set_seed(seed=2):
 def set_default(args):
     # Set Context
     ms.set_context(mode=args.ms_mode)
-    ms.set_device(args.device_target)
     ms.set_recursion_limit(args.max_call_depth)
     if args.ms_mode == 0:
         ms.set_context(jit_config={"jit_level": "O2"})
