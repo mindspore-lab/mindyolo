@@ -132,7 +132,7 @@ class Trainer:
         manager = CheckpointManager(ckpt_save_policy="latest_k")
         manager_ema = CheckpointManager(ckpt_save_policy="latest_k") if self.ema else None
 
-        loader = self.dataloader.create_dict_iterator(output_numpy=False, num_epochs=1)
+        loader = self.dataloader.create_dict_iterator(output_numpy=False, num_epochs=1, do_copy=False)
         s_step_time = time.time()
         s_epoch_time = time.time()
         run_context = RunContext(

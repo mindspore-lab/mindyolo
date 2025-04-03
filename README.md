@@ -18,6 +18,7 @@ The following is the corresponding `mindyolo` versions and supported `mindspore`
 | mindyolo |  mindspore  |
 | :------: | :---------: |
 |  master  |   master    |
+|   0.5    |    2.5.0    |
 |   0.4    | 2.3.0/2.3.1 |
 |   0.3    |   2.2.10    |
 |   0.2    |     2.0     |
@@ -30,6 +31,7 @@ The following is the corresponding `mindyolo` versions and supported `mindspore`
 See [Benchmark Results](benchmark_results.md).
 
 ## supported model list
+- [x] [YOLOv11](configs/yolov11)
 - [x] [YOLOv10](configs/yolov10)
 - [x] [YOLOv9](configs/yolov9)
 - [x] [YOLOv8](configs/yolov8)

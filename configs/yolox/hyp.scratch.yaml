@@ -33,7 +33,7 @@ img_size: 640
 sync_bn: False
 
 data:
-  num_parallel_workers: 4
+  num_parallel_workers: 8
 
   train_transforms: {
     stage_epochs: [ 285, 15 ],

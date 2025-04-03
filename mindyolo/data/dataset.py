@@ -86,7 +86,10 @@ class COCODataset:
         self.is_training = is_training
 
         # set column names
-        self.column_names_getitem = ['samples']
+        # https://www.mindspore.cn/docs/zh-CN/master/api_python/dataset/mindspore.dataset.config.set_enable_shared_mem.html
+        # MS version limitations, shared memory does not support dict data type 
+        self.column_names_getitem = ['im_file', 'cls', 'bboxes', 'segments', 'keypoints', 'bbox_format', 'segment_format', 
+                                     'img', 'ori_shape', 'hw_scale', 'hw_pad'] if self.is_training else ['samples']
         if self.is_training:
             self.column_names_collate = ['images', 'labels']
             if self.return_segments:
@@ -169,7 +172,10 @@ class COCODataset:
         self.batch = bi  # batch index of image
 
         # Cache images into memory for faster training (WARNING: large datasets may exceed system RAM)
-        self.imgs, self.img_hw_ori, self.indices = None, None, range(n)
+        self.imgs, self.img_hw_ori, self.indices = [None] * n, [None] * n, range(n)
+        # Buffer thread for mosaic images
+        self.buffer = []
+        self.max_buffer_length = min((n, batch_size * 8, 1000)) if self.augment else 0
 
         # Rectangular Train/Test
         if self.rect:
@@ -302,7 +308,8 @@ class COCODataset:
             _trans = ori_trans.copy()
             func_name, prob = _trans.pop("func_name"), _trans.pop("prob", 1.0)
             if func_name == 'copy_paste':
-                sample = self.copy_paste(sample, prob)
+                sorted = _trans.pop("sorted", False)
+                sample = self.copy_paste(sample, prob, sorted)
             elif random.random() < prob:
                 if func_name == "albumentations" and getattr(self, "albumentations", None) is None:
                     self.albumentations = Albumentations(size=self.img_size, **_trans)
@@ -313,6 +320,16 @@ class COCODataset:
                     sample = getattr(self, func_name)(sample, **_trans)
 
         sample['img'] = np.ascontiguousarray(sample['img'])
+        if self.is_training:
+            train_sample = []
+            if len(sample['segments']) > 0 and not self.return_segments:
+                sample['segments'] = np.nan
+            for col_name in self.column_names_getitem:
+                if sample.get(col_name) is None:
+                    train_sample.append(np.nan)
+                else:
+                    train_sample.append(sample.get(col_name, np.nan))
+            return tuple(train_sample)
         return sample
 
     def __len__(self):
@@ -321,7 +338,8 @@ class COCODataset:
     def get_sample(self, index):
         """Get and return label information from the dataset."""
         sample = deepcopy(self.labels[index])
-        if self.imgs is None:
+        img = self.imgs[index]
+        if img is None:
             path = self.img_files[index]
             img = cv2.imread(path)  # BGR
             assert img is not None, "Image Not Found " + path
@@ -331,8 +349,13 @@ class COCODataset:
                 interp = cv2.INTER_AREA if r < 1 and not self.augment else cv2.INTER_LINEAR
                 img = cv2.resize(img, (int(w_ori * r), int(h_ori * r)), interpolation=interp)
 
+            if self.augment:
+                self.imgs[index], self.img_hw_ori[index] = img, np.array([h_ori, w_ori]) # img, hw_original
+                self.buffer.append(index)
+                if 1 < len(self.buffer) >= self.max_buffer_length:
+                    j = self.buffer.pop(0)
+                    self.imgs[j], self.img_hw_ori[j] = None, np.array([None, None])
             sample['img'], sample['ori_shape'] = img, np.array([h_ori, w_ori])  # img, hw_original
-
         else:
             sample['img'], sample['ori_shape'] = self.imgs[index], self.img_hw_ori[index]  # img, hw_original
 
@@ -367,7 +390,7 @@ class COCODataset:
         # loads images in a 4-mosaic
         classes4, bboxes4, segments4 = [], [], []
         mosaic_samples = [sample, ]
-        indices = random.choices(self.indices, k=3)  # 3 additional image indices
+        indices = random.choices(self.buffer, k=3)  # 3 additional image indices
 
         segments_is_list = isinstance(sample['segments'], list)
         if segments_is_list:
@@ -444,7 +467,7 @@ class COCODataset:
         # loads images in a 9-mosaic
         classes9, bboxes9, segments9 = [], [], []
         mosaic_samples = [sample, ]
-        indices = random.choices(self.indices, k=8)  # 8 additional image indices
+        indices = random.choices(self.buffer, k=8)  # 8 additional image indices
 
         segments_is_list = isinstance(sample['segments'], list)
         if segments_is_list:
@@ -554,7 +577,7 @@ class COCODataset:
         sample['segments'] = segments
         return sample
 
-    def copy_paste(self, sample, probability=0.5):
+    def copy_paste(self, sample, probability=0.5, sorted=False):
         # Implement Copy-Paste augmentation https://arxiv.org/abs/2012.07177, labels as nx5 np.array(cls, xyxy)
         bbox_format, segment_format = sample['bbox_format'], sample['segment_format']
         assert bbox_format == 'ltrb', f'The bbox format should be ltrb, but got {bbox_format}'
@@ -566,12 +589,16 @@ class COCODataset:
         segments = sample['segments']
 
         n = len(segments)
-        if probability and n:
-            h, w, _ = img.shape  # height, width, channels
-            im_new = np.zeros(img.shape, np.uint8)
+        if len(segments) == 0 or probability == 0:
+            return sample
+
+        h, w, _ = img.shape  # height, width, channels
+        im_new = np.zeros(img.shape, np.uint8)
+
+        if not sorted:
             for j in random.sample(range(n), k=round(probability * n)):
                 c, l, s = cls[j], bboxes[j], segments[j]
-                box = w - l[2], l[1], w - l[0], l[3]
+                box = np.array([[w - l[2], l[1], w - l[0], l[3]]], dtype=np.float32)
                 ioa = bbox_ioa(box, bboxes)  # intersection over area
                 if (ioa < 0.30).all():  # allow 30% obscuration of existing labels
                     cls = np.concatenate((cls, [c]), 0)
@@ -581,11 +608,31 @@ class COCODataset:
                     else:
                         segments = np.concatenate((segments, [np.concatenate((w - s[:, 0:1], s[:, 1:2]), 1)]), 0)
                     cv2.drawContours(im_new, [segments[j].astype(np.int32)], -1, (255, 255, 255), cv2.FILLED)
+        else:
+            bboxes2 = bboxes.copy()
+            bboxes2[:, 0] = w - bboxes[:, 2]
+            bboxes2[:, 2] = w - bboxes[:, 0]
 
-            result = cv2.bitwise_and(src1=img, src2=im_new)
-            result = cv2.flip(result, 1)  # augment segments (flip left-right)
-            i = result > 0  # pixels to replace
-            img[i] = result[i]  # cv2.imwrite('debug.jpg', img)  # debug
+            ioa = bbox_ioa(bboxes2, bboxes)  # intersection over area, (N, M)
+            indexes = np.nonzero((ioa < 0.30).all(1))[0]  # (N, ) allow 30% obscuration of existing labels
+
+            n = len(indexes)
+            sorted_idx = np.argsort(ioa.max(1)[indexes])
+            indexes = indexes[sorted_idx]
+            for j in indexes[: round(probability * n)]:
+                c, s = cls[j], segments[j]
+                cls = np.concatenate((cls, [c]), 0)
+                bboxes = np.concatenate((bboxes, [bboxes2[j]]), 0)
+                if isinstance(segments, list):
+                    segments.append(np.concatenate((w - s[:, 0:1], s[:, 1:2]), 1))
+                else:
+                    segments = np.concatenate((segments, [np.concatenate((w - s[:, 0:1], s[:, 1:2]), 1)]), 0)
+                cv2.drawContours(im_new, [segments[j].astype(np.int32)], -1, (255, 255, 255), cv2.FILLED)
+
+        result = cv2.bitwise_and(src1=img, src2=im_new)
+        result = cv2.flip(result, 1)  # augment segments (flip left-right)
+        i = result > 0  # pixels to replace
+        img[i] = result[i]
 
         sample['img'] = img
         sample['cls'] = cls
@@ -705,7 +752,8 @@ class COCODataset:
                 _trans = ori_trans.copy()
                 func_name, prob = _trans.pop("func_name"), _trans.pop("prob", 1.0)
                 if func_name == 'copy_paste':
-                    sample2 = self.copy_paste(sample2, prob)
+                    sorted = _trans.pop("sorted", False)
+                    sample2 = self.copy_paste(sample2, prob, sorted)
                 elif random.random() < prob:
                     if func_name == "albumentations" and getattr(self, "albumentations", None) is None:
                         self.albumentations = Albumentations(size=self.img_size, **_trans)
@@ -733,8 +781,6 @@ class COCODataset:
         assert bbox_format == 'ltrb', f'The bbox format should be ltrb, but got {bbox_format}'
         assert not self.return_segments, "pastein currently does not support seg data."
         assert not self.return_keypoints, "pastein currently does not support keypoint data."
-        sample.pop('segments', None)
-        sample.pop('keypoints', None)
 
         image = sample['img']
         cls = sample['cls']
@@ -766,7 +812,7 @@ class COCODataset:
             xmax = min(w, xmin + mask_w)
             ymax = min(h, ymin + mask_h)
 
-            box = np.array([xmin, ymin, xmax, ymax], dtype=np.float32)
+            box = np.array([[xmin, ymin, xmax, ymax]], dtype=np.float32)
             if len(bboxes):
                 ioa = bbox_ioa(box, bboxes)  # intersection over area
             else:
@@ -1156,21 +1202,17 @@ class COCODataset:
 
         return s
 
-    def train_collate_fn(self, batch_samples, batch_info):
-        imgs = [sample.pop('img') for sample in batch_samples]
+    def train_collate_fn(self, im_file, cls, bboxes, segments, keypoints, bbox_format, 
+                         segment_format, img, ori_shape, hw_scale, hw_pad, batch_info):
         labels = []
-        for i, sample in enumerate(batch_samples):
-            cls, bboxes = sample.pop('cls'), sample.pop('bboxes')
-            labels.append(np.concatenate((np.full_like(cls, i), cls, bboxes), axis=-1))
-        return_items = [np.stack(imgs, 0), np.stack(labels, 0)]
-
+        for i, (c, b) in enumerate(zip(cls, bboxes)):
+            labels.append(np.concatenate((np.full_like(c, i), c, b), axis=-1))
+        return_items = [np.stack(img, 0), np.stack(labels, 0)]
         if self.return_segments:
-            masks = [sample.pop('segments', None) for sample in batch_samples]
-            return_items.append(np.stack(masks, 0))
+            return_items.append(np.stack(segments, 0))
         if self.return_keypoints:
-            keypoints = [sample.pop('keypoints', None) for sample in batch_samples]
             return_items.append(np.stack(keypoints, 0))
-
+        
         return tuple(return_items)
 
     def test_collate_fn(self, batch_samples, batch_info):

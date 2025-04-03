@@ -37,9 +37,10 @@ def get_parser_export(parents=None):
 
 def set_default_export(args):
     # Set Context
-    context.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
+    context.set_context(mode=args.ms_mode)
+    ms.set_recursion_limit(2000)
     if args.device_target == "Ascend":
-        context.set_context(device_id=int(os.getenv("DEVICE_ID", 0)))
+        ms.set_device("Ascend", int(os.getenv("DEVICE_ID", 0)))
     args.rank, args.rank_size = 0, 1
     # Set Data
     args.data.nc = 1 if args.single_cls else int(args.data.nc)  # number of classes

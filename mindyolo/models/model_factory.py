@@ -2,7 +2,6 @@ import math
 import os
 from copy import deepcopy
 
-import mindspore as ms
 from mindspore import load_checkpoint, load_param_into_net, nn, ops
 
 from mindyolo.utils import logger
@@ -102,7 +101,7 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
         logger.info("network structure are as follows")
         logger.info("%3s%18s%3s%10s  %-60s%-40s" % ("", "from", "n", "params", "module", "arguments"))
     anchors, reg_max, max_channels = d.get("anchors", None), d.get("reg_max", None), d.get("max_channels", None)
-    stride, gd, gw = d.stride, d.depth_multiple, d.width_multiple
+    stride, gd, gw, scale = d.stride, d.depth_multiple, d.width_multiple, d.get("scale", None)
 
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
     layers_param = []
@@ -155,6 +154,8 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
             SCDown,
             PSA,
             C2fCIB,
+            C3k2,
+            C2PSA
         ):
             c1, c2 = ch[f], args[0]
             if max_channels:
@@ -182,9 +183,12 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
                 ADown
             ):
                 kwargs["sync_bn"] = sync_bn
-            if m in (DownC, SPPCSPC, C3, C2f, DWC3, C2fCIB):
+            if m in (DownC, SPPCSPC, C3, C2f, DWC3, C2fCIB, C3k2, C2PSA):
                 args.insert(2, n)  # number of repeats
                 n = 1
+            if m is C3k2:  # M/L/X sizes
+                if scale in "mlx":
+                    args[3] = True
         elif m in (nn.BatchNorm2d, nn.SyncBatchNorm):
             args = [ch[f]]
         elif m in (Concat,):
@@ -195,7 +199,7 @@ def parse_model(d, ch, nc, sync_bn=False):  # model_dict, input_channels(3)
             args.append([ch[x] for x in f])
             if isinstance(args[1], int):  # number of anchors
                 args[1] = [list(range(args[1] * 2))] * len(f)
-        elif m in (YOLOv10Head, YOLOv9Head, YOLOv8Head, YOLOv8SegHead, YOLOXHead):  # head of anchor free
+        elif m in (YOLOv11Head, YOLOv10Head, YOLOv9Head, YOLOv8Head, YOLOv8SegHead, YOLOXHead):  # head of anchor free
             args.append([ch[x] for x in f])
             if m in (YOLOv8SegHead,):
                 args[3] = math.ceil(min(args[3], max_channels) * gw / 8) * 8

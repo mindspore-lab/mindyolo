@@ -70,7 +70,7 @@ to understand their behavior. Some common arguments are:
         --log_dir=msrun_log --join=True --cluster_time_out=300 \
         python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
 ```
-> For more information, please refer to [here](https://www.mindspore.cn/tutorials/experts/en/r2.3.1/parallel/startup_method.html).
+> For more information, please refer to [here](https://www.mindspore.cn/docs/en/r2.5.0/model_train/parallel/startup_method.html).
 
 ### Deployment
 

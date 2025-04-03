@@ -69,7 +69,7 @@ python demo/predict.py --config ./configs/yolov7/yolov7.yaml --weight=/path_to_c
         --log_dir=msrun_log --join=True --cluster_time_out=300 \
         python train.py --config ./configs/yolov7/yolov7.yaml  --is_parallel True
 ```
-> 有关更多选项, 请参阅[这里](https://www.mindspore.cn/tutorials/experts/zh-CN/r2.3.1/parallel/startup_method.html)。
+> 有关更多选项, 请参阅[这里](https://www.mindspore.cn/docs/zh-CN/r2.5.0/model_train/parallel/startup_method.html)。
 
 ### 部署
 

@@ -1,3 +1,5 @@
+import math
+
 from mindspore import nn, ops
 
 from .activation import SiLU
@@ -263,3 +265,11 @@ class ADown(nn.Cell):
         x2 = self.max_pool2d(x2)
         x2 = self.cv2(x2)
         return ops.cat((x1, x2), 1)
+
+
+class DWConv(ConvNormAct):
+    """Depth-wise convolution."""
+
+    def __init__(self, c1, c2, k=1, s=1, d=1, act=True, sync_bn=False):  # ch_in, ch_out, kernel, stride, dilation, activation
+        """Initialize Depth-wise convolution with given parameters."""
+        super().__init__(c1, c2, k, s, g=math.gcd(c1, c2), d=d, act=act, sync_bn=sync_bn)

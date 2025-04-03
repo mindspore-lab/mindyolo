@@ -10,7 +10,7 @@ YOLOv5 is a family of object detection architectures and models pretrained on th
 
 | mindspore | ascend driver | firmware     | cann toolkit/kernel |
 | :-------: | :-----------: | :----------: |:-------------------:|
-| 2.3.1     | 24.1.RC2      | 7.3.0.1.231  |   8.0.RC2.beta1     |
+|   2.5.0   |    24.1.0     | 7.5.0.3.220  |     8.0.0.beta1     |
 
 ## Quick Start
 
@@ -29,7 +29,7 @@ It is easy to reproduce the reported results with the pre-defined training recip
 msrun --worker_num=8 --local_worker_num=8 --bind_core=True --log_dir=./yolov5_log python train.py --config ./configs/yolov5/yolov5n.yaml --device_target Ascend --is_parallel True
 ```
 
-**Note:** For more information about msrun configuration, please refer to [here](https://www.mindspore.cn/tutorials/experts/zh-CN/r2.3.1/parallel/msrun_launcher.html).
+**Note:** For more information about msrun configuration, please refer to [here](https://www.mindspore.cn/docs/en/r2.5.0/model_train/parallel/msrun_launcher.html).
 
 For detailed illustration of all hyper-parameters, please refer to [config.py](https://github.com/mindspore-lab/mindyolo/blob/master/mindyolo/utils/config.py).
 
@@ -61,7 +61,7 @@ python test.py --config ./configs/yolov5/yolov5n6.yaml --device_target Ascend --
 
 ## Performance
 
-Experiments are tested on Ascend 910* with mindspore 2.3.1 graph mode.
+Experiments are tested on Ascend 910* with mindspore 2.5.0 graph mode.
 
 | model name   |  scale  | cards  | batch size | resolution |  jit level  | graph compile | ms/step  | img/s  |  map  |           recipe           |                                                      weight                                                       |
 |  :--------:  |  :---:  |  :---: |   :---:    |   :---:    |    :---:    |     :---:     |   :---:  | :---:  |:-----:|           :---:            |:-----------------------------------------------------------------------------------------------------------------:|
@@ -74,7 +74,7 @@ Experiments are tested on Ascend 910* with mindspore 2.3.1 graph mode.
 |   YOLOv5     |    X6    |   8   |    8       |  1280x1280 |     O2      |    995.73s    | 864.43  | 74.04   | 54.5% |   [yaml](./yolov5x6.yaml)   | [weights](https://download-mindspore.osinfra.cn/toolkits/mindyolo/yolov5/yolov5x6_300e_mAP545-81ebdca9.ckpt) |
 
 
-Experiments are tested on Ascend 910 with mindspore 2.3.1 graph mode.
+Experiments are tested on Ascend 910 with mindspore 2.5.0 graph mode.
 
 |  model name  |  scale  | cards  | batch size | resolution |  jit level  | graph compile | ms/step | img/s  |  map  |           recipe           |                                               weight                                                |
 |  :--------:  |  :---:  |  :---: |    :---:   |   :---:    |    :---:    |     :---:     |  :---:  | :---:  |:-----:|           :---:            |:---------------------------------------------------------------------------------------------------:|

@@ -37,6 +37,7 @@ def get_parser_infer(parents=None):
     parser.add_argument(
         "--single_cls", type=ast.literal_eval, default=False, help="train multi-class data as single-class"
     )
+    parser.add_argument("--exec_nms", type=ast.literal_eval, default=True, help="whether to execute NMS or not")
     parser.add_argument("--nms_time_limit", type=float, default=60.0, help="time limit for NMS")
     parser.add_argument("--conf_thres", type=float, default=0.25, help="object confidence threshold")
     parser.add_argument("--iou_thres", type=float, default=0.65, help="IOU threshold for NMS")
@@ -55,15 +56,14 @@ def get_parser_infer(parents=None):
 
 def set_default_infer(args):
     # Set Context
-    ms.set_context(mode=args.ms_mode, device_target=args.device_target, max_call_depth=2000)
+    ms.set_context(mode=args.ms_mode)
+    ms.set_recursion_limit(2000)
     if args.precision_mode is not None:
-        ms.set_context(ascend_config={"precision_mode":args.precision_mode})
+        ms.device_context.ascend.op_precision.precision_mode(args.precision_mode)
     if args.ms_mode == 0:
         ms.set_context(jit_config={"jit_level": "O2"})
     if args.device_target == "Ascend":
-        ms.set_context(device_id=int(os.getenv("DEVICE_ID", 0)))
-    elif args.device_target == "GPU" and args.ms_enable_graph_kernel:
-        ms.set_context(enable_graph_kernel=True)
+        ms.set_device("Ascend", int(os.getenv("DEVICE_ID", 0)))
     args.rank, args.rank_size = 0, 1
     # Set Data
     args.data.nc = 1 if args.single_cls else int(args.data.nc)  # number of classes
@@ -94,6 +94,7 @@ def detect(
     conf_thres: float = 0.25,
     iou_thres: float = 0.65,
     conf_free: bool = False,
+    exec_nms: bool = True,
     nms_time_limit: float = 60.0,
     img_size: int = 640,
     stride: int = 32,
@@ -122,8 +123,8 @@ def detect(
 
     # Run infer
     _t = time.time()
-    out = network(imgs_tensor)  # inference and training outputs
-    out = out[0] if isinstance(out, (tuple, list)) else out
+    out, _ = network(imgs_tensor)  # inference and training outputs
+    out = out[-1] if isinstance(out, (tuple, list)) else out
     infer_times = time.time() - _t
 
     # Run NMS
@@ -136,6 +137,7 @@ def detect(
         conf_free=conf_free,
         multi_label=True,
         time_limit=nms_time_limit,
+        need_nms=exec_nms,
     )
     nms_times = time.time() - t
 
@@ -305,6 +307,7 @@ def infer(args):
             conf_thres=args.conf_thres,
             iou_thres=args.iou_thres,
             conf_free=args.conf_free,
+            exec_nms=args.exec_nms,
             nms_time_limit=args.nms_time_limit,
             img_size=args.img_size,
             stride=max(max(args.network.stride), 32),
