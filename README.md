@@ -1,4 +1,4 @@
-# MindYOLO
+# MindSpore YOLO
 
 <p align="left">
     <a href="https://github.com/mindspore-lab/mindyolo/blob/master/README.md">
@@ -12,7 +12,7 @@
     </a>
 </p>
 
-MindYOLO implements state-of-the-art YOLO series algorithms based on MindSpore.
+MindSpore YOLO implements state-of-the-art YOLO series algorithms based on MindSpore.
 The following is the corresponding `mindyolo` versions and supported `mindspore` versions.
 
 | mindyolo |  mindspore  |
@@ -60,17 +60,17 @@ The dynamic shape of verision will be supported later. Please look forward to it
 
 ### How to Contribute
 
-We appreciate all contributions including issues and PRs to make MindYOLO better. 
+We appreciate all contributions including issues and PRs to make MindSpore YOLO better. 
 
 Please refer to [CONTRIBUTING.md](CONTRIBUTING.md) for the contributing guideline.
 
 ### License
 
-MindYOLO is released under the [Apache License 2.0](LICENSE.md).
+MindSpore YOLO is released under the [Apache License 2.0](LICENSE.md).
 
 ### Acknowledgement
 
-MindYOLO is an open source project that welcome any contribution and feedback. We wish that the toolbox and benchmark could support the growing research community, reimplement existing methods, and develop their own new real-time object detection methods by providing a flexible and standardized toolkit.
+MindSpore YOLO is an open source project that welcome any contribution and feedback. We wish that the toolbox and benchmark could support the growing research community, reimplement existing methods, and develop their own new real-time object detection methods by providing a flexible and standardized toolkit.
 
 ### Citation
 
