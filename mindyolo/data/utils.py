@@ -1,3 +1,4 @@
+# Adapted from https://github.com/WongKinYiu/yolov7/blob/main/utils/general.py to work with MindSpore.
 import numpy as np
 import cv2
 

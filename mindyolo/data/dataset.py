@@ -1,3 +1,4 @@
+# Adapted from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/data/dataset.py to work with MindSpore.
 import os
 import cv2
 import math

@@ -1,3 +1,4 @@
+# Adapted from https://github.com/huggingface/pytorch-image-models to work with MindSpore.
 """model registry and list"""
 import fnmatch
 import sys
