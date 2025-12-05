@@ -47,7 +47,7 @@ def get_parser_train(parents=None):
     parser.add_argument("--freeze", type=list, default=[], help="Freeze layers: backbone of yolov7=50, first3=0 1 2")
     parser.add_argument("--epochs", type=int, default=300, help="total train epochs")
     parser.add_argument("--per_batch_size", type=int, default=32, help="per batch size for each device")
-    parser.add_argument("--img_size", type=list, default=640, help="train image sizes")
+    parser.add_argument("--img_size", type=int, default=640, help="train image sizes")
     parser.add_argument("--nbs", type=list, default=64, help="nbs")
     parser.add_argument("--accumulate", type=int, default=1,
                         help="grad accumulate step, recommended when batch-size is less than 64")
