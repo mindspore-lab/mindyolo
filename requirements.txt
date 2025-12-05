@@ -5,7 +5,7 @@
 pybind11>=2.10.4
 
 # Base
-numpy>=1.17.0
+numpy>=1.17.0,<=1.26.4
 PyYAML>=5.3
 tqdm
 opencv-python>=4.7.0.68
@@ -13,4 +13,4 @@ opencv-python-headless>=4.7.0.68
 
 # Extras
 albumentations>=1.0.3
-pycocotools>=2.0.2
+pycocotools>=2.0.2,<=2.0.7
