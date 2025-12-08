@@ -144,7 +144,8 @@ def draw_result(img_path, result_dict, data_names, is_coco_dataset=True, save_pa
     from mindyolo.data import COCO80_TO_COCO91_CLASS
 
     os.makedirs(save_path, exist_ok=True)
-    save_result_path = os.path.join(save_path, img_path.split("/")[-1])
+    filename = os.path.basename(img_path)
+    save_result_path = os.path.join(save_path, filename)
     im = cv2.imread(img_path)
     category_id, bbox, score = result_dict["category_id"], result_dict["bbox"], result_dict["score"]
     seg = result_dict.get("segmentation", None)
